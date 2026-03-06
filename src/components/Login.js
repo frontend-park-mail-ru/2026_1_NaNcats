@@ -62,22 +62,22 @@ export class Login extends Component {
         const email = form.email.value;
         const password = form.password.value;
 
-        // Валидация
         if (!validateEmail(email)) {
             document.getElementById('email-error').innerText = 'Некорректный email';
             return;
         }
 
         try {
-            const response = await Ajax.post('/api/login', { email, password });
+            const response = await Ajax.post('/login', { login: email, password });
+            
             if (response.ok) {
-                // Переход на главную (SPA Router)
                 window.router.go('/');
             } else {
-                alert('Ошибка входа');
+                const errData = await response.json();
+                alert(`Ошибка входа: ${errData.error || 'Неверные данные'}`);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Network error:', err);
         }
     }
 }

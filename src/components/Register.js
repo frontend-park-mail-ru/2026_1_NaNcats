@@ -86,11 +86,18 @@ export class Register extends Component {
 
         if (!isValid) return;
 
-        const resp = await Ajax.post('/api/register', data);
+        const payload = {
+            name: data.name,
+            email: data.email,
+            password: data.password
+        };
+
+        const resp = await Ajax.post('/register', payload);
         if (resp.ok) {
             window.router.go('/');
         } else {
-            alert('Ошибка регистрации');
+            const errData = await resp.json();
+            alert(`Ошибка регистрации: ${errData.error || 'Попробуйте позже'}`);
         }
     }
 }

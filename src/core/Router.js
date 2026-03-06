@@ -9,7 +9,6 @@ export class Router {
         this.root = root;
         this.routes = {};
 
-        // Слушаем клики по всему документу для перехвата ссылок
         document.addEventListener('click', (e) => {
             const link = e.target.closest('.router-link');
             if (link) {
@@ -19,7 +18,6 @@ export class Router {
             }
         });
 
-        // Слушаем кнопку "Назад" в браузере
         window.addEventListener('popstate', () => {
             this.render(window.location.pathname);
         });
@@ -55,7 +53,6 @@ export class Router {
             return;
         }
         
-        // Вызываем метод mount у компонента
         component.mount(this.root);
     }
 }
