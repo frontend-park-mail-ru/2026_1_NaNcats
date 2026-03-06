@@ -50,7 +50,22 @@ export class RestaurantList extends Component {
     afterRender() {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-            logoutBtn.onclick = () => window.router.go('/login');
+            logoutBtn.onclick = async () => {
+                const res = await Ajax.post('/logout');
+                if (res.ok) {
+                    window.router.go('/');
+                }
+            };
+        }
+
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+            loginBtn.onclick = () => window.router.go('/login');
+        }
+
+        const registerBtn = document.getElementById('register-btn');
+        if (registerBtn) {
+            registerBtn.onclick = () => window.router.go('/register');
         }
     }
 }

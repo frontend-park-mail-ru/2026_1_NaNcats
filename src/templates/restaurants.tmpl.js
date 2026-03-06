@@ -29,20 +29,27 @@ export const restaurantsTemplate = `
         </div>
 
         <div class="header-controls">
-            <div class="notif-btn">
-                <div class="notif-icon-container">
-                    <svg width="15" height="17" viewBox="0 0 15 17" fill="none">
-                        <path d="M5.83333 14.4524H9.16667C9.16667 15.3952 8.41667 16.1667 7.5 16.1667C6.58333 16.1667 5.83333 15.3952 5.83333 14.4524ZM15 12.7381V13.5952H0V12.7381L1.66667 11.0238V5.88095C1.66667 3.22381 3.33333 0.909525 5.83333 0.138097L6.5 1.07481e-06C7.5 1.07481e-06 6.58333 1.07481e-06 7.5 1.07481e-06C8.41667 1.07481e-06 7.5 0 8.5 1.65839e-07L9.16667 0.138097C11.6667 0.909525 13.3333 3.22381 13.3333 5.88095V11.0238L15 12.7381ZM11.6667 5.88095C11.6667 3.48095 9.83333 1.59524 7.5 1.59524C5.16667 1.59524 3.33333 3.48095 3.33333 5.88095V11.881H11.6667V5.88095Z" fill="#FFC1C1"/>
-                    </svg>
+            {{? it.user }}
+                <div class="notif-btn">
+                    <div class="notif-icon-container">
+                        <svg width="15" height="17" viewBox="0 0 15 17" fill="none">
+                            <path d="M5.83333 14.4524H9.16667C9.16667 15.3952 8.41667 16.1667 7.5 16.1667C6.58333 16.1667 5.83333 15.3952 5.83333 14.4524ZM15 12.7381V13.5952H0V12.7381L1.66667 11.0238V5.88095C1.66667 3.22381 3.33333 0.909525 5.83333 0.138097L6.5 1.07481e-06C7.5 1.07481e-06 6.58333 1.07481e-06 7.5 1.07481e-06C8.41667 1.07481e-06 7.5 0 8.5 1.65839e-07L9.16667 0.138097C11.6667 0.909525 13.3333 3.22381 13.3333 5.88095V11.0238L15 12.7381ZM11.6667 5.88095C11.6667 3.48095 9.83333 1.59524 7.5 1.59524C5.16667 1.59524 3.33333 3.48095 3.33333 5.88095V11.881H11.6667V5.88095Z" fill="#FFC1C1"/>
+                        </svg>
+                    </div>
+                    <div class="notif-label">Уведомления</div>
                 </div>
-                <div class="notif-label">Уведомления</div>
-            </div>
-            <div class="user-profile">
-                <div id="logout-btn" class="logout-btn"></div>
-                <div class="user-name">
-                    {{=it.user?.name || 'Гость'}}
+                <div class="user-profile" id="logout-btn">
+                    <div class="user-avatar-placeholder"></div>
+                    <div class="user-name">
+                        {{=it.user.name}}
+                    </div>
                 </div>
-            </div>
+            {{??}}
+                <div class="auth-guest-controls">
+                    <button id="login-btn" class="login-btn-header">Войти</button>
+                    <button id="register-btn" class="register-btn-header">Регистрация</button>
+                </div>
+            {{?}}
         </div>
     </header>
 

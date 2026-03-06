@@ -513,3 +513,80 @@ body, html {
 
 .prev::after { transform: rotate(45deg); margin-left: 5px; }
 .next::after { transform: rotate(-135deg); margin-right: 5px; }
+
+.auth-guest-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.login-btn-header {
+    background: none;
+    border: none;
+    color: var(--text-dark);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.login-btn-header:hover {
+    background: var(--light-gray);
+    color: var(--accent-pink);
+}
+
+.register-btn-header {
+    background: var(--accent-pink);
+    color: var(--white);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(247, 149, 140, 0.3);
+    transition: all 0.2s ease;
+}
+
+.register-btn-header:hover {
+    box-shadow: 0 6px 15px rgba(247, 149, 140, 0.4);
+    filter: brightness(1.05);
+}
+
+.register-btn-header:active {
+    transform: translateY(0);
+}
+
+.user-avatar-placeholder {
+    width: 38px;
+    height: 38px;
+    background: var(--accent-pink);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--white);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.user-profile:hover .user-avatar-placeholder {
+    transform: scale(1.05);
+}
+
+.user-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+}
+
+.user-profile:hover {
+    background: var(--light-gray);
+}
