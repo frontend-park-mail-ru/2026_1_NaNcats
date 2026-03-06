@@ -1,0 +1,61 @@
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+
+const PORT = 3000;
+const MIME_TYPES = {
+    '.html': 'text/html',
+    '.js': 'text/javascript',
+    '.mjs': 'text/javascript', // Для ES-модулей
+    '.css': 'text/css',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+};
+
+const server = http.createServer((req, res) => {
+    const urlPath = req.url.split('?')[0];
+    
+    // 1. Пытаемся найти файл по прямому пути (от корня проекта)
+    // Например, если запрос /src/app.js, он будет искать его в папке src
+    let filePath = path.join(__dirname, urlPath === '/' ? 'public/index.html' : urlPath);
+    
+    const ext = path.extname(filePath).toLowerCase();
+
+    fs.stat(filePath, (err, stats) => {
+        // Если прямой файл найден
+        if (!err && stats.isFile()) {
+            res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+            return fs.createReadStream(filePath).pipe(res);
+        }
+
+        // 2. Если файл не найден, но это может быть статика в папке public
+        // (например, запрос /style.css, а файл лежит в /public/style.css)
+        const publicPath = path.join(__dirname, 'public', urlPath);
+        fs.stat(publicPath, (errPublic, statsPublic) => {
+            if (!errPublic && statsPublic.isFile()) {
+                const publicExt = path.extname(publicPath).toLowerCase();
+                res.writeHead(200, { 'Content-Type': MIME_TYPES[publicExt] || 'application/octet-stream' });
+                return fs.createReadStream(publicPath).pipe(res);
+            }
+
+            // 3. Если это SPA роут (нет расширения типа .js/.css) - отдаем index.html
+            if (!ext || ext === '') {
+                const indexHtml = path.join(__dirname, 'public', 'index.html');
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                return fs.createReadStream(indexHtml).pipe(res);
+            }
+
+            // 4. Реальный 404 для файлов (если есть расширение, но файла нет нигде)
+            res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(`Ошибка 404: Файл ${urlPath} не найден`);
+        });
+    });
+});
+
+server.listen(PORT, () => {
+    console.log(`http://localhost:${PORT}`);
+});
