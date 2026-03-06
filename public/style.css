@@ -1,21 +1,23 @@
-/* Базовые настройки */
 :root {
     --auth-gradient: linear-gradient(256deg, #F6938E 10%, #F8EEED 100%);
     --accent-orange: #FDA522;
     --accent-pink: #F7958C;
     --text-dark: #0E1117;
     --text-gray: #7D7D7D;
+    --bg-main: linear-gradient(180deg, #FFDAB9 0%, #FFC1C1 100%);
+    --white: #ffffff;
+    --light-gray: #f2f2f2;
 }
 
 * { box-sizing: border-box; }
 
 body, html {
-    margin: 0; padding: 0; 
+    margin: 0; padding: 0;
     height: 100vh;
     width: 100vw;
     overflow: hidden;
     font-family: 'Inter', sans-serif;
-    background: linear-gradient(180deg, #FFDAB9 0%, #FFC1C1 100%);
+    background: var(--bg-main);
 }
 
 .page-wrapper {
@@ -24,13 +26,12 @@ body, html {
     flex-direction: column;
 }
 
-/* 1. Шапка */
 .main-header {
     height: 80px;
     flex-shrink: 0;
     padding: 0 21px 0 38px;
     margin: 0 25px;
-    background: white;
+    background: var(--white);
     border-radius: 0 0 30px 30px;
     display: flex;
     align-items: center;
@@ -39,27 +40,56 @@ body, html {
     z-index: 10;
 }
 
-/* 2. Макет */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+}
+
+.logout-btn {
+    width: 45px;
+    height: 45px;
+    background: var(--light-gray);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid var(--white);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 700;
+    margin-top: 5px;
+    white-space: nowrap;
+    text-align: center;
+}
+
 .main-layout {
     flex: 1;
     display: grid;
     grid-template-columns: 260px 1fr 320px;
     gap: 22px;
-    padding: 17px 25px 0 25px; /* Снизу 0, чтобы центр касался края */
+    padding: 17px 25px 0 25px;
     min-height: 0;
 }
 
-/* 3. Боковые колонки */
 .side-column {
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding-bottom: 20px; /* Чтобы бока не касались пола */
+    padding-bottom: 20px;
     min-height: 0;
 }
 
 .white-card-fixed {
-    background: white;
+    background: var(--white);
     border-radius: 20px;
     display: flex;
     flex-direction: column;
@@ -69,7 +99,15 @@ body, html {
     min-height: 577px;
 }
 
-/* 4. КАТЕГОРИИ (Кнопки) */
+.sidebar-label {
+    padding: 25px 25px 10px 25px;
+    font-size: 11px;
+    color: #aaa;
+    letter-spacing: 1px;
+    margin: 0;
+    text-transform: uppercase;
+}
+
 .categories-scroll-area {
     flex: 1;
     overflow-y: auto;
@@ -99,33 +137,47 @@ body, html {
 
 .category-icon { font-size: 18px; }
 
-/* 5. ЦЕНТРАЛЬНЫЙ БЛОК (С всегда круглым верхом) */
 .center-column-scroll {
     height: 100%;
     overflow-y: auto;
     scrollbar-width: none;
-    /* Верхние углы круглые ВСЕГДА у самого окна скролла */
-    border-radius: 20px 20px 0 0; 
+    border-radius: 20px 20px 0 0;
 }
 .center-column-scroll::-webkit-scrollbar { display: none; }
 
 .white-sheet {
-    background: white;
+    background: var(--white);
     min-height: 100%;
     padding: 40px;
     display: flex;
     flex-direction: column;
-    /* У листа скругляем только низ */
-    border-radius: 0 0 20px 20px; 
-    /* Создаем отступ в конце скролла */
-    margin-bottom: 20px; 
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 20px;
 }
 
-/* 6. ПРАВАЯ КОЛОНКА (Стрик и корзина) */
-.streak-info {
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.sheet-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 800;
+}
+
+.cart-container {
     padding: 20px;
-    border-bottom: 1px solid #f2f2f2;
-    background: #FFF9F9;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-footer {
+    padding: 20px;
+    border-top: 1px solid var(--light-gray);
 }
 
 .cart-empty-container {
@@ -138,11 +190,14 @@ body, html {
     padding: 20px;
 }
 
-/* Кнопка поддержки */
+.empty-icon { font-size: 40px; margin-bottom: 15px; }
+.empty-title { font-size: 15px; font-weight: 600; color: #444; }
+.empty-subtitle { font-size: 12px; color: #999; margin-top: 5px; }
+
 .support-btn {
     flex-shrink: 0;
-    margin-top: 20px;
-    background: white;
+    margin-top: 8px;
+    background: var(--white);
     border-radius: 20px;
     padding: 10px 25px;
     display: flex;
@@ -153,20 +208,17 @@ body, html {
     cursor: pointer;
     box-shadow: 0 4px 15px rgba(0,0,0,0.05);
 }
-.support-dot { width: 8px; height: 8px; background: #FFC1C1; border-radius: 50%; }
 
-/* Поиск и сетка */
 .search-bar {
     display: flex;
     width: 635px;
     height: 40px;
-    gap: 6px; /* Тот самый отступ 6px между ними */
+    gap: 6px;
     align-items: center;
 }
 
-/* Общий стиль для обеих оберток */
-.search-container {
-    background: #F2F2F2;
+.search-container, .address-container {
+    background: var(--light-gray);
     height: 40px;
     display: flex;
     align-items: center;
@@ -174,26 +226,8 @@ body, html {
     box-sizing: border-box;
 }
 
-.address-container {
-    background: #F2F2F2;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    padding: 0 10px;
-    box-sizing: border-box;
-}
-
-/* Настройка левого блока */
-.main-search {
-    width: 438px;
-    border-radius: 30px 0 0 30px; /* Скругление только слева */
-}
-
-/* Настройка правого блока */
-.address-search {
-    width: 191px;
-    border-radius: 0 30px 30px 0; /* Скругление только справа */
-}
+.main-search { width: 438px; border-radius: 30px 0 0 30px; }
+.address-search { width: 191px; border-radius: 0 30px 30px 0; padding: 0 10px; }
 
 .search-input, .address-input {
     width: 100%;
@@ -206,39 +240,41 @@ body, html {
     color: #333;
 }
 
-/* Цвет плейсхолдера как в вашем примере */
 .search-input::placeholder, .address-input::placeholder {
     color: rgba(0, 0, 0, 0.65);
 }
 
-.search-icon {
-    margin: 0 10px 0 0;
+.search-icon { margin: 0 10px 0 0; }
+.address-icon { margin: 0 6px 0 0; }
+
+.res-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 10px;
+}
+.res-rect {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #f5f5f5;
+    border-radius: 20px;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.3s ease;
 }
 
-.address-icon {
-    margin: 0 6px 0 0;
-}
-
-.res-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
-    gap: 10px; 
-}
-.res-rect { 
-    width: 100%; aspect-ratio: 16 / 9; background: #f5f5f5; 
-    border-radius: 20px; object-fit: cover; cursor: pointer; 
-    transition: transform 0.3s ease; 
-}
-
-/* Кнопка в корзине */
 .checkout-btn {
-    width: 100%; background: #FFC1C1; border: none; 
-    padding: 16px; border-radius: 18px; font-weight: 700; 
-    color: white; cursor: pointer; transition: opacity 0.2s;
+    width: 100%;
+    background: #FFC1C1;
+    border: none;
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 700;
+    color: var(--white);
+    cursor: pointer;
+    transition: opacity 0.2s;
 }
-.checkout-btn:hover { opacity: 0.9; }
+.checkout-btn:disabled { cursor: not-allowed; opacity: 1; }
 
-/* Контейнер уведомлений */
 .notif-btn {
     width: 73px;
     height: 45px;
@@ -248,39 +284,22 @@ body, html {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s ease;
 }
 
-/* Иконка сверху по центру */
 .notif-icon-container {
     width: 24px;
     height: 24px;
-    background: rgba(255, 255, 255, 0.06);
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.notif-icon-bg {
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0);
-    overflow: hidden;
-}
-
-/* Текст снизу */
 .notif-label {
     margin-top: 2px;
     color: black;
     font-size: 12px;
-    font-family: 'Inter', sans-serif;
     font-weight: 400;
     text-align: center;
-    word-wrap: break-word;
 }
 
 .auth-page {
@@ -298,18 +317,20 @@ body, html {
     padding: 10px;
 }
 
-/* Левая сторона */
 .auth-form-side {
-    flex: 1; /* Ровно половина */
+    flex: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    align-items: center; /* Центрируем форму внутри левой половины */
-    padding: 0 40px;
-    max-width: none; /* Убираем лимит ширины */
+    align-items: center;
+    padding: 40px;
     z-index: 2;
 }
 
+.auth-header {
+    width: 100%;
+    max-width: 360px;
+}
 
 .auth-header h1 {
     font-family: 'Open Sans Condensed', sans-serif;
@@ -330,11 +351,12 @@ body, html {
     cursor: pointer;
 }
 
-/* Форма */
 .auth-form-actual {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 12px;
+    width: 100%;
+    max-width: 360px;
 }
 
 .input-group {
@@ -354,10 +376,10 @@ body, html {
     justify-content: space-between;
 }
 
-.auth-form-actual input {
+.auth-form-actual input:not([type="checkbox"]) {
     width: 100%;
     height: 48px;
-    background: white;
+    background: var(--white);
     border: none;
     border-radius: 16px;
     padding: 0 20px;
@@ -366,13 +388,7 @@ body, html {
     outline: none;
 }
 
-.auth-form-actual input::placeholder {
-    color: var(--text-gray);
-}
-
-.password-wrapper {
-    position: relative;
-}
+.password-wrapper { position: relative; }
 
 .password-icon {
     position: absolute;
@@ -382,33 +398,39 @@ body, html {
     width: 18px;
     height: 10px;
     background: var(--text-gray);
-    mask: url('data:image/svg+xml;utf8,<svg ...></svg>') no-repeat center; /* Сюда можно иконку глаза */
+    mask: url('data:image/svg+xml;utf8,<svg ...></svg>') no-repeat center;
 }
 
-.auth-form-actual, .auth-header {
-    width: 100%;
-    max-width: 360px; 
+.checkbox-group {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 10px 0;
 }
 
+.checkbox-group input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--accent-orange);
+    cursor: pointer;
+}
 
-/* Кнопки */
 .btn-primary {
     height: 56px;
     background: var(--accent-orange);
-    color: white;
+    color: var(--white);
     border: none;
     border-radius: 16px;
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
-    transition: opacity 0.2s;
     margin-top: 10px;
 }
 
 .btn-google {
     height: 56px;
     background: var(--accent-pink);
-    color: white;
+    color: var(--white);
     border: none;
     border-radius: 16px;
     font-weight: 600;
@@ -423,7 +445,7 @@ body, html {
 .google-icon {
     width: 20px;
     height: 20px;
-    background: white;
+    background: var(--white);
     border-radius: 4px;
 }
 
@@ -433,11 +455,10 @@ body, html {
     min-height: 14px;
 }
 
-/* Правая сторона */
 .auth-image-side {
-    flex: 1; /* Вторая половина */
+    flex: 1;
     position: relative;
-    margin: 0; /* Убрал отступы, чтобы картинка была вплотную */
+    display: flex;
     justify-content: flex-end;
 }
 
@@ -452,7 +473,7 @@ body, html {
     position: absolute;
     left: 40px;
     bottom: 80px;
-    color: white;
+    color: var(--white);
     max-width: 300px;
 }
 
@@ -469,6 +490,7 @@ body, html {
     display: flex;
     gap: 10px;
 }
+
 .nav-arrow {
     width: 56px;
     height: 56px;
@@ -479,54 +501,15 @@ body, html {
     align-items: center;
     justify-content: center;
     background: transparent;
-    transition: background 0.2s;
 }
 
-.nav-arrow:hover {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-/* Рисуем стрелочки через псевдоэлементы (простая реализация) */
 .nav-arrow::after {
     content: '';
     width: 12px;
     height: 12px;
-    border-left: 2px solid white;
-    border-bottom: 2px solid white;
+    border-left: 2px solid var(--white);
+    border-bottom: 2px solid var(--white);
 }
 
 .prev::after { transform: rotate(45deg); margin-left: 5px; }
 .next::after { transform: rotate(-135deg); margin-right: 5px; }
-
-/* Добавьте в style.css */
-
-.checkbox-group {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    margin: 10px 0;
-}
-
-.checkbox-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    accent-color: var(--accent-orange);
-    cursor: pointer;
-    flex-shrink: 0;
-}
-
-.checkbox-group label {
-    font-size: 14px;
-    line-height: 1.4;
-    color: var(--text-dark);
-    cursor: pointer;
-}
-
-.auth-form-actual {
-    gap: 12px;
-}
-
-.auth-form-side {
-    padding-top: 40px;
-    padding-bottom: 40px;
-}

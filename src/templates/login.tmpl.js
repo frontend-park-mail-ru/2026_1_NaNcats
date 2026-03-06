@@ -1,7 +1,6 @@
 export const loginTemplate = `
 <div class="auth-page">
     <div class="auth-container">
-        <!-- Левая часть: Форма -->
         <div class="auth-form-side">
             <div class="auth-header">
                 <h1>Вход</h1>
@@ -36,7 +35,6 @@ export const loginTemplate = `
             </form>
         </div>
 
-        <!-- Правая часть: Изображение и текст -->
         <div class="auth-image-side">
             <img src="https://img.freepik.com/free-photo/delicious-burger-with-fresh-ingredients_23-2150857908.jpg" alt="Food" class="promo-image">
             <div class="promo-text">
