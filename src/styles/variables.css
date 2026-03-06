@@ -1,0 +1,10 @@
+:root {
+  --auth-gradient: linear-gradient(256deg, #F6938E 10%, #F8EEED 100%);
+  --accent-orange: #FDA522;
+  --accent-pink: #F7958C;
+  --text-dark: #0E1117;
+  --text-gray: #7D7D7D;
+  --bg-main: linear-gradient(180deg, #FFDAB9 0%, #FFC1C1 100%);
+  --white: #ffffff;
+  --light-gray: #f2f2f2;
+}

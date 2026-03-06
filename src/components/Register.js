@@ -32,12 +32,12 @@ export class Register extends Component {
             this.onSubmit(form);
         });
         
-        document.querySelector('.nav-arrow.next')?.addEventListener('click', () => {
+        document.querySelector('.nav-arrow_next')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo + 1) % this.promoData.length;
             this.updatePromo();
         });
         
-        document.querySelector('.nav-arrow.prev')?.addEventListener('click', () => {
+        document.querySelector('.nav-arrow_prev')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo - 1 + this.promoData.length) % this.promoData.length;
             this.updatePromo();
         });
