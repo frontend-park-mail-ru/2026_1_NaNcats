@@ -1,7 +1,7 @@
 import { Component } from '../core/Component.js';
 import { registerTemplate } from '../templates/register.tmpl.js';
 import { Ajax } from '../core/Ajax.js';
-import { validateEmail, validatePassword } from '../utils/validator.js';
+import { validateEmail, validatePassword, validateName } from '../utils/validator.js';
 
 /**
  * Компонент регистрации
@@ -23,6 +23,18 @@ export class Register extends Component {
             }
         ];
         this.currentPromo = 0;
+    }
+
+    clearErrors() {
+        const errorSpans = document.querySelectorAll('.error-msg');
+        errorSpans.forEach(span => span.innerText = '');
+    }
+
+    setError(fieldId, message) {
+        const element = document.getElementById(`${fieldId}-error`);
+        if (element) {
+            element.innerText = message;
+        }
     }
 
     afterRender() {
@@ -55,49 +67,62 @@ export class Register extends Component {
      * @param {HTMLFormElement} form
      */
     async onSubmit(form) {
+        this.clearErrors();
+
         const data = {
-            name: form.name.value,
-            email: form.email.value,
+            name: form.name.value.trim(),
+            email: form.email.value.trim(),
             password: form.password.value,
             repeatPassword: form.repeatPassword.value
         };
 
-        // Сброс ошибок
-        form.querySelectorAll('.error').forEach(el => el.innerText = '');
-
         let isValid = true;
 
-        if (data.name.length < 2) {
-            document.getElementById('name-error').innerText = 'Имя слишком короткое';
+        if (!validateName(data.name)) {
+            this.setError('name', 'Имя должно быть от 4 до 30 символов');
             isValid = false;
         }
+        
         if (!validateEmail(data.email)) {
-            document.getElementById('email-error').innerText = 'Неверный формат email';
+            this.setError('email', 'Неверный формат почты');
             isValid = false;
         }
+
         if (!validatePassword(data.password)) {
-            document.getElementById('password-error').innerText = 'Пароль должен быть > 6 символов';
+            this.setError('password', 'Пароль от 8 символов без пробелов');
             isValid = false;
         }
+
         if (data.password !== data.repeatPassword) {
-            document.getElementById('repeatPassword-error').innerText = 'Пароли не совпадают';
+            this.setError('repeatPassword', 'Пароли не совпадают');
             isValid = false;
         }
 
         if (!isValid) return;
 
-        const payload = {
-            name: data.name,
-            email: data.email,
-            password: data.password
-        };
+        try {
+            const resp = await Ajax.post('/auth/register', {
+                name: data.name,
+                email: data.email,
+                password: data.password
+            });
 
-        const resp = await Ajax.post('/auth/register', payload);
-        if (resp.ok) {
-            window.router.go('/');
-        } else {
-            const errData = await resp.json();
-            alert(`Ошибка регистрации: ${errData.error || 'Попробуйте позже'}`);
+            if (resp.ok) {
+                window.router.go('/');
+            } else {
+                const errData = await resp.json();
+                const errorMessage = errData.message || '';
+
+                if (errorMessage.includes("already exists")) {
+                    this.setError('email', 'Эта почта уже зарегистрирована');
+                } else if (errorMessage.includes("wrong email syntax")) {
+                    this.setError('email', 'Сервер не принимает такую почту');
+                } else {
+                    this.setError('name', 'Ошибка регистрации: ' + errorMessage);
+                }
+            }
+        } catch (err) {
+            this.setError('name', 'Ошибка сети');
         }
     }
 }

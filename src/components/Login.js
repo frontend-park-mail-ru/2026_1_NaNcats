@@ -24,6 +24,18 @@ export class Login extends Component {
         this.currentPromo = 0;
     }
 
+    clearErrors() {
+        const errorSpans = document.querySelectorAll('.error-msg');
+        errorSpans.forEach(span => span.innerText = '');
+    }
+
+    setError(fieldId, message) {
+        const element = document.getElementById(`${fieldId}-error`);
+        if (element) {
+            element.innerText = message;
+        }
+    }
+
     updatePromo() {
         const data = this.promoData[this.currentPromo];
         const side = document.querySelector('.auth-image-side');
@@ -59,13 +71,23 @@ export class Login extends Component {
      * @param {HTMLFormElement} form 
      */
     async handleSubmit(form) {
-        const email = form.email.value;
+         this.clearErrors();
+        
+        const email = form.email.value.trim();
         const password = form.password.value;
+        let isValid = true;
 
         if (!validateEmail(email)) {
-            document.getElementById('email-error').innerText = 'Некорректный email';
-            return;
+            this.setError('email', 'Некорректный формат почты');
+            isValid = false;
         }
+
+        if (!password) {
+            this.setError('password', 'Введите пароль');
+            isValid = false;
+        }
+
+        if (!isValid) return;
 
         try {
             const response = await Ajax.post('/auth/login', { login: email, password });
@@ -74,10 +96,19 @@ export class Login extends Component {
                 window.router.go('/');
             } else {
                 const errData = await response.json();
-                alert(`Ошибка входа: ${errData.error || 'Неверные данные'}`);
+                const errorMessage = errData.message || '';
+
+                if (errorMessage.includes("user not found")) {
+                    this.setError('email', 'Пользователь с такой почтой не найден');
+                } else if (errorMessage.includes("hashedPassword is not the hash of the given password")) {
+                    this.setError('password', 'Неверный пароль');
+                } else {
+                    this.setError('email', 'Ошибка входа: ' + errorMessage);
+                }
             }
         } catch (err) {
             console.error('Network error:', err);
+            this.setError('email', 'Проблема с соединением');
         }
     }
 }

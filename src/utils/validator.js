@@ -8,10 +8,15 @@ export const validateEmail = (email) => {
 };
 
 /**
- * Простая проверка пароля
- * @param {string} password 
- * @returns {boolean}
+ * Проверка пароля: минимум 8 символов, без пробелов
  */
 export const validatePassword = (password) => {
-    return password.length >= 6;
+    return password.length >= 8 && !/\s/.test(password);
+};
+
+/**
+ * Проверка имени: от 4 до 30 символов
+ */
+export const validateName = (name) => {
+    return name.length >= 4 && name.length <= 30;
 };
