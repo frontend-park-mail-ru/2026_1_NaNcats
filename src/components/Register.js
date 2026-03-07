@@ -4,12 +4,16 @@ import { Ajax } from '../core/Ajax.js';
 import { validateEmail, validatePassword, validateName } from '../utils/validator.js';
 
 /**
- * Компонент регистрации
+ * Компонент страницы регистрации пользователя.
  * @extends Component
  */
 export class Register extends Component {
+    /**
+     * Создает компонент регистрации и инициализирует данные промо-блока.
+     */
     constructor() {
         super(registerTemplate);
+        /** @type {Array<{img: string, title: string, text: string}>} Список слайдов для промо-блока */
         this.promoData = [
             {
                 img: 'https://img.freepik.com/free-photo/delicious-burger-with-fresh-ingredients_23-2150857908.jpg',
@@ -22,14 +26,27 @@ export class Register extends Component {
                 text: 'Наши курьеры доставят ваш заказ горячим в течение 30 минут'
             }
         ];
+        /** @type {number} Индекс текущего активного слайда */
         this.currentPromo = 0;
     }
 
+    /**
+     * Скрывает все сообщения об ошибках валидации на странице.
+     * @returns {void}
+     */
     clearErrors() {
         const errorSpans = document.querySelectorAll('.error-msg');
-        errorSpans.forEach(span => span.innerText = '');
+        errorSpans.forEach(span => {
+            span.innerText = '';
+        });
     }
 
+    /**
+     * Отображает ошибку для конкретного поля формы.
+     * @param {string} fieldId - Идентификатор поля (name, email, password и т.д.).
+     * @param {string} message - Текст ошибки.
+     * @returns {void}
+     */
     setError(fieldId, message) {
         const element = document.getElementById(`${fieldId}-error`);
         if (element) {
@@ -37,12 +54,19 @@ export class Register extends Component {
         }
     }
 
+    /**
+     * Настраивает обработчики событий (отправка формы, переключение слайдов).
+     * @override
+     * @returns {void}
+     */
     afterRender() {
         const form = document.getElementById('auth-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.onSubmit(form);
-        });
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.onSubmit(form);
+            });
+        }
         
         document.querySelector('.nav-arrow_next')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo + 1) % this.promoData.length;
@@ -55,16 +79,27 @@ export class Register extends Component {
         });
     }
 
+    /**
+     * Обновляет изображение и текст в промо-блоке согласно текущему индексу.
+     * @returns {void}
+     */
     updatePromo() {
         const data = this.promoData[this.currentPromo];
-        document.querySelector('.promo-image').src = data.img;
-        document.querySelector('.promo-text h2').innerText = data.title;
-        document.querySelector('.promo-text p').innerText = data.text;
+        const side = document.querySelector('.auth-image-side');
+        if (side) {
+            const img = side.querySelector('.promo-image');
+            const title = side.querySelector('.promo-text h2');
+            const p = side.querySelector('.promo-text p');
+            if (img) img.src = data.img;
+            if (title) title.innerText = data.title;
+            if (p) p.innerText = data.text;
+        }
     }
 
     /**
-     * Валидация и отправка формы
-     * @param {HTMLFormElement} form
+     * Проверяет данные формы и отправляет запрос на регистрацию через API.
+     * @param {HTMLFormElement} form - DOM-элемент формы регистрации.
+     * @returns {Promise<void>}
      */
     async onSubmit(form) {
         this.clearErrors();
@@ -122,6 +157,7 @@ export class Register extends Component {
                 }
             }
         } catch (err) {
+            console.error(err);
             this.setError('name', 'Ошибка сети');
         }
     }

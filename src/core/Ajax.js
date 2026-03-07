@@ -2,6 +2,7 @@
  * Модуль для выполнения HTTP-запросов к API
  */
 export class Ajax {
+    /** @private */
     static #baseUrl = 'http://localhost:8080/api';
 
     /**
@@ -9,7 +10,8 @@ export class Ajax {
      * @param {string} url - Путь API
      * @param {string} method - HTTP метод (GET, POST и т.д.)
      * @param {Object} body - Тело запроса
-     * @returns {Promise<Response>}
+     * @returns {Promise<Response>} - Объект ответа от сервера.
+     * @private
      */
     static async #request(url, method, body = null) {
         const options = {
@@ -29,7 +31,8 @@ export class Ajax {
 
     /**
      * GET запрос
-     * @param {string} url 
+     * @param {string} url - Путь запроса.
+     * @returns {Promise<Response>} - Результат выполнения GET запроса.
      */
     static async get(url) {
         return this.#request(url, 'GET');
@@ -37,8 +40,9 @@ export class Ajax {
 
     /**
      * POST запрос
-     * @param {string} url 
-     * @param {Object} body 
+     * @param {string} url - Путь запроса.
+     * @param {Object} body - Данные для отправки.
+     * @returns {Promise<Response>} - Результат выполнения POST запроса.
      */
     static async post(url, body) {
         return this.#request(url, 'POST', body);

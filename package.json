@@ -1,11 +1,17 @@
 {
   "name": "2026_1_nancats",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Frontend project with JSDoc and ESLint",
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "lint": "eslint src/**/*.js",
+    "lint:fix": "eslint src/**/*.js --fix",
+    "doc": "jsdoc -c jsdoc.json"
   },
-  "author": "",
-  "license": "ISC"
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-plugin-jsdoc": "^48.0.0",
+    "jsdoc": "^4.0.2"
+  }
 }

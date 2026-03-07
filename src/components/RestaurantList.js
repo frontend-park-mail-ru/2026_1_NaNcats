@@ -2,13 +2,25 @@ import { Component } from '../core/Component.js';
 import { Ajax } from '../core/Ajax.js';
 import { restaurantsTemplate } from "../templates/restaurants.tmpl.js"
 
+/**
+ * Компонент главной страницы со списком ресторанов.
+ * @extends Component
+ */
 export class RestaurantList extends Component {
+    /**
+     * Создает экземпляр списка ресторанов.
+     */
     constructor() {
         super(restaurantsTemplate);
     }
 
+    /**
+     * Загружает данные пользователя и список ресторанов перед рендерингом.
+     * @param {HTMLElement} container - Элемент, в который будет вставлен список.
+     * @override
+     * @returns {Promise<void>} - Промис, завершающийся после отрисовки.
+     */
     async mount(container) {
-        // Заглушка, если API еще не готово
         let restaurants = [
             { id: 1, name: 'Вкусно и точка', description: 'Бургеры и картошка' },
             { id: 2, name: 'Пицца Хат', description: 'Лучшая пицца в городе' },
@@ -47,25 +59,61 @@ export class RestaurantList extends Component {
         super.mount(container, { restaurants, user });
     }
 
+    /**
+     * Обработчик выхода пользователя из системы.
+     * @returns {Promise<void>} - Промис завершения запроса выхода.
+     */
+    async handleLogout() {
+        const res = await Ajax.post('/auth/logout');
+        if (res.ok) {
+            window.router.go('/');
+        }
+    }
+
+    /**
+     * Переход на страницу логина.
+     * @returns {void}
+     */
+    handleLoginRedirect() {
+        window.router.go('/login');
+    }
+
+    /**
+     * Переход на страницу регистрации.
+     * @returns {void}
+     */
+    handleRegisterRedirect() {
+        window.router.go('/register');
+    }
+
+    /**
+     * Настраивает обработчики событий после рендеринга.
+     * @override
+     * @returns {void}
+     */
     afterRender() {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-            logoutBtn.onclick = async () => {
-                const res = await Ajax.post('/auth/logout');
-                if (res.ok) {
-                    window.router.go('/');
-                }
-            };
+            /**
+             *
+             */
+            logoutBtn.onclick = () => this.handleLogout();
         }
 
         const loginBtn = document.getElementById('login-btn');
         if (loginBtn) {
-            loginBtn.onclick = () => window.router.go('/login');
+            /**
+             *
+             */
+            loginBtn.onclick = () => this.handleLoginRedirect();
         }
 
         const registerBtn = document.getElementById('register-btn');
         if (registerBtn) {
-            registerBtn.onclick = () => window.router.go('/register');
+            /**
+             *
+             */
+            registerBtn.onclick = () => this.handleRegisterRedirect();
         }
     }
 }
