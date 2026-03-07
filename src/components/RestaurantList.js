@@ -31,7 +31,7 @@ export class RestaurantList extends Component {
         let user = null;
 
         try {
-            const userResponse = await Ajax.get('/me');
+            const userResponse = await Ajax.get('/auth/me');
             if (userResponse.ok) {
                 user = await userResponse.json();
             }
@@ -51,7 +51,7 @@ export class RestaurantList extends Component {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.onclick = async () => {
-                const res = await Ajax.post('/logout');
+                const res = await Ajax.post('/auth/logout');
                 if (res.ok) {
                     window.router.go('/');
                 }

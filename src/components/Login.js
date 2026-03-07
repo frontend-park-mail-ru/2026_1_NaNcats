@@ -68,7 +68,7 @@ export class Login extends Component {
         }
 
         try {
-            const response = await Ajax.post('/login', { login: email, password });
+            const response = await Ajax.post('/auth/login', { login: email, password });
             
             if (response.ok) {
                 window.router.go('/');

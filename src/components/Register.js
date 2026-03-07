@@ -92,7 +92,7 @@ export class Register extends Component {
             password: data.password
         };
 
-        const resp = await Ajax.post('/register', payload);
+        const resp = await Ajax.post('/auth/register', payload);
         if (resp.ok) {
             window.router.go('/');
         } else {
