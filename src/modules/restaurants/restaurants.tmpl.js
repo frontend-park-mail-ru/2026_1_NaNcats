@@ -93,7 +93,12 @@ export const restaurantsTemplate = `
                 </div>
                 <div class="res-grid">
                     {{~it.restaurants :res}}
-                        <img class="res-rect" src="https://placehold.co/400x225/png?text={{=res.name}}" alt="{{=res.name}}">
+                        <div class="res-card">
+                            <img class="res-rect" src="{{=res.logo_url}}" alt="{{=res.name}}">
+                            <div class="res-info">
+                                <span class="res-name">{{=res.name}}</span>
+                            </div>
+                        </div>
                     {{~}}
                 </div>
             </div>
