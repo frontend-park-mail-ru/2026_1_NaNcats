@@ -3,7 +3,7 @@
  */
 export class Ajax {
     /** @private */
-    static #baseUrl = 'http://localhost:8080/api';
+    static #baseUrl = '/api';
 
     /**
      * Универсальный метод для отправки запросов
