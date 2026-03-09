@@ -38,10 +38,18 @@ export const restaurantsTemplate = `
                     </div>
                     <div class="notif-btn__label">Уведомления</div>
                 </div>
-                <div class="user-profile" id="logout-btn">
-                    <div class="user-profile__avatar"></div>
-                    <div class="user-profile__name">
-                        {{=it.user.name}}
+                <div class="user-menu-wrapper">
+                    <div class="user-profile">
+                        <div class="user-profile__avatar"></div>
+                        <div class="user-profile__name">
+                            {{=it.user.name}}
+                        </div>
+                    </div>
+
+                    <div class="user-dropdown">
+                        <div class="user-dropdown__item logout" id="logout-btn">
+                            Выйти
+                        </div>
                     </div>
                 </div>
             {{??}}
@@ -94,7 +102,8 @@ export const restaurantsTemplate = `
                 <div class="res-grid">
                     {{~it.restaurants :res}}
                         <div class="res-card">
-                            <img class="res-rect" src="{{=res.logo_url}}" alt="{{=res.name}}">
+                            <img class="res-rect" src="{{=res.logo_url}}" alt="{{=res.name}}"
+                            onerror="this.src='https://placehold.co/400x225/png?text={{=res.name}}'">
                             <div class="res-info">
                                 <span class="res-name">{{=res.name}}</span>
                             </div>

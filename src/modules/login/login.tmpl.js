@@ -27,11 +27,6 @@ export const loginTemplate = `
                 </div>
 
                 <button type="submit" class="button button_primary">Войти</button>
-                
-                <button type="button" class="button button_google">
-                    <span class="google-icon"></span>
-                    Войти через Google
-                </button>
             </form>
         </div>
 

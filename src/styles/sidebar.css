@@ -3,7 +3,7 @@
 
 .category-item {
     display: flex; align-items: center; gap: 12px; padding: 12px 25px;
-    margin: 2px 10px; font-size: 14px; font-weight: 500; cursor: pointer;
+    margin: 2px 10px; font-size: 14px; font-weight: 300; cursor: pointer;
     border-radius: 12px; transition: all 0.2s ease; color: #333;
 }
 .category-item:hover { background: #FFF5F5; color: #FF8A8A; }
