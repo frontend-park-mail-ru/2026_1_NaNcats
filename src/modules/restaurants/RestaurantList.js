@@ -12,6 +12,12 @@ export class RestaurantList extends Component {
      */
     constructor() {
         super(restaurantsTemplate);
+        this.limit = 10;
+        this.offset = 0;
+        this.isFetching = false;
+        this.hasMore = true;
+        
+        this.handleScroll = this.handleScroll.bind(this);
     }
 
     /**
@@ -21,6 +27,8 @@ export class RestaurantList extends Component {
      * @returns {Promise<void>} - Промис, завершающийся после отрисовки.
      */
     async mount(container) {
+        this.offset = 0;
+        this.hasMore = true;
         let restaurants = [];
         let user = null;
 
@@ -30,11 +38,8 @@ export class RestaurantList extends Component {
                 user = await userResponse.json();
             }
 
-            const resResponse = await Ajax.get('/restaurants/brands');
-            if (resResponse.ok) {
-                const data = await resResponse.json();
-                restaurants = data.restaurants || [];
-            }
+            const data = await this.fetchRestaurants();
+            restaurants = data;
         } catch (e) {
             console.warn("Ошибка при получении данных:", e);
         }
@@ -69,6 +74,62 @@ export class RestaurantList extends Component {
         window.router.go('/register');
     }
 
+    async fetchRestaurants() {
+        if (this.isFetching || !this.hasMore) return [];
+        
+        this.isFetching = true;
+        try {
+            const resResponse = await Ajax.get(`/restaurants/brands?limit=${this.limit}&offset=${this.offset}`);
+            if (resResponse.ok) {
+                const data = await resResponse.json();
+                const newRestaurants = data.restaurants || [];
+                
+                if (newRestaurants.length < this.limit) {
+                    this.hasMore = false;
+                }
+                
+                this.offset += this.limit;
+                return newRestaurants;
+            }
+        } catch (e) {
+            console.error("Ошибка при подгрузке ресторанов:", e);
+        } finally {
+            this.isFetching = false;
+        }
+        return [];
+    }
+
+    async handleScroll() {
+        const scrollHeight = document.documentElement.scrollHeight;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        const clientHeight = window.innerHeight;
+
+        if (scrollHeight - scrollTop - clientHeight < 200) {
+            const newRestaurants = await this.fetchRestaurants();
+            if (newRestaurants.length > 0) {
+                this.appendRestaurants(newRestaurants);
+            }
+        }
+    }
+
+    appendRestaurants(restaurants) {
+        const grid = document.querySelector('.res-grid');
+        if (!grid) return;
+
+        restaurants.forEach(res => {
+            const cardHtml = `
+                <div class="res-card">
+                    <img class="res-rect" src="${res.logo_url}" alt="${res.name}"
+                    onerror="this.src='https://placehold.co/400x225/png?text=${res.name}'">
+                    <div class="res-info">
+                        <span class="res-name">${res.name}</span>
+                    </div>
+                </div>
+            `;
+            grid.insertAdjacentHTML('beforeend', cardHtml);
+        });
+    }
+
     /**
      * Настраивает обработчики событий после рендеринга.
      * @override
@@ -97,6 +158,11 @@ export class RestaurantList extends Component {
              *
              */
             registerBtn.onclick = () => this.handleRegisterRedirect();
+        }
+
+        const scrollContainer = document.querySelector('.center-column');
+        if (scrollContainer) {
+            scrollContainer.addEventListener('scroll', this.handleScroll);
         }
     }
 }
