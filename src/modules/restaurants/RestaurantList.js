@@ -12,7 +12,7 @@ export class RestaurantList extends Component {
      */
     constructor() {
         super(restaurantsTemplate);
-        this.limit = 10;
+        this.limit = 20;
         this.offset = 0;
         this.isFetching = false;
         this.hasMore = true;
