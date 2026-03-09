@@ -1,6 +1,6 @@
-import { Component } from '../core/Component.js';
-import { Ajax } from '../core/Ajax.js';
-import { restaurantsTemplate } from "../templates/restaurants.tmpl.js"
+import { Component } from '../../core/Component.js';
+import { Ajax } from '../../core/Ajax.js';
+import { restaurantsTemplate } from "./restaurants.tmpl.js"
 
 /**
  * Компонент главной страницы со списком ресторанов.

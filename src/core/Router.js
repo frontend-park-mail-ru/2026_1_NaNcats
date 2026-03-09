@@ -63,12 +63,10 @@ export class Router {
      * @returns {void}
      */
     render(path) {
-        const component = this.routes[path];
+        let component = this.routes[path];
         if (!component) {
-            this.root.innerHTML = '<h1>404 Not Found</h1>';
-            return;
+            component = this.routes['/404'];
         }
-        
         component.mount(this.root);
     }
 }

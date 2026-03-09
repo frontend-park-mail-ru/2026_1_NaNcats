@@ -1,7 +1,8 @@
 import { Router } from './core/Router.js';
-import { Login } from './components/Login.js';
-import { Register } from './components/Register.js';
-import { RestaurantList } from './components/RestaurantList.js';
+import { Login } from './modules/login/Login.js';
+import { Register } from './modules/register/Register.js';
+import { RestaurantList } from './modules/restaurants/RestaurantList.js';
+import { NotFound } from './errors/NotFound.js';
 
 const root = document.getElementById('root');
 
@@ -9,7 +10,8 @@ window.router = new Router(root);
 window.router
     .register('/', new RestaurantList())
     .register('/login', new Login())
-    .register('/register', new Register());
+    .register('/register', new Register())
+    .register('/404', new NotFound()); 
 
 const init = () => {
     window.router.render(window.location.pathname);
