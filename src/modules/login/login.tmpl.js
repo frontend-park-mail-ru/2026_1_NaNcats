@@ -11,7 +11,6 @@ export const loginTemplate = `
                 <div class="input-group">
                     <label for="email">Почта</label>
                     <input type="email" class="input-field" name="email" placeholder="Example@mail.com" id="email">
-                    <span id="email-error" class="error-msg"></span>
                 </div>
 
                 <div class="input-group">
@@ -23,7 +22,7 @@ export const loginTemplate = `
                         <input type="password" class="input-field" name="password" placeholder="Пароль" id="password">
                         <div class="password-icon"></div>
                     </div>
-                    <span id="password-error" class="error-msg"></span>
+                    <div id="form-error" class="error-msg"></div>
                 </div>
 
                 <button type="submit" class="button button_primary">Войти</button>
@@ -31,7 +30,7 @@ export const loginTemplate = `
         </div>
 
         <div class="auth-image-side">
-            <img src="https://img.freepik.com/free-photo/delicious-burger-with-fresh-ingredients_23-2150857908.jpg" alt="Food" class="promo-image">
+            <img src="https://img.freepik.com/free-photo/view-delicious-food-assortment_23-2149598944.jpg?t=st=1773128362~exp=1773131962~hmac=7bec2e7e3a0c83384b1d0c94ea34b424b6f853b3884fb061d43e8cda28d6a753&w=2000" alt="Food" class="promo-image">
             <div class="promo-text">
                 <h2 class="promo-text__title">Рядом с домом</h2>
                 <p>Найдем самый близкий ресторан и доставим за считанные секунды</p>

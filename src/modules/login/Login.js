@@ -65,12 +65,10 @@ export class Login extends AuthComponent {
                 const errData = await response.json();
                 const errorMessage = errData.message || '';
 
-                if (errorMessage.includes("user not found")) {
-                    this.setError('email', 'Пользователь с такой почтой не найден');
-                } else if (errorMessage.includes("hashedPassword")) {
-                    this.setError('password', 'Неверный пароль');
+                if (errorMessage.includes("user not found") || errorMessage.includes("hashedPassword")) {
+                    this.setError('form', 'Неверная почта или пароль');
                 } else {
-                    this.setError('email', 'Ошибка входа: ' + errorMessage);
+                    this.setError('form', 'Ошибка входа: ' + errorMessage);
                 }
             }
         } catch (err) {
