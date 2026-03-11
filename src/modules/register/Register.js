@@ -84,10 +84,8 @@ export class Register extends AuthComponent {
                 const errData = await resp.json();
                 const errorMessage = errData.message || '';
 
-                if (errorMessage.includes("already exists")) {
+                if (errorMessage === "user with this email already exists") {
                     this.setError('email', 'Эта почта уже зарегистрирована');
-                } else if (errorMessage.includes("wrong email syntax")) {
-                    this.setError('email', 'Сервер не принимает такую почту');
                 } else {
                     this.setError('name', 'Ошибка регистрации: ' + errorMessage);
                 }

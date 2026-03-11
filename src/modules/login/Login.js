@@ -65,7 +65,7 @@ export class Login extends AuthComponent {
                 const errData = await response.json();
                 const errorMessage = errData.message || '';
 
-                if (errorMessage.includes("user not found") || errorMessage.includes("hashedPassword")) {
+                if (errorMessage === "Invalid email or password") {
                     this.setError('form', 'Неверная почта или пароль');
                 } else {
                     this.setError('form', 'Ошибка входа: ' + errorMessage);
