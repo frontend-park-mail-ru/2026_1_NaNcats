@@ -11,6 +11,7 @@ export const loginTemplate = `
                 <div class="input-group">
                     <label for="email">Почта</label>
                     <input type="email" class="input-field" name="email" placeholder="Example@mail.com" id="email">
+                    <div id="email-error" class="error-msg"></div>
                 </div>
 
                 <div class="input-group">
@@ -22,7 +23,7 @@ export const loginTemplate = `
                         <input type="password" class="input-field" name="password" placeholder="Пароль" id="password">
                         <div class="password-icon"></div>
                     </div>
-                    <div id="form-error" class="error-msg"></div>
+                    <div id="password-error" class="error-msg"></div>
                 </div>
 
                 <button type="submit" class="button button_primary">Войти</button>

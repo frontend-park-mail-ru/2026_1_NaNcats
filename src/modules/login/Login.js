@@ -44,6 +44,12 @@ export class Login extends AuthComponent {
         const password = form.password.value;
         let isValid = true;
 
+        if (!email || !password) {
+            if (!email) this.setError('email', 'Введите почту');
+            if (!password) this.setError('password', 'Введите пароль');
+            return;
+        }
+
         if (!validateEmail(email)) {
             this.setError('email', 'Некорректный формат почты');
             isValid = false;
@@ -66,9 +72,9 @@ export class Login extends AuthComponent {
                 const errorMessage = errData.message || '';
 
                 if (errorMessage === "Invalid email or password") {
-                    this.setError('form', 'Неверная почта или пароль');
+                    this.setError('password', 'Неверная почта или пароль');
                 } else {
-                    this.setError('form', 'Ошибка входа: ' + errorMessage);
+                    this.setError('password', 'Ошибка входа: ' + errorMessage);
                 }
             }
         } catch (err) {

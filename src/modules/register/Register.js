@@ -49,6 +49,14 @@ export class Register extends AuthComponent {
 
         let isValid = true;
 
+        if (!data.name || !data.email || !data.password || !data.repeatPassword) {
+            if (!data.name) this.setError('name', 'Введите имя');
+            if (!data.email) this.setError('email', 'Введите почту');
+            if (!data.password) this.setError('password', 'Введите пароль');
+            if (!data.repeatPassword) this.setError('repeatPassword', 'Повторите пароль');
+            return;
+        }
+
         if (!validateName(data.name)) {
             this.setError('name', 'Имя должно быть от 4 до 30 символов');
             isValid = false;

@@ -40,6 +40,16 @@
     margin-top: 10px;
 }
 
+.button_primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(255, 122, 0, 0.2);
+}
+
+.button_primary:active {
+    transform: translateY(0);
+    filter: brightness(0.9);
+}
+
 .button_checkout {
     width: 100%;
     background: #FFC1C1;
