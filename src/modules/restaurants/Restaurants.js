@@ -6,7 +6,7 @@ import { restaurantsTemplate } from "./restaurants.tmpl.js"
  * Компонент главной страницы со списком ресторанов.
  * @extends Component
  */
-export class RestaurantList extends Component {
+export class Restaurants extends Component {
     /**
      * Создает экземпляр списка ресторанов.
      */
