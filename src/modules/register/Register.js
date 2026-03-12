@@ -1,16 +1,14 @@
 import { registerTemplate } from './register.tmpl.js';
 import { Ajax } from '../../core/Ajax.js';
 import { validateEmail, validatePassword, validateName } from '../../core/validator.js';
-import { AuthComponent } from '../auth/AuthComponent.js';
+import { Component } from '../../core/Component.js';
+import { setupAuthView } from '../../shared/utils/AuthSetup.js';
 
 /**
  * Компонент страницы регистрации пользователя.
- * @extends AuthComponent
+ * @extends Component
  */
-export class Register extends AuthComponent {
-    /**
-     * Создает компонент регистрации и инициализирует данные промо-блока.
-     */
+export class Register extends Component {
     constructor() {
         super(registerTemplate);
     }
@@ -21,15 +19,8 @@ export class Register extends AuthComponent {
      * @returns {void}
      */
     afterRender() {
-        this.initPromoEvents();
-
-        const form = document.getElementById('auth-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.onSubmit(form);
-            });
-        }
+        const { errors } = setupAuthView(this, this.onSubmit);
+        this.formErrors = errors;
     }
 
     /**
@@ -38,7 +29,7 @@ export class Register extends AuthComponent {
      * @returns {Promise<void>}
      */
     async onSubmit(form) {
-        this.clearErrors();
+        this.formErrors.clearErrors();
 
         const data = {
             name: form.name.value.trim(),
@@ -50,30 +41,30 @@ export class Register extends AuthComponent {
         let isValid = true;
 
         if (!data.name || !data.email || !data.password || !data.repeatPassword) {
-            if (!data.name) this.setError('name', 'Введите имя');
-            if (!data.email) this.setError('email', 'Введите почту');
-            if (!data.password) this.setError('password', 'Введите пароль');
-            if (!data.repeatPassword) this.setError('repeatPassword', 'Повторите пароль');
+            if (!data.name) this.formErrors.setError('name', 'Введите имя');
+            if (!data.email) this.formErrors.setError('email', 'Введите почту');
+            if (!data.password) this.formErrors.setError('password', 'Введите пароль');
+            if (!data.repeatPassword) this.formErrors.setError('repeatPassword', 'Повторите пароль');
             return;
         }
 
         if (!validateName(data.name)) {
-            this.setError('name', 'Имя должно быть от 4 до 30 символов');
+            this.formErrors.setError('name', 'Имя должно быть от 4 до 30 символов');
             isValid = false;
         }
         
         if (!validateEmail(data.email)) {
-            this.setError('email', 'Неверный формат почты');
+            this.formErrors.setError('email', 'Неверный формат почты');
             isValid = false;
         }
 
         if (!validatePassword(data.password)) {
-            this.setError('password', 'Пароль от 8 символов без пробелов');
+            this.formErrors.setError('password', 'Пароль от 8 символов без пробелов');
             isValid = false;
         }
 
         if (data.password !== data.repeatPassword) {
-            this.setError('repeatPassword', 'Пароли не совпадают');
+            this.formErrors.setError('repeatPassword', 'Пароли не совпадают');
             isValid = false;
         }
 
@@ -93,14 +84,14 @@ export class Register extends AuthComponent {
                 const errorMessage = errData.message || '';
 
                 if (errorMessage === "user with this email already exists") {
-                    this.setError('email', 'Эта почта уже зарегистрирована');
+                    this.formErrors.setError('email', 'Эта почта уже зарегистрирована');
                 } else {
-                    this.setError('name', 'Ошибка регистрации: ' + errorMessage);
+                    this.formErrors.setError('name', 'Ошибка регистрации: ' + errorMessage);
                 }
             }
         } catch (err) {
             console.error(err);
-            this.setError('name', 'Ошибка сети');
+            this.formErrors.setError('name', 'Ошибка сети');
         }
     }
 }

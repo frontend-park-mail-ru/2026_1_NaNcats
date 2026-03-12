@@ -25,6 +25,7 @@ export class Component {
      * @returns {void}
      */
     mount(container, data = {}) {
+        this.element = container;
         container.innerHTML = this.renderFunc(data);
         this.afterRender();
     }

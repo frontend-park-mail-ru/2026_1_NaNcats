@@ -1,13 +1,14 @@
 import { loginTemplate } from './login.tmpl.js';
 import { Ajax } from '../../core/Ajax.js';
 import { validateEmail } from '../../core/validator.js';
-import { AuthComponent } from '../auth/AuthComponent.js';
+import { Component } from '../../core/Component.js';
+import { setupAuthView } from '../../shared/utils/AuthSetup.js';
 
 /**
  * Компонент страницы авторизации.
- * @extends AuthComponent
+ * @extends Component
  */
-export class Login extends AuthComponent {
+export class Login extends Component {
     /**
      * Инициализирует компонент логина и данные промо-слайдера.
      */
@@ -21,15 +22,8 @@ export class Login extends AuthComponent {
      * @returns {void}
      */
     afterRender() {
-        this.initPromoEvents();
-
-        const form = document.getElementById('login-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleSubmit(form);
-            });
-        }
+        const { errors } = setupAuthView(this, this.onSubmit);
+        this.formErrors = errors;
     }
 
     /**
@@ -37,26 +31,26 @@ export class Login extends AuthComponent {
      * @param {HTMLFormElement} form - Элемент формы.
      * @returns {Promise<void>}
      */
-    async handleSubmit(form) {
-        this.clearErrors();
+    async onSubmit(form) {
+        this.formErrors.clearErrors();
         
         const email = form.email.value.trim();
         const password = form.password.value;
         let isValid = true;
 
         if (!email || !password) {
-            if (!email) this.setError('email', 'Введите почту');
-            if (!password) this.setError('password', 'Введите пароль');
+            if (!email) this.formErrors.setError('email', 'Введите почту');
+            if (!password) this.formErrors.setError('password', 'Введите пароль');
             return;
         }
 
         if (!validateEmail(email)) {
-            this.setError('email', 'Некорректный формат почты');
+            this.formErrors.setError('email', 'Некорректный формат почты');
             isValid = false;
         }
 
         if (!password) {
-            this.setError('password', 'Введите пароль');
+            this.formErrors.setError('password', 'Введите пароль');
             isValid = false;
         }
 
@@ -72,14 +66,14 @@ export class Login extends AuthComponent {
                 const errorMessage = errData.message || '';
 
                 if (errorMessage === "Invalid email or password") {
-                    this.setError('password', 'Неверная почта или пароль');
+                    this.formErrors.setError('password', 'Неверная почта или пароль');
                 } else {
-                    this.setError('password', 'Ошибка входа: ' + errorMessage);
+                    this.formErrors.setError('password', 'Ошибка входа: ' + errorMessage);
                 }
             }
         } catch (err) {
             console.error('Network error:', err);
-            this.setError('email', 'Проблема с соединением');
+            this.formErrors.setError('email', 'Проблема с соединением');
         }
     }
 }
