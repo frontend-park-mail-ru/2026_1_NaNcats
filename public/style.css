@@ -1,0 +1,7 @@
+@import "../src/styles/variables.css";
+@import "../src/styles/base.css";
+@import "../src/styles/layout.css";
+@import "../src/styles/components.css";
+@import "../src/styles/header.css";
+@import "../src/styles/auth.css";
+@import "../src/styles/sidebar.css";

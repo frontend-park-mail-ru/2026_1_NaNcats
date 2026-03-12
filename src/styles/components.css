@@ -1,0 +1,98 @@
+.card {
+    background: var(--white);
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.card_fixed { flex: 1; min-height: 577px; }
+
+.sheet {
+    background: var(--white);
+    min-height: 100%;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 20px;
+}
+.sheet__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.sheet__title { margin: 0; font-size: 28px; font-weight: 700; }
+
+.button {
+    border: none;
+    cursor: pointer;
+    font-family: Inter;
+    font-weight: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.button_primary {
+    height: 56px;
+    background: var(--accent-orange);
+    color: var(--white);
+    border-radius: 16px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.button_primary:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(255, 122, 0, 0.2);
+}
+
+.button_primary:active {
+    transform: translateY(0);
+    filter: brightness(0.9);
+}
+
+.button_checkout {
+    width: 100%;
+    background: #FFC1C1;
+    padding: 16px;
+    border-radius: 16px;
+    color: var(--white);
+    font-weight: 300;
+}
+.button_checkout:disabled { cursor: not-allowed; opacity: 1; }
+
+.button_support {
+    flex-shrink: 0;
+    margin-top: 8px;
+    background: var(--white);
+    border-radius: 20px;
+    padding: 10px 25px;
+    gap: 12px;
+    font-size: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+.input-field {
+    width: 100%;
+    height: 48px;
+    background: var(--white);
+    border: none;
+    border-radius: 16px;
+    padding: 0 20px;
+    font-family: Inter;
+    font-weight: 300;
+    font-size: 14px;
+    outline: none;
+}
+.input-group { display: flex; flex-direction: column; gap: 8px; }
+
+.label-text {
+    padding: 25px 25px 10px 25px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #aaa;
+    letter-spacing: 1px;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.error-msg { color: #ff4d4d; font-size: 12px; min-height: 14px; }

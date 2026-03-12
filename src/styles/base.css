@@ -1,0 +1,22 @@
+* { box-sizing: border-box; }
+
+body, html {
+    margin: 0; padding: 0;
+    height: 100vh; width: 100vw;
+    overflow: hidden;
+    font-family: Inter;
+    font-weight: 300;
+    background: var(--bg-main);
+}
+
+.page-wrapper {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.secondary-link {
+    color: #D78306;
+    text-decoration: underline;
+    cursor: pointer;
+}

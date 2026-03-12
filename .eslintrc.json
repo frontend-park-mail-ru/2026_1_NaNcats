@@ -1,0 +1,32 @@
+{
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "plugins": ["jsdoc"],
+    "rules": {
+        "jsdoc/require-jsdoc": [
+            "warn",
+            {
+                "publicOnly": false,
+                "require": {
+                    "FunctionDeclaration": true,
+                    "MethodDefinition": true,
+                    "ClassDeclaration": true,
+                    "ArrowFunctionExpression": true,
+                    "FunctionExpression": true
+                }
+            }
+        ],
+        "jsdoc/require-param-description": "warn",
+        "jsdoc/require-returns-description": "warn",
+        "no-unused-vars": "warn",
+        "no-console": "off"
+    }
+}
