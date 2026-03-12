@@ -1,6 +1,6 @@
 import { loginTemplate } from './login.tmpl.js';
 import { Ajax } from '../../core/Ajax.js';
-import { validateEmail } from '../../core/validator.js';
+import { validateEmail } from '../../shared/utils/Validator.js';
 import { Component } from '../../core/Component.js';
 import { setupAuthView } from '../../shared/utils/AuthSetup.js';
 
