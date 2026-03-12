@@ -83,7 +83,7 @@ export class Register extends Component {
                 const errData = await resp.json();
                 const errorMessage = errData.message || '';
 
-                if (errorMessage === "user with this email already exists") {
+                if (resp.status === 409) {
                     this.formErrors.setError('email', 'Эта почта уже зарегистрирована');
                 } else {
                     this.formErrors.setError('name', 'Ошибка регистрации: ' + errorMessage);
