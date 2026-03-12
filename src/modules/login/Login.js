@@ -6,12 +6,11 @@ import { setupAuthView } from '../../shared/utils/AuthSetup.js';
 
 /**
  * Компонент страницы авторизации.
+ * 
+ * @class Login
  * @extends Component
  */
 export class Login extends Component {
-    /**
-     * Инициализирует компонент логина и данные промо-слайдера.
-     */
     constructor() {
         super(loginTemplate);
     }

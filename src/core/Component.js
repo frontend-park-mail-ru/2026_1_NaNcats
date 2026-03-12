@@ -1,20 +1,22 @@
 /**
- * @module Component
- */
-
-/**
- * Базовый класс для создания UI-компонентов.
+ * Базовый класс для создания компонентов.
+ * 
+ * @abstract
  * @class Component
+ * @param {string} templateString - Строка шаблона в формате doT.js.
  */
 export class Component {
-    /**
-     * Создает экземпляр компонента.
-     * @param {string} templateString - Строка шаблона в формате doT.js.
-     */
     constructor(templateString) {
-        /** @type {Function} Функция рендеринга doT */
+        /** 
+         * Подготовленная функция шаблонизатора doT.
+         * @type {Function} 
+         * @protected
+         */
         this.renderFunc = window.doT.template(templateString);
-        /** @type {HTMLElement|null} Корневой элемент компонента в DOM */
+        /** 
+         * Корневой HTML-элемент компонента в DOM. 
+         * @type {HTMLElement|null} 
+         */
         this.element = null;
     }
 

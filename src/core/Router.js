@@ -1,21 +1,22 @@
 /**
- * @module Router
- * @description Модуль для управления навигацией в Single Page Application без перезагрузки страницы.
- */
-
-/**
- * SPA Роутер для сопоставления путей (URL) с компонентами.
+ * Роутер для сопоставления URL с компонентами.
+ * Управляет навигацией и переключением страниц без перезагрузки.
+ * 
  * @class Router
+ * @param {HTMLElement} root - DOM-элемент, в который будет рендериться контент.
  */
 export class Router {
-    /**
-     * Создает экземпляр роутера.
-     * @param {HTMLElement} root - DOM-элемент, в который будет рендериться контент.
-     */
     constructor(root) {
-        /** @type {HTMLElement} Корневой элемент приложения */
+        /** 
+         * Корневой элемент приложения.
+         * @type {HTMLElement} 
+         */
         this.root = root;
-        /** @type {Object.<string, import('./Component.js').Component>} Объект карта маршрутов */
+
+        /** 
+         * Объект-карта маршрутов, где ключ — путь, а значение — экземпляр компонента.
+         * @type {Object<string, Component>} 
+         */
         this.routes = {};
 
         // Глобальный перехват кликов для навигации
@@ -39,8 +40,8 @@ export class Router {
     /**
      * Регистрирует новый маршрут.
      * @param {string} path - Путь (например, '/login').
-     * @param {import('./Component.js').Component} component - Экземпляр компонента для этого пути.
-     * @returns {Router} - Текущий экземпляр роутера для цепочки вызовов.
+     * @param {Component} component - Экземпляр компонента для этого пути.
+     * @returns {Router} Текущий экземпляр роутера для цепочки вызовов.
      */
     register(path, component) {
         this.routes[path] = component;

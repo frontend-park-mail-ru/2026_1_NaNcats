@@ -3,13 +3,11 @@ import { Component } from '../core/Component.js';
 /**
  * Компонент страницы ошибки 404 (Страница не найдена).
  * Отображается роутером, если запрашиваемый путь не зарегистрирован.
+ * 
+ * @class NotFound
  * @extends Component
  */
 export class NotFound extends Component {
-    /**
-     * Создает экземпляр компонента NotFound.
-     * Инициализирует базовый класс Component с HTML-шаблоном страницы ошибки.
-     */
     constructor() {
         super(`
             <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">

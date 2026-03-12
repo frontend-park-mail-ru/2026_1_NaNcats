@@ -6,6 +6,8 @@ import { setupAuthView } from '../../shared/utils/AuthSetup.js';
 
 /**
  * Компонент страницы регистрации пользователя.
+ * 
+ * @class Register
  * @extends Component
  */
 export class Register extends Component {

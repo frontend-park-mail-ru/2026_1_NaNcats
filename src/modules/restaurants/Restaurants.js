@@ -3,28 +3,49 @@ import { Ajax } from '../../core/Ajax.js';
 import { restaurantsTemplate } from "./restaurants.tmpl.js"
 
 /**
- * Компонент главной страницы со списком ресторанов.
+ * Компонент главной страницы, отображающий список ресторанов.
+ * Реализует бесконечную подгрузку данных при скролле и отображение профиля пользователя.
+ * 
+ * @class Restaurants
  * @extends Component
  */
 export class Restaurants extends Component {
-    /**
-     * Создает экземпляр списка ресторанов.
-     */
     constructor() {
         super(restaurantsTemplate);
+
+        /** 
+         * Количество ресторанов, запрашиваемых за один раз.
+         * @type {number} 
+         */
         this.limit = 20;
+
+        /** 
+         * Смещение для пагинации данных.
+         * @type {number} 
+         */
         this.offset = 0;
+
+        /** 
+         * Статус выполнения асинхронного запроса в данный момент.
+         * @type {boolean} 
+         */
         this.isFetching = false;
+
+        /** 
+         * Флаг наличия доступных данных для дальнейшей подгрузки.
+         * @type {boolean} 
+         */
         this.hasMore = true;
         
+        /** @private */
         this.handleScroll = this.handleScroll.bind(this);
     }
 
     /**
-     * Загружает данные пользователя и список ресторанов перед рендерингом.
+     * Выполняет первичную загрузку данных пользователя и списка ресторанов.
      * @param {HTMLElement} container - Элемент, в который будет вставлен список.
      * @override
-     * @returns {Promise<void>} - Промис, завершающийся после отрисовки.
+     * @returns {Promise<void>}
      */
     async mount(container) {
         this.offset = 0;
@@ -38,8 +59,7 @@ export class Restaurants extends Component {
                 user = await userResponse.json();
             }
 
-            const data = await this.fetchRestaurants();
-            restaurants = data;
+            restaurants = await this.fetchRestaurants();
         } catch (e) {
             console.warn("Ошибка при получении данных:", e);
         }
@@ -48,8 +68,8 @@ export class Restaurants extends Component {
     }
 
     /**
-     * Обработчик выхода пользователя из системы.
-     * @returns {Promise<void>} - Промис завершения запроса выхода.
+     * Выполняет выход пользователя из системы и перенаправляет на главную.
+     * @returns {Promise<void>}
      */
     async handleLogout() {
         const res = await Ajax.post('/auth/logout');
@@ -59,7 +79,7 @@ export class Restaurants extends Component {
     }
 
     /**
-     * Переход на страницу логина.
+     * Переход на страницу авторизации.
      * @returns {void}
      */
     handleLoginRedirect() {
@@ -74,6 +94,11 @@ export class Restaurants extends Component {
         window.router.go('/register');
     }
 
+    /**
+     * Запрашивает порцию данных о ресторанах с сервера.
+     * @async
+     * @returns {Promise<Array<Object>>} Массив объектов ресторанов.
+     */
     async fetchRestaurants() {
         if (this.isFetching || !this.hasMore) return [];
         
@@ -99,6 +124,10 @@ export class Restaurants extends Component {
         return [];
     }
 
+    /**
+     * Обработчик события прокрутки. Инициирует подгрузку при достижении порога в 200px до конца.
+     * @returns {Promise<void>}
+     */
     async handleScroll() {
         const scrollHeight = document.documentElement.scrollHeight;
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
@@ -112,6 +141,10 @@ export class Restaurants extends Component {
         }
     }
 
+    /**
+     * Добавляет новые карточки ресторанов в DOM без полной перерисовки страницы.
+     * @param {Array<Object>} restaurants - Массив новых объектов ресторанов.
+     */
     appendRestaurants(restaurants) {
         const grid = document.querySelector('.res-grid');
         if (!grid) return;
@@ -131,32 +164,23 @@ export class Restaurants extends Component {
     }
 
     /**
-     * Настраивает обработчики событий после рендеринга.
+     * Устанавливает обработчики событий для кнопок навигации и контейнера прокрутки.
      * @override
      * @returns {void}
      */
     afterRender() {
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-            /**
-             *
-             */
             logoutBtn.onclick = () => this.handleLogout();
         }
 
         const loginBtn = document.getElementById('login-btn');
         if (loginBtn) {
-            /**
-             *
-             */
             loginBtn.onclick = () => this.handleLoginRedirect();
         }
 
         const registerBtn = document.getElementById('register-btn');
         if (registerBtn) {
-            /**
-             *
-             */
             registerBtn.onclick = () => this.handleRegisterRedirect();
         }
 
