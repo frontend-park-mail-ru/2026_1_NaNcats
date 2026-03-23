@@ -42,5 +42,13 @@ module.exports = {
     client: {
       overlay: true, 
     },
+    proxy: [
+      {
+        context: ['/api'],
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+    ],
   },
 };
