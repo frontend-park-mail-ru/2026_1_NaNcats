@@ -1,3 +1,5 @@
+import doT from 'dot';
+
 /**
  * Базовый класс для создания компонентов.
  * 
@@ -12,7 +14,7 @@ export class Component {
          * @type {Function} 
          * @protected
          */
-        this.renderFunc = window.doT.template(templateString);
+        this.renderFunc = doT.template(templateString);
         /** 
          * Корневой HTML-элемент компонента в DOM. 
          * @type {HTMLElement|null} 
