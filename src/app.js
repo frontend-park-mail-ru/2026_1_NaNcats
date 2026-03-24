@@ -1,3 +1,4 @@
+import '../public/style.css';
 import { Router } from './core/Router.js';
 import { Login } from './modules/login/Login.js';
 import { Register } from './modules/register/Register.js';
