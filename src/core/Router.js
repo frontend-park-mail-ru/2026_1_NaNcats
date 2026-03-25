@@ -63,11 +63,15 @@ export class Router {
      * @param {string} path - Путь для отрисовки.
      * @returns {void}
      */
-    render(path) {
-        let component = this.routes[path];
-        if (!component) {
-            component = this.routes['/404'];
+    async render(path) {
+        let entry = this.routes[path] || this.routes['/404'];
+
+        if (typeof entry === 'function') {
+            const componentInstance = await entry();
+            this.routes[path] = componentInstance;
+            componentInstance.mount(this.root);
+        } else if (entry) {
+            entry.mount(this.root);
         }
-        component.mount(this.root);
     }
 }

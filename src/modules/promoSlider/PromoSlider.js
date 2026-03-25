@@ -1,3 +1,4 @@
+import './promoSlider.css';
 import { Component } from '../../core/Component.js';
 import { promoSliderTemplate } from './promoSlider.tmpl.js';
 

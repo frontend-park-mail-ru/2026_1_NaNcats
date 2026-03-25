@@ -1,3 +1,4 @@
+import './restaurants.css';
 import { Component } from '../../core/Component.js';
 import { Ajax } from '../../core/Ajax.js';
 import { restaurantsTemplate } from "./restaurants.tmpl.js"

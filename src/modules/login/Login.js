@@ -1,3 +1,4 @@
+import './login.css';
 import { loginTemplate } from './login.tmpl.js';
 import { Ajax } from '../../core/Ajax.js';
 import { validateEmail } from '../../shared/utils/Validator.js';
