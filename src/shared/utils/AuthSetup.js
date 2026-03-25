@@ -4,7 +4,7 @@
  */
 
 import { FormErrors } from './FormErrors.js';
-import { PromoSlider } from '../../components/PromoSlider/PromoSlider.js';
+import { PromoSlider } from '../../modules/promoSlider/PromoSlider.js';
 
 /**
  * Объект, содержащий инициализированные инструменты для страницы авторизации.
