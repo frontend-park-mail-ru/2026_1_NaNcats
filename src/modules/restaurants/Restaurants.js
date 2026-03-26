@@ -189,5 +189,20 @@ export class Restaurants extends Component {
         if (scrollContainer) {
             scrollContainer.addEventListener('scroll', this.handleScroll);
         }
+
+        const addressBtn = document.getElementById('address-button');
+        const addressDropdown = document.getElementById('address-dropdown');
+        if (addressBtn && addressDropdown) {
+            addressBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addressDropdown.classList.toggle('active');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!addressBtn.contains(e.target)) {
+                    addressDropdown.classList.remove('active');
+                }
+            });
+        }
     }
 }
