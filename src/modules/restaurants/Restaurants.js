@@ -37,6 +37,18 @@ export class Restaurants extends Component {
          * @type {boolean} 
          */
         this.hasMore = true;
+
+        /**
+         * Адреса пользователя
+         * @type {Array}
+         */
+        this.savedAddresses = ['Ленинградский проспект, 39с79', 'Ленинградский проспект, 55', 'ул. Пушкина, 10'];
+
+        /**
+         * Ключ для апи геосаджеста яндекса
+         * @type {string}
+         */
+        this.suggestKey = process.env.YANDEX_SUGGEST_KEY;
         
         /** @private */
         this.handleScroll = this.handleScroll.bind(this);
@@ -65,7 +77,13 @@ export class Restaurants extends Component {
             console.warn("Ошибка при получении данных:", e);
         }
 
-        super.mount(container, { restaurants, user });
+        const savedAddr = localStorage.getItem('delivery_address');
+
+        super.mount(container, { restaurants, user, currentAddress: savedAddr});
+        if (savedAddr) {
+            const input = document.getElementById('address-input');
+            if (input) input.value = savedAddr;
+        }
     }
 
     /**
@@ -165,6 +183,52 @@ export class Restaurants extends Component {
     }
 
     /**
+     * Метод для поиска через геосаджест яндекса
+     * @override
+     * @returns {Array}
+     */
+    async fetchYandexSuggestions(query) {
+        try {
+            const response = await fetch(
+                `https://suggest-maps.yandex.ru/v1/suggest?text=${encodeURIComponent(query)}&lang=ru_RU&apikey=${this.suggestKey}`
+            );
+            const data = await response.json();
+            return data.results.map(item => item.title.text);
+        } catch (e) {
+            console.error("Yandex Suggest Error:", e);
+            return [];
+        }
+    }
+
+    renderSuggestions(addresses) {
+        const container = document.getElementById('address-suggestions');
+        if (!container) return;
+
+        if (addresses.length === 0) {
+            container.innerHTML = '<div class="address-dropdown__item">Ничего не найдено</div>';
+            return;
+        }
+
+        container.innerHTML = addresses.map(addr => `
+            <div class="address-dropdown__item" data-address="${addr}">${addr}</div>
+        `).join('');
+
+        container.querySelectorAll('.address-dropdown__item').forEach(item => {
+            item.onclick = (e) => {
+                const selected = e.target.getAttribute('data-address');
+                this.selectAddress(selected);
+            };
+        });
+    }
+
+    selectAddress(address) {
+        const input = document.getElementById('address-input');
+        input.value = address;
+        localStorage.setItem('delivery_address', address);
+        document.getElementById('address-dropdown').classList.remove('active');
+    }
+
+    /**
      * Устанавливает обработчики событий для кнопок навигации и контейнера прокрутки.
      * @override
      * @returns {void}
@@ -190,19 +254,39 @@ export class Restaurants extends Component {
             scrollContainer.addEventListener('scroll', this.handleScroll);
         }
 
-        const addressBtn = document.getElementById('address-button');
+        const addressInput = document.getElementById('address-input');
         const addressDropdown = document.getElementById('address-dropdown');
-        if (addressBtn && addressDropdown) {
-            addressBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                addressDropdown.classList.toggle('active');
-            });
 
-            document.addEventListener('click', (e) => {
-                if (!addressBtn.contains(e.target)) {
-                    addressDropdown.classList.remove('active');
+        if (addressInput) {
+            addressInput.onfocus = () => {
+                addressDropdown.classList.add('active');
+                if (addressInput.value.trim() === '') {
+                    this.renderSuggestions(this.savedAddresses);
                 }
-            });
+            };
+
+            addressInput.oninput = (e) => {
+                const query = e.target.value.trim();
+                addressDropdown.classList.add('active');
+
+                clearTimeout(this.debounceTimer);
+
+                if (query.length === 0) {
+                    this.renderSuggestions(this.savedAddresses);
+                    return;
+                }
+
+                this.debounceTimer = setTimeout(async () => {
+                    const results = await this.fetchYandexSuggestions(query);
+                    this.renderSuggestions(results);
+                }, 400);
+            };
         }
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('address-container').contains(e.target)) {
+                addressDropdown.classList.remove('active');
+            }
+        });
     }
 }

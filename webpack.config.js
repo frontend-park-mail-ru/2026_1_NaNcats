@@ -1,5 +1,13 @@
 const path = require('path');
+const dotenv = require('dotenv');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+const env = dotenv.config().parsed || {};
+const envKeys = Object.keys(env).reduce((prev, next) => {
+    prev[`process.env.${next}`] = JSON.stringify(env[next]);
+    return prev;
+}, {});
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
@@ -34,6 +42,7 @@ module.exports = (env, argv) => {
           collapseWhitespace: true,
         } : false,
       }),
+      new webpack.DefinePlugin(envKeys)
     ],
 
     devtool: isProduction ? false : 'eval-source-map',

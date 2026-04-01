@@ -209,91 +209,76 @@
 /* Кнопка адреса */
 .address-picker {
     position: relative;
-    cursor: pointer;
+    cursor: text;
     display: flex;
     align-items: center;
     gap: 6px;
-    /* Убеждаемся, что ховер работает на всей площади */
-    height: 100%; 
+    width: 191px;
+    overflow: visible !important;
 }
 
-.address-picker__text {
+.address-picker__input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    outline: none;
     font-size: 12px;
     font-family: 'Inter', sans-serif;
-    font-weight: 300;
+    font-weight: 500;
     color: #0E1117;
-    /* Важно для корректного подчеркивания */
-    display: inline-block;
-    line-height: 1.1;
-    pointer-events: none; /* Чтобы текст не мешал клику по родителю */
+    cursor: pointer;
+    text-overflow: ellipsis;
 }
 
-/* ФИКС 2: Явное подчеркивание при наведении */
-.address-picker:hover .address-picker__text {
-    text-decoration: underline !important;
+.address-picker__input::placeholder {
+    color: rgba(0, 0, 0, 0.65);
+    font-weight: 300;
 }
 
-/* Выпадающее меню */
+.address-picker:hover .address-picker__input {
+    text-decoration: underline;
+}
+
 .address-dropdown {
     position: absolute;
-    top: calc(100% + 8px);
-    left: 0; /* Выравнивание по левому краю группы поиска */
-    width: 281px;
-    background: rgba(242, 242, 242, 0.95);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.15);
-    border-radius: 24px;
-    padding: 16px;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 280px;
+    background: white;
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    padding: 8px 0;
     z-index: 1000;
     display: none;
-    flex-direction: column;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 .address-dropdown.active {
-    display: flex;
+    display: block;
 }
 
-.address-dropdown__map-button {
-    background: #E6E6E6;
-    border-radius: 20px;
-    padding: 10px 16px;
-    text-align: center;
-    margin-bottom: 8px;
-    transition: background 0.2s;
-}
-
-.address-dropdown__map-button:hover {
-    background: #dcdcdc;
-}
-
-.address-dropdown__list {
-    display: flex;
-    flex-direction: column;
-}
-
-/* ФИКС 1: Линии у всех элементов, кроме последнего визуального */
 .address-dropdown__item {
-    padding: 12px 0;
-    font-size: 14px;
-    font-weight: 400;
-    color: #0E1117;
-    border-bottom: 1px solid rgba(124, 124, 124, 0.3);
-    transition: background 0.2s;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: #333;
     cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-/* Убираем линию только у самого последнего элемента в списке */
 .address-dropdown__item:last-child {
     border-bottom: none;
 }
 
 .address-dropdown__item:hover {
+    background: #FFF5F5;
     color: var(--accent-pink);
-    background: rgba(0,0,0,0.02);
 }
 
-/* Чтобы меню не обрезалось родителем */
 .search-bar {
     overflow: visible !important;
 }
