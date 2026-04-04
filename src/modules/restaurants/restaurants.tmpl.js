@@ -31,12 +31,10 @@ export const restaurantsTemplate = `
                     <div class="notif-btn__label">Уведомления</div>
                 </div>
                 <div class="user-menu-wrapper">
-                    <div class="user-profile">
-                        <div class="user-profile__avatar"></div>
-                        <div class="user-profile__name">
-                            {{=it.user.name}}
-                        </div>
-                    </div>
+                    <a href="/profile" class="user-profile router-link" style="text-decoration: none;">
+                        <img src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" class="user-profile__avatar">
+                        <div class="user-profile__name">{{=it.user.name}}</div>
+                    </a>
 
                     <div class="user-dropdown">
                         <div class="user-dropdown__item logout" id="logout-btn">

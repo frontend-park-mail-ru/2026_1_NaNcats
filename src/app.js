@@ -17,6 +17,10 @@ window.router
         const { Register } = await import('./modules/register/Register.js');
         return new Register();
     })
+    .register('/profile', async () => {
+        const { Profile } = await import('./modules/profile/Profile.ts');
+        return new Profile();
+    })
     .register('/404', new NotFound()); 
 
 const init = () => {

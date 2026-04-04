@@ -1,0 +1,176 @@
+@import "../../styles/base.css";
+@import "../../styles/components.css";
+@import "../../styles/variables.css";
+
+.profile-page {
+    width: 100vw;
+    height: 100vh;
+    background: #F2F2F7;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+}
+
+.profile-header {
+    height: 64px;
+    background: white;
+    border-bottom-right-radius: 24px;
+    border-bottom-left-radius: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+    margin: 0 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+.profile-header__back {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #7D7D7D;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 16px;
+    transition: background 0.2s;
+}
+.profile-header__back:hover { background: #f5f5f5; }
+
+.profile-header__logo {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+.logo-bars { display: flex; gap: 4px; align-items: center; }
+.bar { background: #FFC1C1; }
+.bar-1 { width: 32px; height: 23px; }
+.bar-2, .bar-3, .bar-4 { width: 4px; height: 3px; }
+.logo-avatar { width: 40px; height: 40px; border-radius: 15px; object-fit: cover; }
+
+.profile-content {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    padding: 23px 20px 40px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.profile-sidebar {
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-main {
+    width: 513px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-card {
+    background: white;
+    border-radius: 24px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+.p-20 { padding: 20px; }
+
+/* Аватар и Имя */
+.profile-user { align-items: center; gap: 15px; }
+.profile-user__header { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
+
+.profile-input {
+    border: 1px solid transparent;
+    background: transparent;
+    font-family: 'Inter', sans-serif;
+    color: #0E1117;
+    text-align: center;
+    outline: none;
+    transition: border 0.2s, background 0.2s;
+}
+.profile-input:disabled { color: #0E1117; opacity: 1; }
+.profile-input:not(:disabled) {
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+.profile-input_name { font-size: 16px; font-weight: 500; width: 150px; }
+.profile-input_email { font-size: 12px; font-weight: 300; text-align: left; width: 100%; }
+
+.edit-icon { cursor: pointer; font-size: 14px; opacity: 0.6; transition: opacity 0.2s; }
+.edit-icon:hover { opacity: 1; }
+
+.profile-avatar-container { position: relative; width: 100px; height: 100px; border-radius: 50%; overflow: hidden; cursor: pointer; }
+.profile-avatar { width: 100%; height: 100%; object-fit: cover; }
+.profile-avatar-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); color: white;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 24px; opacity: 0; transition: opacity 0.2s;
+}
+.profile-avatar-container:hover .profile-avatar-overlay { opacity: 1; }
+.delete-avatar { font-size: 12px; color: #ff4d4d; cursor: pointer; margin-top: 5px; text-decoration: underline; }
+
+/* Детали */
+.profile-details { gap: 15px; }
+.detail-group { display: flex; flex-direction: column; gap: 5px; }
+.detail-row { display: flex; align-items: center; gap: 5px; }
+.detail-label { color: #0E1117; font-size: 14px; font-weight: 400; }
+.detail-value { color: #0E1117; font-size: 12px; font-weight: 300; }
+.detail-subtext { color: #0E1117; font-size: 12px; font-weight: 300; line-height: 1.2; }
+
+.link-orange { color: #D78306; text-decoration: underline; cursor: pointer; }
+.text-gray { color: #7D7D7D; }
+.text-red { color: #FF4C4F; }
+.hidden { display: none !important; }
+
+.flex-row { display: flex; flex-direction: row; }
+.space-between { justify-content: space-between; align-items: center; }
+.align-center { align-items: center; }
+.gap-5 { gap: 5px; }
+.gap-20 { gap: 20px; }
+.m-0 { margin: 0; }
+.w-200 { max-width: 200px; }
+
+.orange-dot { width: 10px; height: 10px; background: #D78306; border-radius: 2px; }
+.orange-dot-large { width: 16px; height: 16px; background: #D78306; border-radius: 3px; }
+
+.bonuses-count { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.bonuses-number { color: #18B213; font-size: 20px; font-family: 'Open Sans Condensed', sans-serif; font-weight: 700; }
+
+/* Правая колонка: Адреса и Карты */
+.section-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+.section-header h2 { margin: 0; font-family: 'Open Sans Condensed', sans-serif; font-size: 28px; font-weight: 700; color: #0E1117; }
+.mt-20 { margin-top: 20px; }
+
+.address-list { display: flex; flex-direction: column; gap: 10px; padding-left: 5px; }
+.address-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 400; }
+.edit-icon-small { width: 11px; height: 11px; background: #D78306; mask: url('data:image/svg+xml;utf8,<svg ...></svg>') no-repeat center; }
+
+.cards-list { display: flex; gap: 15px; padding-left: 5px; }
+.pay-card { width: 60px; height: 34px; border-radius: 5px; position: relative; display: flex; align-items: flex-end; padding: 4px; box-sizing: border-box; }
+.card-number { color: white; font-size: 8px; font-weight: 500; }
+.pay-card_sber { background: linear-gradient(50deg, rgba(237, 236, 2, 0.8) 0%, rgba(26, 204, 219, 0.8) 100%); }
+.pay-card_tinkoff { background: linear-gradient(141deg, #101112 0%, #C7C7C8 100%); }
+.pay-card_sbp { background: #F4F4F4; display: flex; align-items: center; justify-content: center; }
+.pay-card_sbp .card-number { color: black; font-weight: 700; font-size: 10px; }
+
+/* История заказов */
+.orders-card { border-radius: 24px 24px 0 0; }
+.orders-title { font-family: 'Open Sans Condensed', sans-serif; font-size: 28px; font-weight: 700; margin: 0 0 15px 0; }
+.order-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #FEFEFF; border-radius: 20px; padding: 20px;
+    margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+.order-item img { width: 75px; height: 75px; border-radius: 24px; object-fit: cover; }
+.order-date { color: #D78306; font-size: 14px; width: 80px; text-align: center; }
+.order-info { display: flex; flex-direction: column; gap: 5px; width: 130px; }
+.order-name { font-size: 14px; font-weight: 400; color: #0E1117; line-height: 1.2; }
+.order-weight { font-size: 12px; font-weight: 300; color: #7D7D7D; }
+.order-price { font-size: 14px; font-weight: 500; color: black; }
