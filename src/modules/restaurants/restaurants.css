@@ -282,3 +282,127 @@
 .search-bar {
     overflow: visible !important;
 }
+
+/* Модальное окно */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+.modal-overlay.active { display: flex; }
+
+.address-modal {
+    width: 861px;
+    background: #F2F2F7;
+    border-radius: 24px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.address-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.address-modal__title {
+    font-size: 28px;
+    font-weight: 700;
+    font-family: 'Open Sans Condensed', sans-serif;
+}
+
+.address-modal__close {
+    cursor: pointer;
+    font-size: 30px;
+    color: #616161;
+}
+
+.address-modal__search-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.modal-search {
+    flex: 1;
+    background: white;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+}
+
+.modal-search__input {
+    border: none; outline: none; width: 100%;
+    margin-left: 10px; font-size: 14px;
+}
+
+.button_modal-ok {
+    width: 178px;
+    height: 48px;
+    background: #F7958C;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.address-modal__map-container {
+    position: relative;
+    width: 821px;
+    height: 297px;
+}
+
+/* Центральный пин на карте */
+.map-center-pin {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -100%); /* Пин стоит "ножкой" в центре */
+    font-size: 32px;
+    pointer-events: none; /* Чтобы не мешал кликать по карте */
+    z-index: 10;
+}
+
+.address-modal__suggestions {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 24px;
+    max-height: 272px;
+    overflow-y: auto;
+    box-shadow: 0px 0px 8px rgba(0,0,0,0.1);
+}
+
+.modal-suggestion-item {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(124, 124, 124, 0.2);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.modal-suggestion-item:hover {
+    background: #eeeeee;
+}
+
+/* Кнопка в основной выпадашке */
+.address-dropdown__map-button-wrapper {
+    padding: 10px 15px;
+    width: 100%;
+}
+.address-dropdown__map-button {
+    background: #EEEEEE;
+    border-radius: 16px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.address-dropdown__map-button:hover { background: #e0e0e0; }

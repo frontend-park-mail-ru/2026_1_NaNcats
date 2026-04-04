@@ -31,6 +31,9 @@ export const restaurantsTemplate = `
                     autocomplete="off">
                 
                 <div class="address-dropdown" id="address-dropdown">
+                    <div class="address-dropdown__map-button-wrapper" id="open-map-btn">
+                        <div class="address-dropdown__map-button">Указать на карте</div>
+                    </div>
                     <div class="address-dropdown__suggestions" id="address-suggestions">
                         <!-- Сюда будут рендериться адреса -->
                     </div>
@@ -138,6 +141,31 @@ export const restaurantsTemplate = `
                 </div>
             </div>
         </aside>
+    </div>
+    <div class="modal-overlay" id="map-modal">
+        <div class="address-modal">
+            <div class="address-modal__header">
+                <h2 class="address-modal__title">Укажите адрес доставки</h2>
+                <div class="address-modal__close" id="close-map-modal">&times;</div>
+            </div>
+            
+            <div class="address-modal__search-row">
+                <div class="modal-search">
+                    <div class="modal-search__icon">🔍</div>
+                    <input type="text" class="modal-search__input" id="modal-address-input" placeholder="Введите адрес">
+                </div>
+                <button class="button button_modal-ok" id="confirm-address-btn">ОК</button>
+            </div>
+
+            <div class="address-modal__map-container">
+                <div id="yandex-map" style="width: 100%; height: 297px; border-radius: 24px;"></div>
+                <div class="map-center-pin">📍</div>
+            </div>
+
+            <div class="address-modal__suggestions" id="modal-suggestions">
+                <!-- Сюда рендерятся подсказки внутри модалки -->
+            </div>
+        </div>
     </div>
 </div>
 `;

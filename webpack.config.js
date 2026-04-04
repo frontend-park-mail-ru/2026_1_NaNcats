@@ -41,6 +41,9 @@ module.exports = (env, argv) => {
           removeComments: true,
           collapseWhitespace: true,
         } : false,
+        templateParameters: {
+          yandexKey: process.env.YANDEX_JS_KEY,
+      }
       }),
       new webpack.DefinePlugin(envKeys)
     ],

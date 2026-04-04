@@ -49,6 +49,9 @@ export class Restaurants extends Component {
          * @type {string}
          */
         this.suggestKey = process.env.YANDEX_SUGGEST_KEY;
+
+        this.map = null;
+        this.selectedCoords = [55.75, 37.61]; // Москва
         
         /** @private */
         this.handleScroll = this.handleScroll.bind(this);
@@ -228,6 +231,43 @@ export class Restaurants extends Component {
         document.getElementById('address-dropdown').classList.remove('active');
     }
 
+    initMap() {
+        if (this.map) return;
+
+        this.map = new ymaps.Map("yandex-map", {
+            center: this.selectedCoords,
+            zoom: 16,
+            controls: []
+        });
+
+        this.map.events.add('actionend', () => {
+            const center = this.map.getCenter();
+            this.reverseGeocode(center);
+        });
+    }
+
+    async reverseGeocode(coords) {
+        try {
+            const res = await ymaps.geocode(coords);
+            const firstGeoObject = res.geoObjects.get(0);
+            const address = firstGeoObject.getAddressLine();
+            
+            document.getElementById('modal-address-input').value = address;
+        } catch (e) {
+            console.error("Geocode error", e);
+        }
+    }
+
+    async forwardGeocode(address) {
+        try {
+            const res = await ymaps.geocode(address);
+            const coords = res.geoObjects.get(0).geometry.getCoordinates();
+            this.map.setCenter(coords, 16);
+        } catch (e) {
+            console.error("Forward geocode error", e);
+        }
+    }
+
     /**
      * Устанавливает обработчики событий для кнопок навигации и контейнера прокрутки.
      * @override
@@ -287,6 +327,49 @@ export class Restaurants extends Component {
             if (!document.getElementById('address-container').contains(e.target)) {
                 addressDropdown.classList.remove('active');
             }
+        });
+
+        const openMapBtn = document.getElementById('open-map-btn');
+        const mapModal = document.getElementById('map-modal');
+        const modalInput = document.getElementById('modal-address-input');
+
+        openMapBtn.onclick = () => {
+            mapModal.classList.add('active');
+            ymaps.ready(() => this.initMap());
+        };
+
+        document.getElementById('close-map-modal').onclick = () => {
+            mapModal.classList.remove('active');
+        };
+
+        modalInput.oninput = async (e) => {
+            const query = e.target.value;
+            if (query.length > 2) {
+                const suggestions = await this.fetchYandexSuggestions(query);
+                this.renderModalSuggestions(suggestions);
+            }
+        };
+
+        document.getElementById('confirm-address-btn').onclick = () => {
+            const finalAddress = modalInput.value;
+            this.selectAddress(finalAddress);
+            mapModal.classList.remove('active');
+        };
+    }
+
+    renderModalSuggestions(list) {
+        const container = document.getElementById('modal-suggestions');
+        container.innerHTML = list.map(addr => `
+            <div class="modal-suggestion-item">${addr}</div>
+        `).join('');
+
+        container.querySelectorAll('.modal-suggestion-item').forEach(item => {
+            item.onclick = () => {
+                const addr = item.innerText;
+                document.getElementById('modal-address-input').value = addr;
+                this.forwardGeocode(addr);
+                container.innerHTML = '';
+            };
         });
     }
 }
