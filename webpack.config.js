@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
     mode: isProduction ? 'production' : 'development',
     
     entry: './src/app.js', 
-    
+
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js', 
@@ -30,6 +30,11 @@ module.exports = (env, argv) => {
         {
           test: /\.css$/i,
           use: ['style-loader', 'css-loader'],
+        },
+        {
+          test: /\.ts$/,
+          use: 'ts-loader',
+          exclude: /node_modules/,
         },
       ],
     },
