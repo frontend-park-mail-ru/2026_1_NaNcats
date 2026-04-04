@@ -2,6 +2,7 @@ import './restaurants.css';
 import { Component } from '../../core/Component.js';
 import { Ajax } from '../../core/Ajax.js';
 import { restaurantsTemplate } from "./restaurants.tmpl.js"
+import { AddressPicker } from '../addressPicker/AddressPicker.ts';
 
 /**
  * Компонент главной страницы, отображающий список ресторанов.
@@ -65,7 +66,13 @@ export class Restaurants extends Component {
             console.warn("Ошибка при получении данных:", e);
         }
 
-        super.mount(container, { restaurants, user });
+        const savedAddr = localStorage.getItem('delivery_address');
+
+        super.mount(container, { restaurants, user, currentAddress: savedAddr});
+        if (savedAddr) {
+            const input = document.getElementById('address-input');
+            if (input) input.value = savedAddr;
+        }
     }
 
     /**
@@ -188,6 +195,16 @@ export class Restaurants extends Component {
         const scrollContainer = document.querySelector('.center-column');
         if (scrollContainer) {
             scrollContainer.addEventListener('scroll', this.handleScroll);
+        }
+
+        const addressSlot = document.getElementById('address-picker-placeholder');
+        if (addressSlot) {
+            const addressPicker = new AddressPicker();
+            // Передаем текущий сохраненный адрес если он есть
+            const savedAddr = localStorage.getItem('delivery_address') || '';
+            addressPicker.mount(addressSlot, { currentAddress: savedAddr });
+        } else {
+            console.error("Не нашли плейсхолдер #address-picker-placeholder для адреса");
         }
     }
 }

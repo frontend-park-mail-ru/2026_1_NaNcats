@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
-    "target": "ES6",
+    "target": "ESnext",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": ["DOM", "ESNext"],
     "strict": true,
     "allowJs": true,
+    "rootDir": "src",
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true
