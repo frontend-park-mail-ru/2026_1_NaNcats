@@ -1,0 +1,75 @@
+@import "../../styles/base.css";
+@import "../../styles/components.css";
+@import "../../styles/variables.css";
+
+.modal-search-container {
+    position: relative;
+    flex: 1;
+}
+
+.address-modal {
+    position: relative;
+    width: 861px;
+    background: #F2F2F7;
+    border-radius: 24px;
+    padding: 40px 30px 30px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.address-modal__close {
+    position: absolute;
+    top: 20px;
+    right: 25px;
+    cursor: pointer;
+    font-size: 32px;
+    color: #616161;
+    line-height: 1;
+    transition: color 0.2s;
+}
+.address-modal__close:hover { color: #000; }
+
+.address-modal__suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0px 10px 20px rgba(0,0,0,0.1);
+    z-index: 2100;
+    display: none;
+}
+
+.address-modal__suggestions.active {
+    display: block;
+}
+
+.modal-suggestion-item {
+    padding: 12px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    font-size: 14px;
+}
+.modal-suggestion-item:hover { background: #f9f9f9; }
+
+.address-modal__map-container {
+    position: relative;
+    z-index: 1; 
+}
+
+.address-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 280px;
+    background: white;
+    box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    z-index: 1000;
+    display: none;
+}
+.address-dropdown.active { display: block; }
