@@ -1,24 +1,9 @@
 import { Component } from '../../core/Component';
 import { addressPickerTemplate } from './addressPicker.tmpl';
-import { Ajax } from '../../core/Ajax';
 import './addressPicker.css';
 
-interface YandexSuggestItem {
-    title: {
-        text: string;
-    };
-}
-
-interface YandexSuggestResponse {
-    results: YandexSuggestItem[];
-}
-
 declare var ymaps: any;
-declare var process: {
-    env: {
-        YANDEX_SUGGEST_KEY: string;
-    };
-};
+declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
 
 export class AddressPicker extends Component {
     private suggestKey: string;
@@ -26,14 +11,16 @@ export class AddressPicker extends Component {
     private map: any | null;
     private selectedCoords: [number, number];
     private debounceTimer: ReturnType<typeof setTimeout> | null;
+    private onSelectCallback: (address: string, coords: [number, number]) => void;
 
-    constructor() {
+    constructor(onSelect?: (address: string, coords: [number, number]) => void) {
         super(addressPickerTemplate);
         this.suggestKey = process.env.YANDEX_SUGGEST_KEY;
         this.savedAddresses = [];
         this.map = null;
         this.selectedCoords = [55.75, 37.61];
         this.debounceTimer = null;
+        this.onSelectCallback = onSelect || (() => {});
     }
 
     async fetchYandexSuggestions(query: string): Promise<string[]> {
@@ -41,70 +28,66 @@ export class AddressPicker extends Component {
             const response = await fetch(
                 `https://suggest-maps.yandex.ru/v1/suggest?text=${encodeURIComponent(query)}&lang=ru_RU&apikey=${this.suggestKey}`
             );
-            const data: YandexSuggestResponse = await response.json();
-            return data.results.map(item => item.title.text);
+            const data = await response.json();
+            return data.results.map((item: any) => item.title.text);
         } catch (e) {
-            console.error("Suggest error:", e);
             return [];
         }
     }
 
-    initMap(): void {
-        if (this.map) return;
-        this.map = new ymaps.Map("yandex-map", {
-            center: this.selectedCoords,
-            zoom: 16,
-            controls: []
-        });
+    public openMapModal(): void {
+        const modal = this.element?.querySelector('.js-map-modal');
+        if (modal) {
+            modal.classList.add('active');
+            ymaps.ready(() => {
+                if (this.map) return;
+                const mapContainer = this.element?.querySelector('.js-yandex-map') as HTMLElement;
+                this.map = new ymaps.Map(mapContainer, {
+                    center: this.selectedCoords,
+                    zoom: 16,
+                    controls: []
+                });
 
-        this.map.events.add('actionend', () => {
-            const center = this.map.getCenter();
-            this.reverseGeocode(center);
-        });
+                this.map.events.add('actionend', () => {
+                    const center = this.map.getCenter();
+                    this.selectedCoords = center;
+                    this.reverseGeocode(center);
+                });
+            });
+        }
     }
 
-    async reverseGeocode(coords: [number, number]): Promise<void> {
+    private async reverseGeocode(coords: [number, number]): Promise<void> {
         try {
             const res = await ymaps.geocode(coords);
             const address = res.geoObjects.get(0).getAddressLine();
-            const modalInput = document.getElementById('modal-address-input') as HTMLInputElement;
+            const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
             if (modalInput) modalInput.value = address;
         } catch (e) {
             console.error("Geocode error:", e);
         }
     }
 
-    selectAddress(address: string): void {
-        const input = document.getElementById('address-input') as HTMLInputElement;
+    private selectAddress(address: string): void {
+        const input = this.element?.querySelector('.js-address-input') as HTMLInputElement;
         if (input) input.value = address;   
-    
-        localStorage.setItem('delivery_address', address);
-        localStorage.setItem('delivery_coords', JSON.stringify(this.selectedCoords));
         
-        const dropdown = document.getElementById('address-dropdown');
+        const dropdown = this.element?.querySelector('.js-address-dropdown');
         if (dropdown) dropdown.classList.remove('active');
+
+        this.onSelectCallback(address, this.selectedCoords);
     }
 
     async mount(container: HTMLElement, data: any) {
-        try {
-            const res = await Ajax.get('/profile/addresses');
-            if (res.ok) {
-                const json = await res.json();
-                // Мапим в строки для выпадающего списка
-                this.savedAddresses = json.addresses.map((a: any) => a.location.address_text);
-            }
-        } catch (e) {
-            const local = localStorage.getItem('delivery_address');
-            this.savedAddresses = local ? [local] : ['Укажите адрес на карте'];
-        }
+        this.savedAddresses = data?.savedAddresses || [];
         super.mount(container, data);
     }
 
     afterRender(): void {
-        const addressInput = document.getElementById('address-input') as HTMLInputElement;
-        const addressDropdown = document.getElementById('address-dropdown');
-        const modalInput = document.getElementById('modal-address-input') as HTMLInputElement;
-        const modalSuggestContainer = document.getElementById('modal-suggestions');
+        const addressInput = this.element?.querySelector('.js-address-input') as HTMLInputElement;
+        const addressDropdown = this.element?.querySelector('.js-address-dropdown');
+        const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
+        const modalSuggestContainer = this.element?.querySelector('.js-modal-suggestions');
 
         if (addressInput && addressDropdown) {
             addressInput.oninput = (e: Event) => {
@@ -116,26 +99,26 @@ export class AddressPicker extends Component {
                 
                 this.debounceTimer = setTimeout(async () => {
                     const results = query ? await this.fetchYandexSuggestions(query) : this.savedAddresses;
-                    this.renderSuggestions(results, 'address-suggestions', (addr) => this.selectAddress(addr));
+                    this.renderSuggestions(results, 'js-address-suggestions', (addr) => this.selectAddress(addr));
                 }, 400);
             };
-        }
 
-        const openMapBtn = document.getElementById('open-map-btn');
-        if (openMapBtn) {
-            openMapBtn.onclick = () => {
-                const modal = document.getElementById('map-modal');
-                if (modal) {
-                    modal.classList.add('active');
-                    ymaps.ready(() => this.initMap());
+            document.addEventListener('click', (e) => {
+                if (!this.element?.contains(e.target as Node)) {
+                    addressDropdown.classList.remove('active');
                 }
-            };
+            });
         }
 
-        const closeMapBtn = document.getElementById('close-map-modal');
+        const openMapBtn = this.element?.querySelector('.js-open-map-btn');
+        if (openMapBtn) {
+            (openMapBtn as HTMLElement).onclick = () => this.openMapModal();
+        }
+
+        const closeMapBtn = this.element?.querySelector('.js-close-map-modal');
         if (closeMapBtn) {
-            closeMapBtn.onclick = () => {
-                const modal = document.getElementById('map-modal');
+            (closeMapBtn as HTMLElement).onclick = () => {
+                const modal = this.element?.querySelector('.js-map-modal');
                 if (modal) modal.classList.remove('active');
             };
         }
@@ -158,18 +141,18 @@ export class AddressPicker extends Component {
             };
         }
 
-        const confirmBtn = document.getElementById('confirm-address-btn');
+        const confirmBtn = this.element?.querySelector('.js-confirm-address-btn');
         if (confirmBtn && modalInput) {
-            confirmBtn.onclick = () => {
+            (confirmBtn as HTMLElement).onclick = () => {
                 this.selectAddress(modalInput.value);
-                const modal = document.getElementById('map-modal');
+                const modal = this.element?.querySelector('.js-map-modal');
                 if (modal) modal.classList.remove('active');
             };
         }
     }
 
-    renderSuggestions(list: string[], containerId: string, onSelect: (addr: string) => void): void {
-        const container = document.getElementById(containerId);
+    private renderSuggestions(list: string[], containerClass: string, onSelect: (addr: string) => void): void {
+        const container = this.element?.querySelector(`.${containerClass}`);
         if (!container) return;
 
         container.innerHTML = list.map(addr => `
@@ -185,8 +168,8 @@ export class AddressPicker extends Component {
         });
     }
 
-    renderModalSuggestions(list: string[]): void {
-        const container = document.getElementById('modal-suggestions');
+    private renderModalSuggestions(list: string[]): void {
+        const container = this.element?.querySelector('.js-modal-suggestions');
         if (!container) return;
 
         if (!list.length) {
@@ -195,22 +178,23 @@ export class AddressPicker extends Component {
         }
 
         container.classList.add('active');
-        container.innerHTML = list.map(addr => `
-            <div class="modal-suggestion-item">${addr}</div>
-        `).join('');
+        container.innerHTML = list.map(addr => `<div class="modal-suggestion-item">${addr}</div>`).join('');
 
         container.querySelectorAll('.modal-suggestion-item').forEach(el => {
             const htmlEl = el as HTMLElement;
             htmlEl.onclick = () => {
                 const addr = htmlEl.innerText;
-                const modalInput = document.getElementById('modal-address-input') as HTMLInputElement;
+                const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
                 if (modalInput) modalInput.value = addr;
                 
                 container.classList.remove('active');
                 
                 ymaps.geocode(addr).then((res: any) => {
                     const coords = res.geoObjects.get(0).geometry.getCoordinates();
-                    if (this.map) this.map.setCenter(coords, 16);
+                    if (this.map) {
+                        this.map.setCenter(coords, 16);
+                        this.selectedCoords = coords;
+                    }
                 });
             };
         });

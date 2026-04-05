@@ -25,6 +25,10 @@ module.exports = (env, argv) => {
       clean: true,
     },
 
+    resolve: {
+      extensions: ['.ts', '.js', '.json'], 
+    },
+
     module: {
       rules: [
         {

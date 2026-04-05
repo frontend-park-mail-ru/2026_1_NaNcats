@@ -199,12 +199,25 @@ export class Restaurants extends Component {
 
         const addressSlot = document.getElementById('address-picker-placeholder');
         if (addressSlot) {
-            const addressPicker = new AddressPicker();
-            // Передаем текущий сохраненный адрес если он есть
+            const addressPicker = new AddressPicker((addr, coords) => {
+                localStorage.setItem('delivery_address', addr);
+                localStorage.setItem('delivery_coords', JSON.stringify(coords));
+            });
+
             const savedAddr = localStorage.getItem('delivery_address') || '';
-            addressPicker.mount(addressSlot, { currentAddress: savedAddr });
-        } else {
-            console.error("Не нашли плейсхолдер #address-picker-placeholder для адреса");
+            
+            Ajax.get('/profile/addresses').then(res => res.json()).then(data => {
+                const userAddresses = data.addresses ? data.addresses.map(a => a.location.address_text) : [];
+                addressPicker.mount(addressSlot, { 
+                    currentAddress: savedAddr, 
+                    savedAddresses: userAddresses 
+                });
+            }).catch(() => {
+                addressPicker.mount(addressSlot, { 
+                    currentAddress: savedAddr, 
+                    savedAddresses: [] 
+                });
+            });
         }
     }
 }

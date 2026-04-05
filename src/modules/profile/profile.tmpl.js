@@ -150,25 +150,7 @@ export const profileTemplate = `
             </div>
         </main>
     </div>
-    <div class="modal-overlay" id="profile-map-modal">
-        <div class="address-modal">
-            <div class="address-modal__close" id="close-profile-map">&times;</div>
-            <h2 class="address-modal__title">Выберите адрес на карте</h2>
-            
-            <div class="address-modal__search-row">
-                <div class="modal-search-container">
-                    <input type="text" class="input-field" id="profile-map-search" placeholder="Поиск адреса...">
-                    <div class="address-modal__suggestions" id="profile-map-suggestions"></div>
-                </div>
-                <button class="button button_modal-ok" id="confirm-location-btn">Выбрать этот дом</button>
-            </div>
-
-            <div class="address-modal__map-container">
-                <div id="profile-yandex-map" style="width: 100%; height: 350px; border-radius: 24px;"></div>
-                <div class="map-center-pin">📍</div>
-            </div>
-        </div>
-    </div>
+    <div id="profile-address-picker-container"></div>
 
     <div class="modal-overlay" id="address-details-modal">
         <div class="address-modal" style="width: 500px;">

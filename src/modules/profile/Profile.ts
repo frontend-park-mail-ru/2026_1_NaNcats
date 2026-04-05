@@ -2,6 +2,7 @@ import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
 import { profileTemplate } from './profile.tmpl';
 import { validateEmail, validateName } from '../../shared/utils/Validator';
+import { AddressPicker } from '../addressPicker/AddressPicker';
 import './profile.css';
 
 interface UserProfile {
@@ -10,14 +11,12 @@ interface UserProfile {
     avatar_url: string;
 }
 
-declare var ymaps: any;
-
 export class Profile extends Component {
     private user: UserProfile | null = null;
     private addresses: any[] = [];
     private isEditing: boolean = false;
-    private map: any = null;
     private selectedLocation: { text: string, coords: [number, number] } | null = null;
+    private addressPickerInstance: AddressPicker | null = null;
 
     constructor() {
         super(profileTemplate);
@@ -111,29 +110,19 @@ export class Profile extends Component {
         if (finalForm) {
             finalForm.onsubmit = (e) => this.submitFinalAddress(e);
         }
-    }
 
-    private openAddressModal(address?: any) {
-        const modal = document.getElementById('address-form-modal')!;
-        const form = document.getElementById('address-details-form') as HTMLFormElement;
-        const title = document.getElementById('address-modal-title')!;
-        
-        form.reset();
-        (document.getElementById('form-address-id') as HTMLInputElement).value = address ? address.id : '';
-        
-        if (address) {
-            title.innerText = 'Редактировать адрес';
-            (form.elements.namedItem('address_text') as HTMLInputElement).value = address.location.address_text;
-            (form.elements.namedItem('apartment') as HTMLInputElement).value = address.apartment || '';
-            (form.elements.namedItem('entrance') as HTMLInputElement).value = address.entrance || '';
-            (form.elements.namedItem('floor') as HTMLInputElement).value = address.floor || '';
-            (form.elements.namedItem('door_code') as HTMLInputElement).value = address.door_code || '';
-            (form.elements.namedItem('label') as HTMLInputElement).value = address.label || '';
-        } else {
-            title.innerText = 'Новый адрес';
+        const pickerContainer = document.getElementById('profile-address-picker-container');
+        if (pickerContainer) {
+            this.addressPickerInstance = new AddressPicker((addr, coords) => {
+                this.selectedLocation = { text: addr, coords: coords };
+                this.openDetailsModal(); 
+            });
+            
+            this.addressPickerInstance.mount(pickerContainer, { 
+                hideInput: true,
+                savedAddresses: this.addresses.map(a => a.location.address_text)
+            });
         }
-        
-        modal.classList.add('active');
     }
 
     private async uploadAvatar(file: File) {
@@ -228,44 +217,9 @@ export class Profile extends Component {
     }
 
     private handleAddAddressClick() {
-        const savedText = localStorage.getItem('delivery_address');
-        const savedCoords = localStorage.getItem('delivery_coords');
-
-        if (savedText && savedCoords) {
-            this.selectedLocation = {
-                text: savedText,
-                coords: JSON.parse(savedCoords)
-            };
-            this.openDetailsModal();
-        } else {
-            this.openMapModal();
+        if (this.addressPickerInstance) {
+            this.addressPickerInstance.openMapModal();
         }
-    }
-
-    private openMapModal() {
-        const modal = document.getElementById('profile-map-modal');
-        if (!modal) return;
-        modal.classList.add('active');
-        
-        ymaps.ready(() => {
-            if (!this.map) {
-                this.map = new ymaps.Map("profile-yandex-map", {
-                    center: [55.75, 37.61],
-                    zoom: 15,
-                    controls: []
-                });
-
-                this.map.events.add('actionend', async () => {
-                    const center = this.map.getCenter();
-                    const res = await ymaps.geocode(center);
-                    const addressText = res.geoObjects.get(0).getAddressLine();
-                    
-                    this.selectedLocation = { text: addressText, coords: center };
-                    const mapInput = document.getElementById('profile-map-search') as HTMLInputElement;
-                    if (mapInput) mapInput.value = addressText;
-                });
-            }
-        });
     }
 
     private openDetailsModal() {
