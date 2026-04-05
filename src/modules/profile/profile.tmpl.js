@@ -85,17 +85,29 @@ export const profileTemplate = `
                 <div class="section-header">
                     <h2>Адреса доставки</h2>
                     <div class="orange-dot-large"></div>
+                    <button class="link-orange" id="add-address-btn" style="background:none; border:none; margin-left:auto; cursor:pointer;">+ Добавить</button>
                 </div>
-                <div class="address-list">
-                    <div class="address-item">
-                        <span>г. Москва, улица Бутлерова, 6, кв. 319, этаж 6, подъезд 5...</span>
-                        <div class="edit-icon-small"></div>
-                    </div>
-                    <div class="address-item">
-                        <span>г. Москва, улица Бутлерова, 6, кв. 319, этаж 6, подъезд 5...</span>
-                        <div class="edit-icon-small"></div>
-                    </div>
-                    <span class="link-orange">остальные адреса</span>
+                <div class="address-list" id="profile-address-list">
+                    {{? it.addresses && it.addresses.length > 0 }}
+                        {{~it.addresses :addr}}
+                        <div class="address-item" data-id="{{=addr.id}}">
+                            <div class="address-info">
+                                <span class="address-text">{{=addr.location.address_text}}</span>
+                                <span class="address-details">
+                                    {{=addr.apartment ? 'кв. ' + addr.apartment : ''}} 
+                                    {{=addr.entrance ? 'под. ' + addr.entrance : ''}}
+                                    {{=addr.floor ? 'эт. ' + addr.floor : ''}}
+                                </span>
+                            </div>
+                            <div class="address-actions">
+                                <span class="edit-addr-btn" data-id="{{=addr.id}}">✏️</span>
+                                <span class="delete-addr-btn" data-id="{{=addr.id}}">🗑️</span>
+                            </div>
+                        </div>
+                        {{~}}
+                    {{??}}
+                        <span class="text-gray">У вас пока нет сохраненных адресов</span>
+                    {{?}}
                 </div>
 
                 <div class="section-header mt-20">
@@ -137,6 +149,50 @@ export const profileTemplate = `
                 </div>
             </div>
         </main>
+    </div>
+    <div class="modal-overlay" id="profile-map-modal">
+        <div class="address-modal">
+            <div class="address-modal__close" id="close-profile-map">&times;</div>
+            <h2 class="address-modal__title">Выберите адрес на карте</h2>
+            
+            <div class="address-modal__search-row">
+                <div class="modal-search-container">
+                    <input type="text" class="input-field" id="profile-map-search" placeholder="Поиск адреса...">
+                    <div class="address-modal__suggestions" id="profile-map-suggestions"></div>
+                </div>
+                <button class="button button_modal-ok" id="confirm-location-btn">Выбрать этот дом</button>
+            </div>
+
+            <div class="address-modal__map-container">
+                <div id="profile-yandex-map" style="width: 100%; height: 350px; border-radius: 24px;"></div>
+                <div class="map-center-pin">📍</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="address-details-modal">
+        <div class="address-modal" style="width: 500px;">
+            <div class="address-modal__close" id="close-details-modal">&times;</div>
+            <h2>Детали адреса</h2>
+            <form id="address-full-form" class="auth-form" style="max-width:100%">
+                <div class="input-group">
+                    <label>Адрес</label>
+                    <input type="text" id="display-address-text" class="input-field" disabled style="background:#eee">
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group"><label>Квартира</label><input name="apartment" class="input-field"></div>
+                    <div class="input-group"><label>Подъезд</label><input name="entrance" class="input-field"></div>
+                    <div class="input-group"><label>Этаж</label><input name="floor" class="input-field"></div>
+                    <div class="input-group"><label>Код двери</label><input name="door_code" class="input-field"></div>
+                </div>
+                <div class="input-group">
+                    <label>Комментарий курьеру</label>
+                    <input name="courier_comment" class="input-field">
+                </div>
+                <button type="submit" class="button button_primary">Сохранить адрес</button>
+            </form>
+        </div>
     </div>
 </div>
 `;

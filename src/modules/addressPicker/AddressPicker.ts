@@ -1,5 +1,6 @@
 import { Component } from '../../core/Component';
 import { addressPickerTemplate } from './addressPicker.tmpl';
+import { Ajax } from '../../core/Ajax';
 import './addressPicker.css';
 
 interface YandexSuggestItem {
@@ -29,7 +30,7 @@ export class AddressPicker extends Component {
     constructor() {
         super(addressPickerTemplate);
         this.suggestKey = process.env.YANDEX_SUGGEST_KEY;
-        this.savedAddresses = ['Ленинградский проспект, 39с79', 'Ленинградский проспект, 55', 'ул. Пушкина, 10'];
+        this.savedAddresses = [];
         this.map = null;
         this.selectedCoords = [55.75, 37.61];
         this.debounceTimer = null;
@@ -75,11 +76,28 @@ export class AddressPicker extends Component {
 
     selectAddress(address: string): void {
         const input = document.getElementById('address-input') as HTMLInputElement;
-        if (input) input.value = address;
+        if (input) input.value = address;   
+    
         localStorage.setItem('delivery_address', address);
+        localStorage.setItem('delivery_coords', JSON.stringify(this.selectedCoords));
         
         const dropdown = document.getElementById('address-dropdown');
         if (dropdown) dropdown.classList.remove('active');
+    }
+
+    async mount(container: HTMLElement, data: any) {
+        try {
+            const res = await Ajax.get('/profile/addresses');
+            if (res.ok) {
+                const json = await res.json();
+                // Мапим в строки для выпадающего списка
+                this.savedAddresses = json.addresses.map((a: any) => a.location.address_text);
+            }
+        } catch (e) {
+            const local = localStorage.getItem('delivery_address');
+            this.savedAddresses = local ? [local] : ['Укажите адрес на карте'];
+        }
+        super.mount(container, data);
     }
 
     afterRender(): void {

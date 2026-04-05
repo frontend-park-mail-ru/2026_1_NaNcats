@@ -10,9 +10,14 @@ interface UserProfile {
     avatar_url: string;
 }
 
+declare var ymaps: any;
+
 export class Profile extends Component {
     private user: UserProfile | null = null;
+    private addresses: any[] = [];
     private isEditing: boolean = false;
+    private map: any = null;
+    private selectedLocation: { text: string, coords: [number, number] } | null = null;
 
     constructor() {
         super(profileTemplate);
@@ -20,15 +25,21 @@ export class Profile extends Component {
 
     async mount(container: HTMLElement) {
         try {
-            const response = await Ajax.get('/profile');
-            if (response.ok) {
-                this.user = await response.json();
-                super.mount(container, { user: this.user });
+            const [userRes, addrRes] = await Promise.all([
+                Ajax.get('/profile'),
+                Ajax.get('/profile/addresses')
+            ]);
+
+            if (userRes.ok) {
+                this.user = await userRes.json();
+                const addrData = addrRes.ok ? await addrRes.json() : { addresses: [] };
+                this.addresses = addrData.addresses || [];
+                
+                super.mount(container, { user: this.user, addresses: this.addresses });
             } else {
                 window.router.go('/login');
             }
         } catch (e) {
-            console.error('Ошибка загрузки профиля:', e);
             window.router.go('/login');
         }
     }
@@ -75,6 +86,54 @@ export class Profile extends Component {
 
             saveBtn.onclick = () => this.saveProfile(nameInput.value, emailInput.value);
         }
+
+        const addBtn = document.getElementById('add-address-btn');
+        if (addBtn) {
+            addBtn.onclick = () => this.handleAddAddressClick();
+        }
+
+        const confirmLocBtn = document.getElementById('confirm-location-btn');
+        if (confirmLocBtn) {
+            confirmLocBtn.onclick = () => this.openDetailsModal();
+        }
+
+        const closeMapBtn = document.getElementById('close-profile-map');
+        if (closeMapBtn) {
+            closeMapBtn.onclick = () => document.getElementById('profile-map-modal')?.classList.remove('active');
+        }
+
+        const closeDetailsBtn = document.getElementById('close-details-modal');
+        if (closeDetailsBtn) {
+            closeDetailsBtn.onclick = () => document.getElementById('address-details-modal')?.classList.remove('active');
+        }
+
+        const finalForm = document.getElementById('address-full-form') as HTMLFormElement;
+        if (finalForm) {
+            finalForm.onsubmit = (e) => this.submitFinalAddress(e);
+        }
+    }
+
+    private openAddressModal(address?: any) {
+        const modal = document.getElementById('address-form-modal')!;
+        const form = document.getElementById('address-details-form') as HTMLFormElement;
+        const title = document.getElementById('address-modal-title')!;
+        
+        form.reset();
+        (document.getElementById('form-address-id') as HTMLInputElement).value = address ? address.id : '';
+        
+        if (address) {
+            title.innerText = 'Редактировать адрес';
+            (form.elements.namedItem('address_text') as HTMLInputElement).value = address.location.address_text;
+            (form.elements.namedItem('apartment') as HTMLInputElement).value = address.apartment || '';
+            (form.elements.namedItem('entrance') as HTMLInputElement).value = address.entrance || '';
+            (form.elements.namedItem('floor') as HTMLInputElement).value = address.floor || '';
+            (form.elements.namedItem('door_code') as HTMLInputElement).value = address.door_code || '';
+            (form.elements.namedItem('label') as HTMLInputElement).value = address.label || '';
+        } else {
+            title.innerText = 'Новый адрес';
+        }
+        
+        modal.classList.add('active');
     }
 
     private async uploadAvatar(file: File) {
@@ -166,5 +225,88 @@ export class Profile extends Component {
     private showError(msg: string) {
         const errBlock = document.getElementById('profile-error');
         if (errBlock) errBlock.innerText = msg;
+    }
+
+    private handleAddAddressClick() {
+        const savedText = localStorage.getItem('delivery_address');
+        const savedCoords = localStorage.getItem('delivery_coords');
+
+        if (savedText && savedCoords) {
+            this.selectedLocation = {
+                text: savedText,
+                coords: JSON.parse(savedCoords)
+            };
+            this.openDetailsModal();
+        } else {
+            this.openMapModal();
+        }
+    }
+
+    private openMapModal() {
+        const modal = document.getElementById('profile-map-modal');
+        if (!modal) return;
+        modal.classList.add('active');
+        
+        ymaps.ready(() => {
+            if (!this.map) {
+                this.map = new ymaps.Map("profile-yandex-map", {
+                    center: [55.75, 37.61],
+                    zoom: 15,
+                    controls: []
+                });
+
+                this.map.events.add('actionend', async () => {
+                    const center = this.map.getCenter();
+                    const res = await ymaps.geocode(center);
+                    const addressText = res.geoObjects.get(0).getAddressLine();
+                    
+                    this.selectedLocation = { text: addressText, coords: center };
+                    const mapInput = document.getElementById('profile-map-search') as HTMLInputElement;
+                    if (mapInput) mapInput.value = addressText;
+                });
+            }
+        });
+    }
+
+    private openDetailsModal() {
+        document.getElementById('profile-map-modal')?.classList.remove('active');
+        
+        const detailsModal = document.getElementById('address-details-modal');
+        if (detailsModal) detailsModal.classList.add('active');
+        
+        const displayInput = document.getElementById('display-address-text') as HTMLInputElement;
+        if (displayInput) displayInput.value = this.selectedLocation?.text || "";
+    }
+
+    private async submitFinalAddress(e: Event) {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+        const formData = new FormData(form);
+
+        if (!this.selectedLocation) return;
+
+        const payload = {
+            address_text: this.selectedLocation.text,
+            lat: this.selectedLocation.coords[0],
+            lon: this.selectedLocation.coords[1],
+            apartment: formData.get('apartment'),
+            entrance: formData.get('entrance'),
+            floor: formData.get('floor'),
+            door_code: formData.get('door_code'),
+            courier_comment: formData.get('courier_comment'),
+            label: formData.get('label') || "Дом"
+        };
+
+        try {
+            const response = await Ajax.post('/profile/addresses', payload);
+            if (response.ok) {
+                localStorage.removeItem('delivery_address');
+                localStorage.removeItem('delivery_coords');
+                document.getElementById('address-details-modal')?.classList.remove('active');
+                this.mount(this.element!); 
+            }
+        } catch (err) {
+            console.error("Ошибка сохранения:", err);
+        }
     }
 }
