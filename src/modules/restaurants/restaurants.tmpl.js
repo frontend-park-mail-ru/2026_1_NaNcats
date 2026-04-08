@@ -106,19 +106,7 @@ export const restaurantsTemplate = `
         </main>
 
         <aside class="side-column">
-            <div class="card card_fixed">
-                <div class="cart-container">
-                    <p class="label-text" style="padding:0">Корзина</p>
-                    <div class="cart-empty-container">
-                        <div class="empty-icon">🛍️</div>
-                        <div class="empty-title">Тут пока пусто</div>
-                        <div class="empty-subtitle">Выберите что-нибудь вкусное</div>
-                    </div>
-                </div>
-                <div class="cart-footer">
-                    <button class="button button_checkout" disabled>Оформить</button>
-                </div>
-            </div>
+            <div class="card card_fixed" id="cart-widget-container"></div>
         </aside>
     </div>
 </div>
