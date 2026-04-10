@@ -15,11 +15,18 @@ export class Profile extends Component {
     private user: UserProfile | null = null;
     private addresses: any[] = [];
     private isEditing: boolean = false;
+
+    private editingAddressId: number | null = null;
     private selectedLocation: { text: string, coords: [number, number] } | null = null;
-    private addressPickerInstance: AddressPicker | null = null;
+    private addressPickerInstance: AddressPicker;
 
     constructor() {
         super(profileTemplate);
+
+        this.addressPickerInstance = new AddressPicker((addr, coords) => {
+            this.selectedLocation = { text: addr, coords: coords };
+            this.openDetailsModal(); 
+        });
     }
 
     async mount(container: HTMLElement) {
@@ -88,7 +95,10 @@ export class Profile extends Component {
 
         const addBtn = document.getElementById('add-address-btn');
         if (addBtn) {
-            addBtn.onclick = () => this.handleAddAddressClick();
+            addBtn.onclick = () => {
+                this.editingAddressId = null;
+                this.addressPickerInstance.openMapModal();
+            };
         }
 
         const confirmLocBtn = document.getElementById('confirm-location-btn');
@@ -111,17 +121,136 @@ export class Profile extends Component {
             finalForm.onsubmit = (e) => this.submitFinalAddress(e);
         }
 
-        const pickerContainer = document.getElementById('profile-address-picker-container');
-        if (pickerContainer) {
-            this.addressPickerInstance = new AddressPicker((addr, coords) => {
-                this.selectedLocation = { text: addr, coords: coords };
-                this.openDetailsModal(); 
+        const pickerPlaceholder = document.getElementById('profile-address-picker-container');
+        if (pickerPlaceholder) {
+            this.addressPickerInstance.mount(pickerPlaceholder, { hideInput: true });
+        }
+
+        const addressList = document.getElementById('profile-address-list');
+        if (addressList) {
+            addressList.onclick = (e) => {
+                const target = e.target as HTMLElement;
+                const addrId = target.getAttribute('data-id');
+                if (!addrId) return;
+
+                if (target.classList.contains('delete-addr-btn')) {
+                    this.deleteAddress(addrId);
+                } else if (target.classList.contains('edit-addr-btn')) {
+                    this.openEditForm(Number(addrId));
+                }
+            };
+        }
+    }
+
+    private openEditForm(id: number) {
+        const addr = this.addresses.find(a => a.id === id);
+        if (!addr) return;
+
+        this.editingAddressId = id;
+        this.selectedLocation = {
+            text: addr.location.address_text,
+            coords: [addr.location.lat, addr.location.lon]
+        };
+
+        const modal = document.getElementById('address-details-modal');
+        const form = document.getElementById('address-full-form') as HTMLFormElement;
+        const displayInput = document.getElementById('display-address-text') as HTMLInputElement;
+
+        if (modal && form && displayInput) {
+            displayInput.value = addr.location.address_text;
+            (form.elements.namedItem('apartment') as HTMLInputElement).value = addr.apartment || '';
+            (form.elements.namedItem('entrance') as HTMLInputElement).value = addr.entrance || '';
+            (form.elements.namedItem('floor') as HTMLInputElement).value = addr.floor || '';
+            (form.elements.namedItem('door_code') as HTMLInputElement).value = addr.door_code || '';
+            (form.elements.namedItem('courier_comment') as HTMLInputElement).value = addr.courier_comment || '';
+            modal.classList.add('active');
+        }
+    }
+
+    private async deleteAddress(id: string) {
+        if (!confirm('Удалить этот адрес?')) return;
+        try {
+            const res = await fetch(`/api/profile/addresses/${id}`, {
+                method: 'DELETE',
+                credentials: 'include'
             });
+            if (res.ok) this.mount(this.element!);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    private editAddress(element: HTMLElement, id: string | null) {
+        if (!id) return;
+        
+        const textSpan = element.querySelector('.address-text') as HTMLElement;
+        const oldText = textSpan.innerText;
+        
+        textSpan.innerHTML = `<input type="text" class="address-edit-input" value="${oldText}" style="width: 100%;">`;
+        const input = textSpan.querySelector('input') as HTMLInputElement;
+        input.focus();
+
+        input.onblur = async () => {
+            const newText = input.value.trim();
+            if (!newText || newText === oldText) {
+                textSpan.innerText = oldText;
+                return;
+            }
             
-            this.addressPickerInstance.mount(pickerContainer, { 
-                hideInput: true,
-                savedAddresses: this.addresses.map(a => a.location.address_text)
+            try {
+                const res = await fetch(`/api/profile/addresses/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        address_text: newText,
+                        lat: 55.75,
+                        lon: 37.61 
+                    }),
+                    credentials: 'include'
+                });
+
+                if (res.ok) {
+                    this.mount(this.element!);
+                } else {
+                    alert('Ошибка при сохранении');
+                    textSpan.innerText = oldText;
+                }
+            } catch (e) {
+                console.error(e);
+                textSpan.innerText = oldText;
+            }
+        };
+
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') input.blur();
+            if (e.key === 'Escape') { input.value = oldText; input.blur(); }
+        };
+    }
+
+    private async addNewAddress() {
+        const address = prompt('Введите новый адрес:');
+        if (!address) return;
+
+        try {
+            const res = await fetch('/api/profile/addresses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    address_text: address,
+                    lat: 55.75,
+                    lon: 37.61,
+                    label: 'Дом'
+                }),
+                credentials: 'include'
             });
+
+            if (res.ok) {
+                this.mount(this.element!);
+            } else {
+                alert('Не удалось добавить адрес');
+            }
+        } catch (e) {
+            console.error(e);
         }
     }
 
@@ -223,20 +352,24 @@ export class Profile extends Component {
     }
 
     private openDetailsModal() {
-        document.getElementById('profile-map-modal')?.classList.remove('active');
-        
-        const detailsModal = document.getElementById('address-details-modal');
-        if (detailsModal) detailsModal.classList.add('active');
-        
+        const modal = document.getElementById('address-details-modal');
         const displayInput = document.getElementById('display-address-text') as HTMLInputElement;
-        if (displayInput) displayInput.value = this.selectedLocation?.text || "";
+        
+        if (modal && displayInput) {
+            displayInput.value = this.selectedLocation?.text || "";
+            // Сбрасываем форму, если это новый адрес
+            if (!this.editingAddressId) {
+                (document.getElementById('address-full-form') as HTMLFormElement).reset();
+            }
+            modal.classList.add('active');
+        }
     }
+
 
     private async submitFinalAddress(e: Event) {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
-
         if (!this.selectedLocation) return;
 
         const payload = {
@@ -248,19 +381,26 @@ export class Profile extends Component {
             floor: formData.get('floor'),
             door_code: formData.get('door_code'),
             courier_comment: formData.get('courier_comment'),
-            label: formData.get('label') || "Дом"
+            label: "Дом"
         };
 
         try {
-            const response = await Ajax.post('/profile/addresses', payload);
-            if (response.ok) {
-                localStorage.removeItem('delivery_address');
-                localStorage.removeItem('delivery_coords');
+            let res;
+            if (this.editingAddressId) {
+                res = await fetch(`/api/profile/addresses/${this.editingAddressId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    credentials: 'include'
+                });
+            } else {
+                res = await Ajax.post('/profile/addresses', payload);
+            }
+
+            if (res.ok) {
                 document.getElementById('address-details-modal')?.classList.remove('active');
                 this.mount(this.element!); 
             }
-        } catch (err) {
-            console.error("Ошибка сохранения:", err);
-        }
+        } catch (err) { console.error(err); }
     }
 }

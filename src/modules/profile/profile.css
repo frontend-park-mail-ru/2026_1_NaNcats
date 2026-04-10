@@ -174,3 +174,35 @@
 .order-name { font-size: 14px; font-weight: 400; color: #0E1117; line-height: 1.2; }
 .order-weight { font-size: 12px; font-weight: 300; color: #7D7D7D; }
 .order-price { font-size: 14px; font-weight: 500; color: black; }
+
+.address-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.address-actions {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.edit-address-btn, .delete-address-btn {
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.edit-address-btn:hover, .delete-address-btn:hover {
+    opacity: 1;
+}
+
+.address-edit-input {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid var(--accent-orange);
+    border-radius: 4px;
+    font-family: inherit;
+}

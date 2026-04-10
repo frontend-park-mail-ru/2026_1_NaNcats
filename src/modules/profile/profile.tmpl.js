@@ -23,7 +23,7 @@ export const profileTemplate = `
             <div class="profile-card profile-user">
                 <div class="profile-user__header">
                     <input type="text" id="profile-name" class="profile-input profile-input_name" value="{{=it.user.name}}" disabled>
-                    <div class="edit-icon" id="edit-profile-btn" title="Редактировать">✏️</div>
+                    <div class="edit-icon" id="edit-profile-btn">✏️</div>
                 </div>
                 
                 <div class="profile-avatar-container">
@@ -87,21 +87,19 @@ export const profileTemplate = `
                     <div class="orange-dot-large"></div>
                     <button class="link-orange" id="add-address-btn" style="background:none; border:none; margin-left:auto; cursor:pointer;">+ Добавить</button>
                 </div>
-                <div class="address-list" id="profile-address-list">
+                <div class="address-list" id="profile-address-list"> <!-- ID совпадает с кодом -->
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~it.addresses :addr}}
                         <div class="address-item" data-id="{{=addr.id}}">
                             <div class="address-info">
                                 <span class="address-text">{{=addr.location.address_text}}</span>
                                 <span class="address-details">
-                                    {{=addr.apartment ? 'кв. ' + addr.apartment : ''}} 
-                                    {{=addr.entrance ? 'под. ' + addr.entrance : ''}}
-                                    {{=addr.floor ? 'эт. ' + addr.floor : ''}}
+                                    {{=addr.apartment ? 'кв. ' + addr.apartment : ''}} {{=addr.floor ? 'эт. ' + addr.floor : ''}}
                                 </span>
                             </div>
                             <div class="address-actions">
-                                <span class="edit-addr-btn" data-id="{{=addr.id}}">✏️</span>
-                                <span class="delete-addr-btn" data-id="{{=addr.id}}">🗑️</span>
+                                <span class="edit-addr-btn" data-id="{{=addr.id}}" style="cursor:pointer; margin-right:10px;">✏️</span>
+                                <span class="delete-addr-btn" data-id="{{=addr.id}}" style="cursor:pointer;">🗑️</span>
                             </div>
                         </div>
                         {{~}}
@@ -150,8 +148,11 @@ export const profileTemplate = `
             </div>
         </main>
     </div>
+
+    <!-- Контейнер для AddressPicker (карты) -->
     <div id="profile-address-picker-container"></div>
 
+    <!-- Модалка деталей -->
     <div class="modal-overlay" id="address-details-modal">
         <div class="address-modal" style="width: 500px;">
             <div class="address-modal__close" id="close-details-modal">&times;</div>
@@ -161,7 +162,6 @@ export const profileTemplate = `
                     <label>Адрес</label>
                     <input type="text" id="display-address-text" class="input-field" disabled style="background:#eee">
                 </div>
-                
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                     <div class="input-group"><label>Квартира</label><input name="apartment" class="input-field"></div>
                     <div class="input-group"><label>Подъезд</label><input name="entrance" class="input-field"></div>
@@ -169,7 +169,7 @@ export const profileTemplate = `
                     <div class="input-group"><label>Код двери</label><input name="door_code" class="input-field"></div>
                 </div>
                 <div class="input-group">
-                    <label>Комментарий курьеру</label>
+                    <label>Комментарий</label>
                     <input name="courier_comment" class="input-field">
                 </div>
                 <button type="submit" class="button button_primary">Сохранить адрес</button>
