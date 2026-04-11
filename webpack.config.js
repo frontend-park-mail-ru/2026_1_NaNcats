@@ -32,8 +32,8 @@ module.exports = (env, argv) => {
     module: {
       rules: [
         {
-          test: /\.css$/i,
-          use: ['style-loader', 'css-loader'],
+          test: /\.(css|scss)$/i,
+          use: ['style-loader', 'css-loader', 'sass-loader'],
         },
         {
           test: /\.(js|ts)$/,
