@@ -32,6 +32,7 @@ export class Profile extends Component {
     }
 
     async mount(container: HTMLElement) {
+        this.isEditing = false;
         try {
             const [userRes, addrRes, cardsRes] = await Promise.all([
                 Ajax.get('/profile'),
@@ -72,31 +73,32 @@ export class Profile extends Component {
             deleteBtn.onclick = () => this.deleteAvatar();
         }
 
-        const editBtn = document.getElementById('edit-profile-btn');
-        const saveBtn = document.getElementById('save-profile-btn');
+        const editTriggers = document.querySelectorAll('.js-edit-trigger');
+        const saveBtn = document.getElementById('save-profile-btn') as HTMLElement;
         const nameInput = document.getElementById('profile-name') as HTMLInputElement;
         const emailInput = document.getElementById('profile-email') as HTMLInputElement;
 
-        if (editBtn && saveBtn && nameInput && emailInput) {
-            editBtn.onclick = () => {
-                this.isEditing = !this.isEditing;
-                nameInput.disabled = !this.isEditing;
-                emailInput.disabled = !this.isEditing;
-                
-                if (this.isEditing) {
-                    nameInput.focus();
-                    saveBtn.classList.remove('hidden');
-                } else {
-                    saveBtn.classList.add('hidden');
-                    if (this.user) {
-                        nameInput.value = this.user.name;
-                        emailInput.value = this.user.email;
+        if (editTriggers.length && saveBtn && nameInput && emailInput) {
+            editTriggers.forEach(trigger => {
+                (trigger as HTMLElement).onclick = () => {
+                    this.isEditing = !this.isEditing;
+                    nameInput.disabled = !this.isEditing;
+                    emailInput.disabled = !this.isEditing;
+                    
+                    if (this.isEditing) {
+                        nameInput.focus();
+                        saveBtn.classList.remove('hidden');
+                    } else {
+                        saveBtn.classList.add('hidden');
+                        if (this.user) {
+                            nameInput.value = this.user.name;
+                            emailInput.value = this.user.email;
+                        }
                     }
-                }
-            };
-
-            saveBtn.onclick = () => this.saveProfile(nameInput.value, emailInput.value);
+                };
+            });
         }
+        saveBtn.onclick = () => this.saveProfile(nameInput.value, emailInput.value);
 
         const addBtn = document.getElementById('add-address-btn');
         if (addBtn) {
@@ -163,6 +165,15 @@ export class Profile extends Component {
                 } else if (target.classList.contains('set-default-card-btn')) {
                     this.setDefaultCard(cardId);
                 }
+            };
+        }
+
+        const showMoreBtn = document.getElementById('show-more-addresses-btn');
+        if (showMoreBtn) {
+            showMoreBtn.onclick = () => {
+                const hiddenAddresses = document.querySelectorAll('.js-hidden-address');
+                hiddenAddresses.forEach(el => el.classList.remove('hidden'));
+                showMoreBtn.style.display = 'none';
             };
         }
     }

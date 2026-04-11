@@ -39,6 +39,19 @@
     font-size: 14px;
     cursor: pointer;
     transition: opacity 0.2s;
+    padding: 6px 12px;
+    border-radius: 12px;
+    transition: all 0.2s ease-in-out;
+}
+
+.profile-header__back:hover {
+    background: rgba(0, 0, 0, 0.04);
+    color: #0E1117; 
+}
+
+.profile-header__back:hover .back-icon-arrow {
+    background: #0E1117;
+    transform: translateX(-2px);
 }
 
 .back-icon-arrow {
@@ -162,8 +175,33 @@
 
 /* Стрик и Бонусы */
 .card-label-row { display: flex; align-items: center; gap: 5px; font-size: 14px; }
-.orange-dot-small { width: 10px; height: 10px; background: #D78306; border-radius: 2px; }
-.orange-dot-large { width: 16px; height: 16px; background: #D78306; border-radius: 3px; }
+.orange-dot-small {
+    width: 10px;
+    height: 10px;
+    background-color: transparent;
+    border-radius: 0;
+    
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='10' viewBox='0 0 10 10' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 0C2.24302 0 0 2.24302 0 5C0 7.75698 2.24302 10 5 10C7.75698 10 10 7.75698 10 5C10 2.24302 7.75698 0 5 0ZM5 0.75C7.35165 0.75 9.25 2.64835 9.25 5C9.25 7.35165 7.35165 9.25 5 9.25C2.64835 9.25 0.75 7.35165 0.75 5C0.75 2.64835 2.64835 0.75 5 0.75ZM4.5 2.51367V3.48633H5.5V2.51367H4.5ZM4.60742 4.49805V4.89062V7.60547V7.99805H5.39258V7.60547V4.89062V4.49805H4.60742Z' fill='%23D78306'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    
+    flex-shrink: 0;
+}
+.orange-dot-large {
+    width: 16px;
+    height: 16px;
+    background-color: transparent;
+    border-radius: 0;
+    
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 0C3.58883 0 0 3.58883 0 8C0 12.4112 3.58883 16 8 16C12.4112 16 16 12.4112 16 8C16 3.58883 12.4112 0 8 0ZM8 1.2C11.7626 1.2 14.8 4.23736 14.8 8C14.8 11.7626 11.7626 14.8 8 14.8C4.23735 14.8 1.2 11.7626 1.2 8C1.2 4.23736 4.23735 1.2 8 1.2ZM7.4 4V4.6V7.4H4.6H4V8.6H4.6H7.4V11.4V12H8.6V11.4V8.6H11.4H12V7.4H11.4H8.6V4.6V4H7.4Z' fill='%23D78306'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
 .card-value-text { font-size: 12px; font-weight: 300; }
 
 .bonuses-left { display: flex; flex-direction: column; align-items: center; gap: 4px; }
@@ -207,7 +245,20 @@
 
 /* История заказов */
 .profile-card_orders { margin-top: 10px; }
-.orders-list { display: flex; flex-direction: column; gap: 10px; }
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    
+    max-height: 350px; 
+    
+    overflow-y: auto;
+    
+    scrollbar-width: none;
+    padding-right: 2px;
+    padding-bottom: 40px;
+}
+
 .order-row {
     display: flex; align-items: center; justify-content: space-between;
     background: #FEFEFF; border-radius: 20px; padding: 15px 20px;
@@ -226,3 +277,163 @@
 .error-msg { color: #FF4C4F; font-size: 12px; margin-top: 5px; text-align: center; }
 .hidden { display: none !important; }
 .empty-text { font-size: 14px; color: #7D7D7D; font-weight: 300; }
+
+.profile-user-header {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.profile-avatar-wrapper {
+    position: absolute;
+    top: 0;
+    z-index: 2;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 4px solid white; /* Чтобы визуально отделялась */
+    overflow: hidden;
+    background: white;
+}
+
+.profile-name-card {
+    width: 350px;
+    height: 52px;
+    background: white;
+    border-radius: 24px;
+    margin-top: 74px; /* Смещение вниз */
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* Чтобы имя было ниже центра */
+    padding-bottom: 10px;
+    z-index: 1;
+}
+
+/* Пункт 2 и 5: Кликабельные оранжевые квадраты */
+.orange-dot-large.clickable {
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+.orange-dot-large.clickable:hover {
+    transform: scale(1.1);
+}
+
+/* Пункт 3: Список адресов с прокруткой */
+.address-list-container {
+    width: 100%;
+    padding-left: 5px;
+}
+
+.address-list {
+    max-height: 110px; /* Высота примерно под 2-3 адреса */
+    overflow-y: auto;
+    scrollbar-width: none; /* Прячем скролл */
+}
+.address-list::-webkit-scrollbar { display: none; }
+
+/* Пункт 1: Звездочка на картах */
+.mini-card__star {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 14px;
+    color: white;
+    cursor: pointer;
+    opacity: 0.6;
+}
+.mini-card__star.active {
+    color: #FDA522;
+    opacity: 1;
+}
+.mini-card__star:hover { opacity: 1; }
+
+.mini-card__delete {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.js-hidden-address.hidden { display: none; }
+
+.delete-avatar-hover {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 76, 79, 0.9);
+    color: white;
+    font-size: 10px;
+    padding: 6px 0;
+    text-align: center;
+    cursor: pointer;
+    transform: translateY(100%);
+    transition: transform 0.2s ease-in-out;
+    z-index: 10;
+}
+
+.profile-avatar-wrapper:hover .delete-avatar-hover {
+    transform: translateY(0);
+}
+
+.avatar-overlay {
+    z-index: 5;
+}
+
+.card-side-label {
+    flex: 0 0 125px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.card-side-content {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 300;
+    line-height: 1.2;
+}
+
+.profile-card_details {
+    gap: 0;
+}
+
+#save-profile-btn.hidden {
+    display: none !important;
+}
+
+.profile-input_email {
+    text-align: left;
+    width: 100%;
+}
+
+.profile-card_details .info-group:last-of-type {
+    margin-bottom: 0;
+}
+
+#profile-error.error-msg {
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    transition: margin 0.2s;
+}
+
+#profile-error.error-msg:not(:empty) {
+    margin-top: 10px;
+    min-height: 14px;
+}
+
+/* Убеждаемся, что кнопка и её скрытие не оставляют зазоров */
+#save-profile-btn {
+    margin-top: 15px; /* Отступ только когда кнопка видна */
+}
+
+#save-profile-btn.hidden {
+    display: none !important;
+}
