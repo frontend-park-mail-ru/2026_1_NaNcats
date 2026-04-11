@@ -165,6 +165,7 @@ export class Restaurants extends Component {
                     onerror="this.src='https://placehold.co/400x225/png?text=${res.name}'">
                     <div class="res-info">
                         <span class="res-name">${res.name}</span>
+                        <span class="res-desc">Пицца, суши, роллы</span>
                     </div>
                 </div>
             `;
