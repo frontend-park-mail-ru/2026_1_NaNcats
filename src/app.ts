@@ -1,24 +1,24 @@
-import { Router } from './core/Router.js';
-import { NotFound } from './errors/NotFound.js';
+import { Router } from './core/Router';
+import { NotFound } from './errors/NotFound';
 
-const root = document.getElementById('root');
+const root = document.getElementById('root') as HTMLElement;
 
 window.router = new Router(root);
 window.router
     .register('/', async () => {
-        const { Restaurants } = await import('./modules/restaurants/Restaurants.js');
+        const { Restaurants } = await import('./modules/restaurants/Restaurants');
         return new Restaurants();
     })
     .register('/login', async () => {
-        const { Login } = await import('./modules/login/Login.js');
+        const { Login } = await import('./modules/login/Login');
         return new Login();
     })
     .register('/register', async () => {
-        const { Register } = await import('./modules/register/Register.js');
+        const { Register } = await import('./modules/register/Register');
         return new Register();
     })
     .register('/profile', async () => {
-        const { Profile } = await import('./modules/profile/Profile.ts');
+        const { Profile } = await import('./modules/profile/Profile');
         return new Profile();
     })
     .register('/404', new NotFound()); 
