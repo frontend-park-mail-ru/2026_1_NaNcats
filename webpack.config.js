@@ -16,7 +16,7 @@ module.exports = (env, argv) => {
     target: 'web',
     mode: isProduction ? 'production' : 'development',
     
-    entry: './src/app.js', 
+    entry: './src/app.ts', 
 
     output: {
       path: path.resolve(__dirname, 'dist'),
