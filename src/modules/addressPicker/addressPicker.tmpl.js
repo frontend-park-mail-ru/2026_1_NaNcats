@@ -45,7 +45,6 @@ export const addressPickerTemplate = `
         </div>
     </div>
 
-    <!-- Модалка с деталями (квартира и т.д.) -->
     <div class="modal-overlay js-details-modal">
         <div class="address-modal" style="width: 500px;">
             <div class="address-modal__close js-close-details-modal">&times;</div>

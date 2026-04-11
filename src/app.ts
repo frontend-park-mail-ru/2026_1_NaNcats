@@ -1,3 +1,6 @@
+import './styles/variables.scss';
+import './styles/base.scss';
+import './styles/components.scss';
 import { Router } from './core/Router';
 import { NotFound } from './errors/NotFound';
 

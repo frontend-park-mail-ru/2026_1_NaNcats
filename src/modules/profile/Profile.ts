@@ -1,9 +1,9 @@
+import './profile.scss';
 import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
 import { profileTemplate } from './profile.tmpl';
 import { validateEmail, validateName } from '../../shared/utils/Validator';
 import { AddressPicker } from '../addressPicker/AddressPicker';
-import './profile.css';
 
 interface UserProfile {
     name: string;
@@ -86,9 +86,9 @@ export class Profile extends Component {
                     
                     if (this.isEditing) {
                         nameInput.focus();
-                        saveBtn.classList.remove('hidden');
+                        saveBtn.classList.remove('button_hidden');
                     } else {
-                        saveBtn.classList.add('hidden');
+                        saveBtn.classList.add('button_hidden');
                         if (this.user) {
                             nameInput.value = this.user.name;
                             emailInput.value = this.user.email;
@@ -119,7 +119,7 @@ export class Profile extends Component {
 
         const closeDetailsBtn = document.getElementById('close-details-modal');
         if (closeDetailsBtn) {
-            closeDetailsBtn.onclick = () => document.getElementById('address-details-modal')?.classList.remove('active');
+            closeDetailsBtn.onclick = () => document.getElementById('address-details-modal')?.classList.remove('modal-overlay_active');
         }
 
         const finalForm = document.getElementById('address-full-form') as HTMLFormElement;
@@ -174,7 +174,7 @@ export class Profile extends Component {
         if (showMoreBtn) {
             showMoreBtn.onclick = () => {
                 const hiddenAddresses = document.querySelectorAll('.js-hidden-address');
-                hiddenAddresses.forEach(el => el.classList.remove('hidden'));
+                hiddenAddresses.forEach(el => el.classList.remove('address-row_hidden'));
                 showMoreBtn.style.display = 'none';
             };
         }
@@ -253,7 +253,7 @@ export class Profile extends Component {
             const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
             const ent = addr.entrance ? `, под. ${addr.entrance}` : '';
             const fl = addr.floor ? `, эт. ${addr.floor}` : '';
-            const isHidden = index >= 2 ? 'js-hidden-address hidden' : '';
+            const isHidden = index >= 2 ? 'js-hidden-address address-row_hidden' : '';
             
             return `
             <div class="address-row ${isHidden}" data-id="${addr.id}">
@@ -292,7 +292,7 @@ export class Profile extends Component {
             (form.elements.namedItem('floor') as HTMLInputElement).value = addr.floor || '';
             (form.elements.namedItem('door_code') as HTMLInputElement).value = addr.door_code || '';
             (form.elements.namedItem('courier_comment') as HTMLInputElement).value = addr.courier_comment || '';
-            modal.classList.add('active');
+            modal.classList.add('modal-overlay_active');
         }
     }
 
@@ -409,7 +409,7 @@ export class Profile extends Component {
             }
 
             displayInput.value = this.selectedLocation?.text || "";
-            modal.classList.add('active');
+            modal.classList.add('modal-overlay_active');
         }
     }
 
@@ -442,7 +442,7 @@ export class Profile extends Component {
 
             if (res.ok) {
                 const modal = document.getElementById('address-details-modal');
-                modal?.classList.remove('active');
+                modal?.classList.remove('modal-overlay_active');
 
                 this.editingAddressId = null;
                 this.selectedLocation = null;

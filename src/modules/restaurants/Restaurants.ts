@@ -1,4 +1,4 @@
-import './restaurants.css';
+import './restaurants.scss';
 import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
 import { restaurantsTemplate } from "./restaurants.tmpl.js";
@@ -173,10 +173,10 @@ export class Restaurants extends Component {
         restaurants.forEach(res => {
             const cardHtml = `
                 <div class="res-card">
-                    <img class="res-rect" src="${res.logo_url}" alt="${res.name}"
+                    <img class="res-card__rect" src="${res.logo_url}" alt="${res.name}"
                     onerror="this.src='https://placehold.co/400x225/png?text=${res.name}'">
-                    <div class="res-info">
-                        <span class="res-name">${res.name}</span>
+                    <div class="res-card__info">
+                        <span class="res-card__name">${res.name}</span>
                     </div>
                 </div>
             `;

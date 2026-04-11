@@ -21,7 +21,7 @@ export const loginTemplate = `
                     </div>
                     <div class="password-wrapper">
                         <input type="password" class="input-field" name="password" placeholder="Пароль" id="password">
-                        <div class="password-icon"></div>
+                        <div class="password-wrapper__icon js-password-toggle"></div>
                     </div>
                     <div id="password-error" class="error-msg"></div>
                 </div>

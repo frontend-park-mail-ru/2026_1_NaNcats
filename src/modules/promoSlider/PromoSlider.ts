@@ -1,4 +1,4 @@
-import './promoSlider.css';
+import './promoSlider.scss';
 import { Component } from '../../core/Component';
 import { promoSliderTemplate } from './promoSlider.tmpl.js';
 
@@ -66,12 +66,12 @@ export class PromoSlider extends Component {
      * @returns {void}
      */
     public afterRender(): void {
-        this.element?.querySelector('.nav-arrow_prev')?.addEventListener('click', () => {
+        this.element?.querySelector('.js-nav-prev')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo - 1 + this.promoData.length) % this.promoData.length;
             this.update();
         });
 
-        this.element?.querySelector('.nav-arrow_next')?.addEventListener('click', () => {
+        this.element?.querySelector('.js-nav-next')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo + 1) % this.promoData.length;
             this.update();
         });

@@ -6,8 +6,8 @@ export const promoSliderTemplate = `
         <p>{{=it.current.text}}</p>
     </div>
     <div class="promo-nav">
-        <div class="nav-arrow nav-arrow_prev"></div>
-        <div class="nav-arrow nav-arrow_next"></div>
+        <div class="promo-nav__arrow promo-nav__arrow_prev js-nav-prev"></div>
+        <div class="promo-nav__arrow promo-nav__arrow_next js-nav-next"></div>
     </div>
 </div>
 `;

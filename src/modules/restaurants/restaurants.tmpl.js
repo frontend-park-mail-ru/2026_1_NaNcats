@@ -33,7 +33,7 @@ export const restaurantsTemplate = `
                         <img src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" class="user-profile__avatar">
                     </a>
                     <div class="user-dropdown">
-                        <div class="user-dropdown__item logout" id="logout-btn">Выйти</div>
+                        <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
                     </div>
                 </div>
             {{??}}
@@ -68,9 +68,9 @@ export const restaurantsTemplate = `
                         ]; 
                     }}
                     {{~categories :cat}}
-                        <div class="category-item {{=cat.active ? 'active' : ''}}">
-                            <span class="category-icon">{{=cat.i}}</span>
-                            <span class="category-name">{{=cat.n}}</span>
+                        <div class="category-item {{=cat.active ? 'category-item_active' : ''}}">
+                            <span class="category-item__icon">{{=cat.i}}</span>
+                            <span class="category-item__name">{{=cat.n}}</span>
                         </div>
                     {{~}}
                 </div>
@@ -85,11 +85,11 @@ export const restaurantsTemplate = `
                 <div class="res-grid">
                     {{~it.restaurants :res}}
                         <div class="res-card">
-                            <img class="res-rect" src="{{=res.logo_url}}" alt="{{=res.name}}"
+                            <img class="res-card__rect" src="{{=res.logo_url}}" alt="{{=res.name}}"
                             onerror="this.src='https://placehold.co/400x225/png?text={{=res.name}}'">
-                            <div class="res-info">
-                                <span class="res-name">{{=res.name}}</span>
-                                <span class="res-desc">Пицца, суши, роллы</span>
+                            <div class="res-card__info">
+                                <span class="res-card__name">{{=res.name}}</span>
+                                <span class="res-card__desc">Пицца, суши, роллы</span>
                             </div>
                         </div>
                     {{~}}
@@ -105,18 +105,18 @@ export const restaurantsTemplate = `
                 </div>
                 
                 <div class="cart-toggle">
-                    <div class="cart-toggle-btn active">Доставка</div>
-                    <div class="cart-toggle-btn">Самовывоз</div>
+                    <div class="cart-toggle__btn cart-toggle__btn_active">Доставка</div>
+                    <div class="cart-toggle__btn">Самовывоз</div>
                 </div>
 
                 <div class="cart-items-list">
                     <!-- Заглушки -->
                     {{ for(let i=0; i<4; i++) { }}
                     <div class="cart-item">
-                        <img src="https://placehold.co/46x37" class="cart-item-img">
-                        <div class="cart-item-price">115₽</div>
-                        <div class="cart-item-name">Чизбургер</div>
-                        <div class="cart-item-controls">
+                        <img src="https://placehold.co/46x37" class="cart-item__img">
+                        <div class="cart-item__price">115₽</div>
+                        <div class="cart-item__name">Чизбургер</div>
+                        <div class="cart-item__controls">
                             <button class="qty-btn">-</button>
                             <span class="qty-val">1</span>
                             <button class="qty-btn">+</button>

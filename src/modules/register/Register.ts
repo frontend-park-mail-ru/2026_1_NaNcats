@@ -1,4 +1,4 @@
-import './register.css';
+import './register.scss';
 import { registerTemplate } from './register.tmpl.js';
 import { Ajax } from '../../core/Ajax';
 import { validateEmail, validatePassword, validateName } from '../../shared/utils/Validator';

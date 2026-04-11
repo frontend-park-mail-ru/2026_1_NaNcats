@@ -22,13 +22,11 @@ export const profileTemplate = `
         <aside class="profile-sidebar">
             
             <div class="profile-user-header">
-                <div class="profile-avatar-wrapper">
-                    <img id="profile-avatar-img" class="profile-avatar-img" src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" alt="avatar">
-                    <!-- Оверлей для смены фото -->
-                    <div class="avatar-overlay" id="upload-avatar-btn">📷</div>
-                    <!-- Кнопка удаления при наведении (Пункт 1) -->
+                <div class="profile-avatar__wrapper">
+                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" alt="avatar">
+                    <div class="profile-avatar__overlay" id="upload-avatar-btn">📷</div>
                     {{? it.user.avatar_url }}
-                        <div class="delete-avatar-hover" id="delete-avatar-btn">Удалить</div>
+                        <div class="profile-avatar__delete-hover" id="delete-avatar-btn">Удалить</div>
                     {{?}}
                     <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/webp" hidden>
                 </div>
@@ -59,7 +57,7 @@ export const profileTemplate = `
                     <div class="subscription-text">Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий</div>
                 </div>
                 <!-- Кнопка сохранить (теперь не занимает место если скрыта) -->
-                <button id="save-profile-btn" class="button button_primary hidden" style="height: 40px; margin-top: 10px;">Сохранить</button>
+                <button id="save-profile-btn" class="button button_primary button_hidden" style="height: 40px; margin-top: 10px;">Сохранить</button>
                 <div id="profile-error" class="error-msg"></div>
             </div>
 
@@ -67,7 +65,7 @@ export const profileTemplate = `
             <div class="profile-card profile-card_row">
                 <div class="card-side-label">
                     <span>Стрик</span>
-                    <div class="orange-dot-small"></div>
+                    <div class="orange-dot orange-dot_small"></div>
                 </div>
                 <div class="card-side-content card-value-text">14 недель - так держать! 🔥</div>
             </div>
@@ -91,14 +89,14 @@ export const profileTemplate = `
                 <div class="section-header">
                     <h2 class="section-title">Адреса доставки</h2>
                     <!-- Оранжевая кнопка добавить (Пункт 2) -->
-                    <div class="orange-dot-large clickable" id="add-address-btn"></div>
+                    <div class="orange-dot orange-dot_large" id="add-address-btn"></div>
                 </div>
                 
                 <!-- Список с прокруткой (Пункт 3) -->
                 <div class="address-list" id="profile-address-list">
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~it.addresses :addr:index}}
-                        <div class="address-row {{? index >= 2 }}js-hidden-address hidden{{?}}" data-id="{{=addr.id}}">
+                        <div class="address-row {{? index >= 2 }}js-hidden-address address-row_hidden{{?}}" data-id="{{=addr.id}}">
                             <span class="address-row__text">
                                 {{=addr.location.address_text}}
                                 {{? addr.apartment }}, кв. {{=addr.apartment}}{{?}}
@@ -120,7 +118,7 @@ export const profileTemplate = `
                 <div class="section-header mt-30">
                     <h2 class="section-title">Карты и оплата</h2>
                     <!-- Оранжевая кнопка добавить карту (Пункт 5) -->
-                    <div class="orange-dot-large clickable" id="add-card-btn"></div>
+                    <div class="orange-dot orange-dot_large" id="add-card-btn"></div>
                 </div>
 
                 <div class="cards-grid" id="profile-cards-list">
@@ -128,7 +126,7 @@ export const profileTemplate = `
                         {{~it.cards :card}}
                         <div class="mini-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'mini-card_sber' : 'mini-card_tinkoff' }}">
                             <!-- Звездочка выбора основной (Пункт 1) -->
-                            <div class="mini-card__star set-default-card-btn {{? card.is_default }}active{{?}}" data-id="{{=card.id}}">
+                            <div class="mini-card__star set-default-card-btn {{? card.is_default }}mini-card__star_active{{?}}" data-id="{{=card.id}}">
                                 {{? card.is_default }}★{{??}}☆{{?}}
                             </div>
                             <div class="mini-card__number">** {{=card.last4}}</div>

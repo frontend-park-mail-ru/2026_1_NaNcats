@@ -24,7 +24,7 @@ export const registerTemplate = `
                     <label for="password">Пароль</label>
                     <div class="password-wrapper">
                         <input class="input-field" type="password" name="password" placeholder="Пароль" id="password">
-                        <div class="password-icon"></div>
+                        <div class="password-wrapper__icon js-password-toggle"></div>
                     </div>
                     <span id="password-error" class="error-msg"></span>
                 </div>
@@ -33,7 +33,7 @@ export const registerTemplate = `
                     <label for="repeatPassword">Повторите пароль</label>
                     <div class="password-wrapper">
                         <input class="input-field" type="password" name="repeatPassword" placeholder="Повторите пароль" id="repeatPassword">
-                        <div class="password-icon"></div>
+                        <div class="password-wrapper__icon js-password-toggle"></div>
                     </div>
                     <span id="repeatPassword-error" class="error-msg"></span>
                 </div>

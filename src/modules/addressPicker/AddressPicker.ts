@@ -1,6 +1,6 @@
+import './addressPicker.scss';
 import { Component } from '../../core/Component';
 import { addressPickerTemplate } from './addressPicker.tmpl';
-import './addressPicker.css';
 
 declare var ymaps: any;
 declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
@@ -39,7 +39,7 @@ export class AddressPicker extends Component {
     public openMapModal(): void {
         const modal = this.element?.querySelector('.js-map-modal');
         if (modal) {
-            modal.classList.add('active');
+            modal.classList.add('modal-overlay_active');
             ymaps.ready(() => {
                 if (this.map) return;
                 const mapContainer = this.element?.querySelector('.js-yandex-map') as HTMLElement;
@@ -90,7 +90,7 @@ export class AddressPicker extends Component {
                 }
                 const target = e.target as HTMLInputElement;
                 const query = target.value.trim();
-                addressDropdown.classList.add('active');
+                addressDropdown.classList.add('address-dropdown_active');
 
                 if (!query) {
                     if (openMapBtn) openMapBtn.style.display = 'none';
@@ -115,7 +115,7 @@ export class AddressPicker extends Component {
 
         // 3. Закрытие модалки КАРТЫ
         this.element?.querySelector('.js-close-map-modal')?.addEventListener('click', () => {
-            this.element?.querySelector('.js-map-modal')?.classList.remove('active');
+            this.element?.querySelector('.js-map-modal')?.classList.remove('modal-overlay_active');
         });
 
         // 4. Кнопка ОК в модалке карты -> Открывает детали
@@ -124,7 +124,7 @@ export class AddressPicker extends Component {
         if (confirmBtn && modalInput) {
             confirmBtn.onclick = () => {
                 const addr = modalInput.value;
-                this.element?.querySelector('.js-map-modal')?.classList.remove('active');
+                this.element?.querySelector('.js-map-modal')?.classList.remove('modal-overlay_active');
                 
                 const hasMainInput = this.element?.querySelector('.js-address-input') !== null;
                 
@@ -167,7 +167,7 @@ export class AddressPicker extends Component {
                     } catch (err) { console.error(err); }
                 }
 
-                this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+                this.element?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
                 this.finalizeAddress(addressText, this.selectedCoords);
             };
         }
@@ -176,20 +176,20 @@ export class AddressPicker extends Component {
         const changeBtn = this.element?.querySelector('.js-change-address-btn') as HTMLElement | null;
         if (changeBtn) {
             changeBtn.onclick = () => {
-                this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+                this.element?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
                 this.openMapModal();
             };
         }
 
         // 8. Кнопка закрытия модалки ДЕТАЛЕЙ
         this.element?.querySelector('.js-close-details-modal')?.addEventListener('click', () => {
-            this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+            this.element?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
         });
 
         // Клик вне выпадашки
         document.addEventListener('click', (e) => {
             if (!this.element?.contains(e.target as Node)) {
-                addressDropdown?.classList.remove('active');
+                addressDropdown?.classList.remove('address-dropdown_active');
             }
         });
     }
@@ -211,7 +211,7 @@ export class AddressPicker extends Component {
             form.reset();
             displayInput.value = address;
             this.selectedCoords = coords;
-            modal.classList.add('active');
+            modal.classList.add('modal-overlay_active');
         }
     }
 
@@ -229,25 +229,6 @@ export class AddressPicker extends Component {
                 } else {
                     this.finalizeAddress(addr, this.selectedCoords);
                 }
-            };
-        });
-    }
-
-    private renderModalSuggestions(list: string[]): void {
-        const container = this.element?.querySelector('.js-modal-suggestions');
-        if (!container) return;
-        container.classList.add('active');
-        container.innerHTML = list.map(addr => `<div class="modal-suggestion-item">${addr}</div>`).join('');
-        container.querySelectorAll('.modal-suggestion-item').forEach(el => {
-            (el as HTMLElement).onclick = () => {
-                const addr = (el as HTMLElement).innerText;
-                (this.element?.querySelector('.js-modal-address-input') as HTMLInputElement).value = addr;
-                container.classList.remove('active');
-                ymaps.geocode(addr).then((res: any) => {
-                    const coords = res.geoObjects.get(0).geometry.getCoordinates();
-                    this.map?.setCenter(coords, 16);
-                    this.selectedCoords = coords;
-                });
             };
         });
     }
