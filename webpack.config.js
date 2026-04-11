@@ -36,8 +36,8 @@ module.exports = (env, argv) => {
           use: ['style-loader', 'css-loader'],
         },
         {
-          test: /\.ts$/,
-          use: 'ts-loader',
+          test: /\.(js|ts)$/,
+          use: 'babel-loader',
           exclude: /node_modules/,
         },
       ],
