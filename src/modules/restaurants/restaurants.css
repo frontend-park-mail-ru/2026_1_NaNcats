@@ -340,3 +340,47 @@ body, html {
     width: 861px; background: var(--bg-main); border-radius: 24px; padding: 20px;
     display: flex; flex-direction: column; gap: 15px;
 }
+
+.auth-guest-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.button_header-login,
+.button_header-reg {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.button_header-login {
+    background: transparent;
+    color: var(--text-dark);
+}
+
+.button_header-login:hover {
+    background: var(--input-bg);
+    color: var(--accent-pink);
+}
+
+.button_header-reg {
+    background: var(--accent-pink);
+    color: var(--white);
+    box-shadow: 0 4px 10px rgba(247, 149, 140, 0.3);
+}
+
+.button_header-reg:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 6px 15px rgba(247, 149, 140, 0.4);
+}
+
+.button_header-reg:active {
+    transform: translateY(0);
+}
