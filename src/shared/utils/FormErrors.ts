@@ -8,12 +8,14 @@
  * внутри которого будет производиться поиск полей для ошибок.
  */
 export class FormErrors {
-    constructor(rootElement) {
-        /** 
-         * Контейнер для поиска элементов ошибок.
-         * @type {HTMLElement} 
-         * @private
-         */
+    /** 
+     * Контейнер для поиска элементов ошибок.
+     * @type {HTMLElement} 
+     * @private
+     */
+    private root: HTMLElement;
+
+    constructor(rootElement: HTMLElement) {
         this.root = rootElement;
     }
 
@@ -21,8 +23,10 @@ export class FormErrors {
      * Очищает текст во всех элементах с классом .error-msg внутри корневого элемента.
      * @returns {void}
      */
-    clearErrors() {
-        this.root.querySelectorAll('.error-msg').forEach(span => span.innerText = '');
+    public clearErrors(): void {
+        this.root.querySelectorAll('.error-msg').forEach((span: Element) => {
+            (span as HTMLElement).innerText = '';
+        });
     }
 
     /**
@@ -37,8 +41,8 @@ export class FormErrors {
      * // Ищет элемент с id="email-error" и ставит ему текст
      * formErrors.setError('email', 'Некорректный формат почты');
      */
-    setError(fieldId, message) {
-        const element = this.root.querySelector(`#${fieldId}-error`);
+    public setError(fieldId: string, message: string): void {
+        const element = this.root.querySelector(`#${fieldId}-error`) as HTMLElement | null;
         if (element) {
             element.innerText = message;
         }
