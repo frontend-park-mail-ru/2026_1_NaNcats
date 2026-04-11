@@ -1,6 +1,16 @@
 import './promoSlider.css';
-import { Component } from '../../core/Component.js';
+import { Component } from '../../core/Component';
 import { promoSliderTemplate } from './promoSlider.tmpl.js';
+
+/**
+ * Слайд промослайдера.
+ * @interface PromoSlide
+ */
+interface PromoSlide {
+    img: string;
+    title: string;
+    text: string;
+}
 
 /**
  * Компонент для отображения "красивых картинок".
@@ -9,13 +19,21 @@ import { promoSliderTemplate } from './promoSlider.tmpl.js';
  * @extends Component
  */
 export class PromoSlider extends Component {
+    /** 
+     * Массив данных для слайдов (слайды).
+     * @type {Array<{img: string, title: string, text: string}>} 
+     */
+    private promoData: PromoSlide[];
+
+    /** 
+     * Индекс текущего активного промо-слайда.
+     * @type {number} 
+     */
+    private currentPromo: number;
+
     constructor() {
         super(promoSliderTemplate);
 
-        /** 
-         * Массив данных для слайдов.
-         * @type {Array<{img: string, title: string, text: string}>} 
-         */
         this.promoData = [
             {
                 img: 'https://img.freepik.com/free-photo/view-delicious-food-assortment_23-2149598944.jpg?t=st=1773128362~exp=1773131962~hmac=7bec2e7e3a0c83384b1d0c94ea34b424b6f853b3884fb061d43e8cda28d6a753&w=2000',
@@ -29,10 +47,6 @@ export class PromoSlider extends Component {
             }
         ];
 
-        /** 
-         * Индекс текущего активного промо-слайда.
-         * @type {number} 
-         */
         this.currentPromo = 0;
     }
 
@@ -42,7 +56,7 @@ export class PromoSlider extends Component {
      * @param {HTMLElement} container - Контейнер для вставки компонента.
      * @returns {void}
      */
-    mount(container) {
+    public mount(container: HTMLElement): void {
         super.mount(container, { current: this.promoData[this.currentPromo] });
     }
 
@@ -51,13 +65,13 @@ export class PromoSlider extends Component {
      * @override
      * @returns {void}
      */
-    afterRender() {
-        this.element.querySelector('.nav-arrow_prev')?.addEventListener('click', () => {
+    public afterRender(): void {
+        this.element?.querySelector('.nav-arrow_prev')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo - 1 + this.promoData.length) % this.promoData.length;
             this.update();
         });
 
-        this.element.querySelector('.nav-arrow_next')?.addEventListener('click', () => {
+        this.element?.querySelector('.nav-arrow_next')?.addEventListener('click', () => {
             this.currentPromo = (this.currentPromo + 1) % this.promoData.length;
             this.update();
         });
@@ -67,7 +81,9 @@ export class PromoSlider extends Component {
      * Перерисовывает компонент слайдера при смене текущего слайда.
      * @returns {void}
      */
-    update() {
-        this.mount(this.element);
+    private update(): void {
+        if (this.element) {
+            this.mount(this.element);
+        }
     }
 }

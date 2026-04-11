@@ -1,8 +1,8 @@
 import './restaurants.css';
-import { Component } from '../../core/Component.js';
-import { Ajax } from '../../core/Ajax.js';
-import { restaurantsTemplate } from "./restaurants.tmpl.js"
-import { AddressPicker } from '../addressPicker/AddressPicker.ts';
+import { Component } from '../../core/Component';
+import { Ajax } from '../../core/Ajax';
+import { restaurantsTemplate } from "./restaurants.tmpl.js";
+import { AddressPicker } from '../addressPicker/AddressPicker';
 
 /**
  * Компонент главной страницы, отображающий список ресторанов.
@@ -12,34 +12,45 @@ import { AddressPicker } from '../addressPicker/AddressPicker.ts';
  * @extends Component
  */
 export class Restaurants extends Component {
+    /** 
+     * Количество ресторанов, запрашиваемых за один раз.
+     * @type {number} 
+     */
+    private limit: number;
+
+    /** 
+     * Смещение для пагинации данных.
+     * @type {number} 
+     */
+    private offset: number;
+
+    /** 
+     * Статус выполнения асинхронного запроса в данный момент.
+     * @type {boolean} 
+     */
+    private isFetching: boolean;
+
+    /** 
+     * Флаг наличия доступных данных для дальнейшей подгрузки.
+     * @type {boolean} 
+     */
+    private hasMore: boolean;
+
+    /**
+     * Пользователь 
+     * @type {any | null}
+     */
+    private user: any | null;
+
     constructor() {
         super(restaurantsTemplate);
 
-        /** 
-         * Количество ресторанов, запрашиваемых за один раз.
-         * @type {number} 
-         */
         this.limit = 20;
-
-        /** 
-         * Смещение для пагинации данных.
-         * @type {number} 
-         */
         this.offset = 0;
-
-        /** 
-         * Статус выполнения асинхронного запроса в данный момент.
-         * @type {boolean} 
-         */
         this.isFetching = false;
-
-        /** 
-         * Флаг наличия доступных данных для дальнейшей подгрузки.
-         * @type {boolean} 
-         */
         this.hasMore = true;
+        this.user = null;
         
-        /** @private */
         this.handleScroll = this.handleScroll.bind(this);
     }
 
@@ -49,10 +60,10 @@ export class Restaurants extends Component {
      * @override
      * @returns {Promise<void>}
      */
-    async mount(container) {
+    public async mount(container: HTMLElement): Promise<void> {
         this.offset = 0;
         this.hasMore = true;
-        let restaurants = [];
+        let restaurants: any[] = [];
         let user = null;
 
         try {
@@ -69,9 +80,10 @@ export class Restaurants extends Component {
         this.user = user;
         const savedAddr = localStorage.getItem('delivery_address');
 
-        super.mount(container, { restaurants, user, currentAddress: savedAddr});
+        super.mount(container, { restaurants, user, currentAddress: savedAddr });
+        
         if (savedAddr) {
-            const input = document.getElementById('address-input');
+            const input = document.getElementById('address-input') as HTMLInputElement | null;
             if (input) input.value = savedAddr;
         }
     }
@@ -80,7 +92,7 @@ export class Restaurants extends Component {
      * Выполняет выход пользователя из системы и перенаправляет на главную.
      * @returns {Promise<void>}
      */
-    async handleLogout() {
+    private async handleLogout(): Promise<void> {
         const res = await Ajax.post('/auth/logout');
         if (res.ok) {
             window.router.go('/');
@@ -91,7 +103,7 @@ export class Restaurants extends Component {
      * Переход на страницу авторизации.
      * @returns {void}
      */
-    handleLoginRedirect() {
+    private handleLoginRedirect(): void {
         window.router.go('/login');
     }
 
@@ -99,7 +111,7 @@ export class Restaurants extends Component {
      * Переход на страницу регистрации.
      * @returns {void}
      */
-    handleRegisterRedirect() {
+    private handleRegisterRedirect(): void {
         window.router.go('/register');
     }
 
@@ -108,7 +120,7 @@ export class Restaurants extends Component {
      * @async
      * @returns {Promise<Array<Object>>} Массив объектов ресторанов.
      */
-    async fetchRestaurants() {
+    private async fetchRestaurants(): Promise<any[]> {
         if (this.isFetching || !this.hasMore) return [];
         
         this.isFetching = true;
@@ -137,7 +149,7 @@ export class Restaurants extends Component {
      * Обработчик события прокрутки. Инициирует подгрузку при достижении порога в 200px до конца.
      * @returns {Promise<void>}
      */
-    async handleScroll() {
+    private async handleScroll(): Promise<void> {
         const scrollHeight = document.documentElement.scrollHeight;
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
         const clientHeight = window.innerHeight;
@@ -154,7 +166,7 @@ export class Restaurants extends Component {
      * Добавляет новые карточки ресторанов в DOM без полной перерисовки страницы.
      * @param {Array<Object>} restaurants - Массив новых объектов ресторанов.
      */
-    appendRestaurants(restaurants) {
+    private appendRestaurants(restaurants: any[]): void {
         const grid = document.querySelector('.res-grid');
         if (!grid) return;
 
@@ -165,7 +177,6 @@ export class Restaurants extends Component {
                     onerror="this.src='https://placehold.co/400x225/png?text=${res.name}'">
                     <div class="res-info">
                         <span class="res-name">${res.name}</span>
-                        <span class="res-desc">Пицца, суши, роллы</span>
                     </div>
                 </div>
             `;
@@ -178,21 +189,15 @@ export class Restaurants extends Component {
      * @override
      * @returns {void}
      */
-    afterRender() {
+    public afterRender(): void {
         const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.onclick = () => this.handleLogout();
-        }
+        if (logoutBtn) logoutBtn.onclick = () => this.handleLogout();
 
         const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) {
-            loginBtn.onclick = () => this.handleLoginRedirect();
-        }
+        if (loginBtn) loginBtn.onclick = () => this.handleLoginRedirect();
 
         const registerBtn = document.getElementById('register-btn');
-        if (registerBtn) {
-            registerBtn.onclick = () => this.handleRegisterRedirect();
-        }
+        if (registerBtn) registerBtn.onclick = () => this.handleRegisterRedirect();
 
         const scrollContainer = document.querySelector('.center-column');
         if (scrollContainer) {
@@ -201,7 +206,7 @@ export class Restaurants extends Component {
 
         const addressSlot = document.getElementById('address-picker-placeholder');
         if (addressSlot) {
-            const addressPicker = new AddressPicker((addr, coords) => {
+            const addressPicker = new AddressPicker((addr: string, coords: [number, number]) => {
                 localStorage.setItem('delivery_address', addr);
                 localStorage.setItem('delivery_coords', JSON.stringify(coords));
             });
@@ -211,7 +216,7 @@ export class Restaurants extends Component {
             
             if (isAuth) {
                 Ajax.get('/profile/addresses').then(res => res.json()).then(data => {
-                    const userAddresses = data.addresses ? data.addresses.map(a => a.location.address_text) : [];
+                    const userAddresses = data.addresses ? data.addresses.map((a: any) => a.location.address_text) : [];
                     addressPicker.mount(addressSlot, { 
                         currentAddress: savedAddr, 
                         savedAddresses: userAddresses,

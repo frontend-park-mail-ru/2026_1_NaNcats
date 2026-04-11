@@ -1,5 +1,5 @@
 /**
- * @module AuthSetup
+ * @module AuthTools
  * @description Вспомогательные утилиты для модулей авторизации и регистрации.
  */
 
@@ -25,7 +25,7 @@ export interface AuthTools {
 
 /**
  * Объект, содержащий инициализированные инструменты для страницы авторизации.
- * @typedef {Object} AuthTools
+ * @type {Object} AuthTools
  * @property {FormErrors} errors - Экземпляр класса для управления ошибками валидации.
  * @property {PromoSlider} slider - Экземпляр компонента промо-слайдера.
  */

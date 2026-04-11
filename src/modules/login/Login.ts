@@ -1,9 +1,10 @@
 import './login.css';
 import { loginTemplate } from './login.tmpl.js';
-import { Ajax } from '../../core/Ajax.js';
-import { validateEmail } from '../../shared/utils/Validator.js';
-import { Component } from '../../core/Component.js';
-import { setupAuthView } from '../../shared/utils/AuthSetup.js';
+import { Ajax } from '../../core/Ajax';
+import { validateEmail } from '../../shared/utils/Validator';
+import { Component } from '../../core/Component';
+import { setupAuthView } from '../../shared/utils/AuthSetup';
+import { FormErrors } from '../../shared/utils/FormErrors';
 
 /**
  * Компонент страницы авторизации.
@@ -12,6 +13,12 @@ import { setupAuthView } from '../../shared/utils/AuthSetup.js';
  * @extends Component
  */
 export class Login extends Component {
+    /** 
+     * Ошибки формы.
+     * @type {FormErrors} 
+     */
+    private formErrors!: FormErrors;
+
     constructor() {
         super(loginTemplate);
     }
@@ -21,23 +28,9 @@ export class Login extends Component {
      * @override
      * @returns {void}
      */
-    afterRender() {
-        const { errors } = setupAuthView(this, this.onSubmit);
+    public afterRender(): void {
+        const { errors } = setupAuthView(this, this.onSubmit.bind(this));
         this.formErrors = errors;
-
-        const toggles = this.element.querySelectorAll('.password-icon');
-        toggles.forEach(icon => {
-            icon.onclick = () => {
-                const input = icon.parentElement.querySelector('input');
-                if (input.type === 'password') {
-                    input.type = 'text';
-                    icon.classList.add('password-icon_visible');
-                } else {
-                    input.type = 'password';
-                    icon.classList.remove('password-icon_visible');
-                }
-            };
-        });
     }
 
     /**
@@ -45,11 +38,14 @@ export class Login extends Component {
      * @param {HTMLFormElement} form - Элемент формы.
      * @returns {Promise<void>}
      */
-    async onSubmit(form) {
+    private async onSubmit(form: HTMLFormElement): Promise<void> {
         this.formErrors.clearErrors();
         
-        const email = form.email.value.trim();
-        const password = form.password.value;
+        const emailInput = form.elements.namedItem('email') as HTMLInputElement;
+        const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
         let isValid = true;
 
         if (!email || !password) {
