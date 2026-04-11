@@ -80,7 +80,6 @@ export class AddressPicker extends Component {
         const addressDropdown = this.element?.querySelector('.js-address-dropdown') as HTMLElement | null;
         const openMapBtn = this.element?.querySelector('.js-open-map-btn') as HTMLElement | null;
 
-        // 1. Главный инпут в хедере
         if (addressInput && addressDropdown) {
             const handleInput = (e: Event) => {
                 if (!this.isAuth) {
@@ -108,17 +107,14 @@ export class AddressPicker extends Component {
             addressInput.addEventListener('input', handleInput);
         }
 
-        // 2. Кнопка "Указать на карте"
         if (openMapBtn) {
             openMapBtn.onclick = () => this.openMapModal();
         }
 
-        // 3. Закрытие модалки КАРТЫ
         this.element?.querySelector('.js-close-map-modal')?.addEventListener('click', () => {
             this.element?.querySelector('.js-map-modal')?.classList.remove('modal-overlay_active');
         });
 
-        // 4. Кнопка ОК в модалке карты -> Открывает детали
         const confirmBtn = this.element?.querySelector('.js-confirm-address-btn') as HTMLElement | null;
         const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
         if (modalInput) {
@@ -150,7 +146,6 @@ export class AddressPicker extends Component {
             };
         }
 
-        // 6. ФОРМА ДЕТАЛЕЙ (Квартира, этаж и т.д.)
         const detailsForm = this.element?.querySelector('.js-details-form') as HTMLFormElement | null;
         if (detailsForm) {
             detailsForm.onsubmit = async (e) => {
@@ -186,7 +181,6 @@ export class AddressPicker extends Component {
             };
         }
 
-        // 7. Кнопка "Карандаш" (вернуться к карте из деталей)
         const changeBtn = this.element?.querySelector('.js-change-address-btn') as HTMLElement | null;
         if (changeBtn) {
             changeBtn.onclick = () => {
@@ -195,12 +189,10 @@ export class AddressPicker extends Component {
             };
         }
 
-        // 8. Кнопка закрытия модалки ДЕТАЛЕЙ
         this.element?.querySelector('.js-close-details-modal')?.addEventListener('click', () => {
             this.element?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
         });
 
-        // Клик вне выпадашки
         document.addEventListener('click', (e) => {
             if (!this.element?.contains(e.target as Node)) {
                 addressDropdown?.classList.remove('address-dropdown_active');

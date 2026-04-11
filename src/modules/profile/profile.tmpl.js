@@ -43,7 +43,7 @@ export const profileTemplate = `
                     <label class="info-label">Почта</label>
                     <div class="info-row">
                         <input type="email" id="profile-email" class="profile-input profile-input_email" value="{{=it.user.email}}" disabled>
-                        <!-- Карандашик у email (Пункт 3) -->
+                        <!-- Карандашик у email -->
                         <div class="edit-icon-orange js-edit-trigger"></div>
                     </div>
                 </div>
@@ -56,12 +56,12 @@ export const profileTemplate = `
                     <div class="subscription-status">Обычная</div>
                     <div class="subscription-text">Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий</div>
                 </div>
-                <!-- Кнопка сохранить (теперь не занимает место если скрыта) -->
+                <!-- Кнопка сохранить -->
                 <button id="save-profile-btn" class="button button_primary button_hidden" style="height: 40px; margin-top: 10px;">Сохранить</button>
                 <div id="profile-error" class="error-msg"></div>
             </div>
 
-            <!-- Обновленные пропорции колонок (Пункт 2) -->
+            <!-- Обновленные пропорции колонок -->
             <div class="profile-card profile-card_row">
                 <div class="card-side-label">
                     <span>Стрик</span>
@@ -88,11 +88,11 @@ export const profileTemplate = `
             <div class="profile-card profile-card_main">
                 <div class="section-header">
                     <h2 class="section-title">Адреса доставки</h2>
-                    <!-- Оранжевая кнопка добавить (Пункт 2) -->
+                    <!-- Оранжевая кнопка добавить -->
                     <div class="orange-dot orange-dot_large" id="add-address-btn"></div>
                 </div>
                 
-                <!-- Список с прокруткой (Пункт 3) -->
+                <!-- Список с прокруткой -->
                 <div class="address-list" id="profile-address-list">
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~it.addresses :addr:index}}
@@ -121,7 +121,7 @@ export const profileTemplate = `
 
                 <div class="section-header mt-30">
                     <h2 class="section-title">Карты и оплата</h2>
-                    <!-- Оранжевая кнопка добавить карту (Пункт 5) -->
+                    <!-- Оранжевая кнопка добавить карту -->
                     <div class="orange-dot orange-dot_large" id="add-card-btn"></div>
                 </div>
 
@@ -129,7 +129,7 @@ export const profileTemplate = `
                     {{? it.cards && it.cards.length > 0 }}
                         {{~it.cards :card}}
                         <div class="mini-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'mini-card_sber' : 'mini-card_tinkoff' }}">
-                            <!-- Звездочка выбора основной (Пункт 1) -->
+                            <!-- Звездочка выбора основной -->
                             <div class="mini-card__star set-default-card-btn {{? card.is_default }}mini-card__star_active{{?}}" data-id="{{=card.id}}">
                                 {{? card.is_default }}★{{??}}☆{{?}}
                             </div>

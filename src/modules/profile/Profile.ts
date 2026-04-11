@@ -238,16 +238,15 @@ export class Profile extends Component {
 
     private renderAddressesDOM() {
         const list = document.getElementById('profile-address-list');
-        const showMoreBtn = document.getElementById('show-more-addresses-btn'); // Находим кнопку
+        const showMoreBtn = document.getElementById('show-more-addresses-btn');
         if (!list) return;
 
         if (this.addresses.length === 0) {
             list.innerHTML = '<div class="empty-text">У вас пока нет сохраненных адресов</div>';
-            if (showMoreBtn) showMoreBtn.style.display = 'none'; // Скрываем если пусто
+            if (showMoreBtn) showMoreBtn.style.display = 'none';
             return;
         }
 
-        // Отрисовываем список (добавляем класс hidden для индексов >= 2)
         list.innerHTML = this.addresses.map((addr, index) => {
             const addrText = addr.location.address_text;
             const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
@@ -265,7 +264,6 @@ export class Profile extends Component {
             </div>`;
         }).join('');
 
-        // Управляем кнопкой: если адресов > 2, показываем её
         if (showMoreBtn) {
             showMoreBtn.style.display = this.addresses.length > 2 ? 'block' : 'none';
         }
