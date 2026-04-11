@@ -149,10 +149,95 @@
 
 /* Overrides */
 .address-picker {
-  position: relative; cursor: text; display: flex; align-items: center; width: 100%; overflow: visible !important;
+  position: relative;
+  cursor: text;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  overflow: visible !important;
+
   &__input {
-    width: 100%; border: none; background: transparent; outline: none; font-size: 12px; font-family: 'Inter', sans-serif; font-weight: 300;
-    color: var(--text-dark); cursor: pointer; text-overflow: ellipsis; text-decoration: underline;
-    &::placeholder { color: var(--text-dark); text-decoration: underline; }
+    width: 100%;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    color: var(--text-dark);
+    cursor: pointer;
+    text-overflow: ellipsis;
+    text-decoration: underline;
+
+    &::placeholder {
+      color: var(--text-dark);
+      text-decoration: underline;
+    }
+  }
+}
+
+.address-dropdown {
+  position: absolute;
+  top: calc(100% + 15px);
+  right: -24px;
+  width: 280px;
+  background: white;
+  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  padding: 8px 0;
+  z-index: 1000;
+  display: none; 
+  max-height: 300px;
+  overflow-y: auto;
+
+  &_active {
+    display: block;
+  }
+
+  &__item {
+    padding: 12px 20px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: #FFF5F5;
+      color: var(--accent-pink);
+    }
+  }
+
+  &__map-button-wrapper {
+    padding: 10px 15px;
+    width: 100%;
+  }
+
+  &__map-button {
+    background: #EEEEEE;
+    border-radius: 16px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-dark);
+    transition: background 0.2s;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+  }
+
+  &__suggestions {
+    // Если используются саджесты внутри этой выпадашки
+    display: flex;
+    flex-direction: column;
   }
 }

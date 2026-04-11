@@ -31,6 +31,31 @@ export class Register extends Component {
     public afterRender(): void {
         const { errors } = setupAuthView(this, this.onSubmit.bind(this));
         this.formErrors = errors;
+        this.setupPasswordToggle();
+    }
+
+    private setupPasswordToggle(): void {
+        if (!this.element) return;
+
+        const toggles = this.element.querySelectorAll('.js-password-toggle');
+        
+        toggles.forEach(element => {
+            const icon = element as HTMLElement;
+            
+            icon.onclick = () => {
+                const input = icon.parentElement?.querySelector('input') as HTMLInputElement | null;
+                
+                if (input) {
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.add('password-wrapper__icon_visible');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('password-wrapper__icon_visible');
+                    }
+                }
+            };
+        });
     }
 
     /**

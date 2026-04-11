@@ -121,6 +121,20 @@ export class AddressPicker extends Component {
         // 4. Кнопка ОК в модалке карты -> Открывает детали
         const confirmBtn = this.element?.querySelector('.js-confirm-address-btn') as HTMLElement | null;
         const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
+        if (modalInput) {
+            modalInput.addEventListener('input', (e: Event) => {
+                const target = e.target as HTMLInputElement;
+                const query = target.value.trim();
+
+                if (query.length > 2) {
+                    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+                    this.debounceTimer = setTimeout(async () => {
+                        const results = await this.fetchYandexSuggestions(query);
+                        this.renderModalSuggestions(results);
+                    }, 400);
+                }
+            });
+        }
         if (confirmBtn && modalInput) {
             confirmBtn.onclick = () => {
                 const addr = modalInput.value;
@@ -231,5 +245,32 @@ export class AddressPicker extends Component {
                 }
             };
         });
+    }
+
+    private renderModalSuggestions(list: string[]): void {
+        const container = this.element?.querySelector('.js-modal-suggestions') as HTMLElement;
+        if (!container) return;
+
+        if (list.length > 0) {
+            container.classList.add('address-modal__suggestions_active'); // БЭМ
+            container.innerHTML = list.map(addr => `<div class="modal-suggestion-item">${addr}</div>`).join('');
+            
+            container.querySelectorAll('.modal-suggestion-item').forEach(el => {
+                (el as HTMLElement).onclick = () => {
+                    const addr = (el as HTMLElement).innerText;
+                    const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
+                    if (modalInput) modalInput.value = addr;
+                    
+                    container.classList.remove('address-modal__suggestions_active');
+                    ymaps.geocode(addr).then((res: any) => {
+                        const coords = res.geoObjects.get(0).geometry.getCoordinates();
+                        this.map?.setCenter(coords, 16);
+                        this.selectedCoords = coords;
+                    });
+                };
+            });
+        } else {
+            container.classList.remove('address-modal__suggestions_active');
+        }
     }
 }
