@@ -7,18 +7,21 @@ import doT from 'dot';
  * @class Component
  * @param {string} templateString - Строка шаблона в формате doT.js.
  */
-export class Component {
-    constructor(templateString) {
-        /** 
-         * Подготовленная функция шаблонизатора doT.
-         * @type {Function} 
-         * @protected
-         */
+export abstract class Component {
+    /** 
+     * Подготовленная функция шаблонизатора doT.
+     * @type {Function} 
+     * @protected
+     */
+    protected renderFunc: (data: any) => string;
+    /** 
+     * Корневой HTML-элемент компонента в DOM. 
+     * @type {HTMLElement|null} 
+     */
+    public element: HTMLElement | null;
+
+    constructor(templateString: string) {
         this.renderFunc = doT.template(templateString);
-        /** 
-         * Корневой HTML-элемент компонента в DOM. 
-         * @type {HTMLElement|null} 
-         */
         this.element = null;
     }
 
@@ -28,7 +31,7 @@ export class Component {
      * @param {Object} [data={}] - Данные для шаблонизатора.
      * @returns {void}
      */
-    mount(container, data = {}) {
+    public mount(container: HTMLElement, data: any = {}): void {
         this.element = container;
         container.innerHTML = this.renderFunc(data);
         this.afterRender();
@@ -39,5 +42,5 @@ export class Component {
      * Предназначен для навешивания обработчиков событий.
      * @returns {void}
      */
-    afterRender() {}
+    public afterRender(): void {}
 }

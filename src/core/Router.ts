@@ -1,3 +1,5 @@
+import { Component } from './Component';
+
 /**
  * Роутер для сопоставления URL с компонентами.
  * Управляет навигацией и переключением страниц без перезагрузки.
@@ -6,22 +8,25 @@
  * @param {HTMLElement} root - DOM-элемент, в который будет рендериться контент.
  */
 export class Router {
-    constructor(root) {
-        /** 
-         * Корневой элемент приложения.
-         * @type {HTMLElement} 
-         */
-        this.root = root;
+    /** 
+     * Корневой элемент приложения.
+     * @type {HTMLElement} 
+     */
+    public root: HTMLElement;
 
-        /** 
-         * Объект-карта маршрутов, где ключ — путь, а значение — экземпляр компонента.
-         * @type {Object<string, Component>} 
-         */
+    /** 
+     * Объект-карта маршрутов, где ключ — путь, а значение — экземпляр компонента.
+     * @type {Object<string, Component>} 
+     */
+    public routes: Record<string, Component | (() => Promise<Component>)>;
+
+    constructor(root: HTMLElement) {
+        this.root = root;
         this.routes = {};
 
-        // Глобальный перехват кликов для навигации
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('.router-link');
+        document.addEventListener('click', (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const link = target.closest('.router-link');
             if (link) {
                 e.preventDefault();
                 const path = link.getAttribute('href');
@@ -31,7 +36,6 @@ export class Router {
             }
         });
 
-        // Обработка кнопок "Назад/Вперед" в браузере
         window.addEventListener('popstate', () => {
             this.render(window.location.pathname);
         });
@@ -43,7 +47,7 @@ export class Router {
      * @param {Component} component - Экземпляр компонента для этого пути.
      * @returns {Router} Текущий экземпляр роутера для цепочки вызовов.
      */
-    register(path, component) {
+    public register(path: string, component: Component | (() => Promise<Component>)): this {
         this.routes[path] = component;
         return this;
     }
@@ -53,7 +57,7 @@ export class Router {
      * @param {string} path - Путь для перехода.
      * @returns {void}
      */
-    go(path) {
+    public go(path: string): void {
         window.history.pushState(null, '', path);
         this.render(path);
     }
@@ -63,7 +67,7 @@ export class Router {
      * @param {string} path - Путь для отрисовки.
      * @returns {void}
      */
-    async render(path) {
+    public async render(path: string): Promise<void> {
         let entry = this.routes[path] || this.routes['/404'];
 
         if (typeof entry === 'function') {
