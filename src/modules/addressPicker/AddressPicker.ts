@@ -125,20 +125,14 @@ export class AddressPicker extends Component {
             confirmBtn.onclick = () => {
                 const addr = modalInput.value;
                 this.element?.querySelector('.js-map-modal')?.classList.remove('active');
-                this.openDetailsModal(addr, this.selectedCoords);
-            };
-        }
-
-        // 5. Поиск внутри модалки карты
-        if (modalInput) {
-            modalInput.oninput = () => {
-                const query = modalInput.value.trim();
-                if (query.length < 3) return;
-                if (this.debounceTimer) clearTimeout(this.debounceTimer);
-                this.debounceTimer = setTimeout(async () => {
-                    const results = await this.fetchYandexSuggestions(query);
-                    this.renderModalSuggestions(results);
-                }, 300);
+                
+                const hasMainInput = this.element?.querySelector('.js-address-input') !== null;
+                
+                if (!hasMainInput) {
+                    this.finalizeAddress(addr, this.selectedCoords);
+                } else {
+                    this.openDetailsModal(addr, this.selectedCoords);
+                }
             };
         }
 

@@ -17,17 +17,16 @@ export class Profile extends Component {
     private cards: any[] = [];
     private isEditing: boolean = false;
 
-    private editingAddressId: number | null = null;
+    private editingAddressId: string | null = null;
     private selectedLocation: { text: string, coords: [number, number] } | null = null;
-    private addressPickerInstance: AddressPicker;
+    private addressPickerInstance!: AddressPicker;
 
     constructor() {
         super(profileTemplate);
-
-        this.addressPickerInstance = new AddressPicker(() => {
-            if (this.element) {
-                this.mount(this.element); 
-            }
+        
+        this.addressPickerInstance = new AddressPicker((addr, coords) => {
+            this.selectedLocation = { text: addr, coords: coords };
+            this.openDetailsModal(); 
         });
     }
 
@@ -129,21 +128,24 @@ export class Profile extends Component {
         }
 
         const pickerPlaceholder = document.getElementById('profile-address-picker-container');
-        if (pickerPlaceholder) {
+        if (pickerPlaceholder) {            
             this.addressPickerInstance.mount(pickerPlaceholder, { hideInput: true });
         }
+
 
         const addressList = document.getElementById('profile-address-list');
         if (addressList) {
             addressList.onclick = (e) => {
                 const target = e.target as HTMLElement;
-                const addrId = target.getAttribute('data-id');
+                const btn = target.closest('[data-id]');
+                const addrId = btn?.getAttribute('data-id');
+
                 if (!addrId) return;
 
                 if (target.classList.contains('delete-addr-btn')) {
                     this.deleteAddress(addrId);
                 } else if (target.classList.contains('edit-addr-btn')) {
-                    this.openEditForm(Number(addrId));
+                    this.openEditForm(addrId);
                 }
             };
         }
@@ -221,14 +223,62 @@ export class Profile extends Component {
         }
     }
 
-    private openEditForm(id: number) {
+    private async loadAndRenderAddresses() {
+        try {
+            const res = await Ajax.get('/profile/addresses');
+            if (res.ok) {
+                const data = await res.json();
+                this.addresses = data.addresses || [];
+                this.renderAddressesDOM();
+            }
+        } catch (e) {
+            console.error("Ошибка обновления адресов", e);
+        }
+    }
+
+    private renderAddressesDOM() {
+        const list = document.getElementById('profile-address-list');
+        const showMoreBtn = document.getElementById('show-more-addresses-btn'); // Находим кнопку
+        if (!list) return;
+
+        if (this.addresses.length === 0) {
+            list.innerHTML = '<div class="empty-text">У вас пока нет сохраненных адресов</div>';
+            if (showMoreBtn) showMoreBtn.style.display = 'none'; // Скрываем если пусто
+            return;
+        }
+
+        // Отрисовываем список (добавляем класс hidden для индексов >= 2)
+        list.innerHTML = this.addresses.map((addr, index) => {
+            const addrText = addr.location.address_text;
+            const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
+            const ent = addr.entrance ? `, под. ${addr.entrance}` : '';
+            const fl = addr.floor ? `, эт. ${addr.floor}` : '';
+            const isHidden = index >= 2 ? 'js-hidden-address hidden' : '';
+            
+            return `
+            <div class="address-row ${isHidden}" data-id="${addr.id}">
+                <span class="address-row__text">${addrText}${ap}${ent}${fl}</span>
+                <div class="address-row__actions">
+                    <div class="edit-icon-orange edit-addr-btn" data-id="${addr.id}"></div>
+                    <div class="delete-icon-orange delete-addr-btn" data-id="${addr.id}"></div>
+                </div>
+            </div>`;
+        }).join('');
+
+        // Управляем кнопкой: если адресов > 2, показываем её
+        if (showMoreBtn) {
+            showMoreBtn.style.display = this.addresses.length > 2 ? 'block' : 'none';
+        }
+    }
+
+    private openEditForm(id: string) {
         const addr = this.addresses.find(a => a.id === id);
         if (!addr) return;
 
         this.editingAddressId = id;
         this.selectedLocation = {
             text: addr.location.address_text,
-            coords: [addr.location.lat, addr.location.lon]
+            coords: [addr.location.latitude, addr.location.longitude]
         };
 
         const modal = document.getElementById('address-details-modal');
@@ -249,11 +299,10 @@ export class Profile extends Component {
     private async deleteAddress(id: string) {
         if (!confirm('Удалить этот адрес?')) return;
         try {
-            const res = await fetch(`/api/profile/addresses/${id}`, {
-                method: 'DELETE',
-                credentials: 'include'
-            });
-            if (res.ok) this.mount(this.element!);
+            const res = await Ajax.delete(`/profile/addresses/${id}`);
+            if (res.ok) {
+                await this.loadAndRenderAddresses();
+            }
         } catch (e) {
             console.error(e);
         }
@@ -358,7 +407,7 @@ export class Profile extends Component {
             if (!this.editingAddressId) {
                 (document.getElementById('address-full-form') as HTMLFormElement).reset();
             }
-            
+
             displayInput.value = this.selectedLocation?.text || "";
             modal.classList.add('active');
         }
@@ -375,31 +424,36 @@ export class Profile extends Component {
             address_text: this.selectedLocation.text,
             lat: this.selectedLocation.coords[0],
             lon: this.selectedLocation.coords[1],
-            apartment: formData.get('apartment'),
-            entrance: formData.get('entrance'),
-            floor: formData.get('floor'),
-            door_code: formData.get('door_code'),
-            courier_comment: formData.get('courier_comment'),
+            apartment: formData.get('apartment')?.toString() || "",
+            entrance: formData.get('entrance')?.toString() || "",
+            floor: formData.get('floor')?.toString() || "",
+            door_code: formData.get('door_code')?.toString() || "",
+            courier_comment: formData.get('courier_comment')?.toString() || "",
             label: "Дом"
         };
 
         try {
             let res;
             if (this.editingAddressId) {
-                res = await fetch(`/api/profile/addresses/${this.editingAddressId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                    credentials: 'include'
-                });
+                res = await Ajax.patch(`/profile/addresses/${this.editingAddressId}`, payload);
             } else {
                 res = await Ajax.post('/profile/addresses', payload);
             }
 
             if (res.ok) {
-                document.getElementById('address-details-modal')?.classList.remove('active');
-                this.mount(this.element!); 
+                const modal = document.getElementById('address-details-modal');
+                modal?.classList.remove('active');
+
+                this.editingAddressId = null;
+                this.selectedLocation = null;
+
+                await this.loadAndRenderAddresses(); 
+            } else {
+                const errData = await res.json();
+                this.showError(errData.message || "Ошибка сохранения");
             }
-        } catch (err) { console.error(err); }
+        } catch (err) {
+            console.error("Ошибка при сохранении:", err);
+        }
     }
 }

@@ -95,25 +95,26 @@ export const profileTemplate = `
                 </div>
                 
                 <!-- Список с прокруткой (Пункт 3) -->
-                <div class="address-list-container">
-                    <div class="address-list" id="profile-address-list">
-                        {{? it.addresses && it.addresses.length > 0 }}
-                            {{~it.addresses :addr:index}}
-                            <div class="address-row {{? index >= 2 }}js-hidden-address hidden{{?}}" data-id="{{=addr.id}}">
-                                <span class="address-row__text">{{=addr.location.address_text}}</span>
-                                <div class="address-row__actions">
-                                    <div class="edit-icon-orange edit-addr-btn" data-id="{{=addr.id}}"></div>
-                                    <div class="delete-icon-orange delete-addr-btn" data-id="{{=addr.id}}"></div>
-                                </div>
-                            </div>
-                            {{~}}
-                        {{??}}
-                            <div class="empty-text">У вас пока нет сохраненных адресов</div>
-                        {{?}}
-                    </div>
-                    {{? it.addresses && it.addresses.length > 2 }}
-                        <div class="link-orange mt-10" id="show-more-addresses-btn">остальные адреса</div>
+                <div class="address-list" id="profile-address-list">
+                    {{? it.addresses && it.addresses.length > 0 }}
+                        {{~it.addresses :addr:index}}
+                        <div class="address-row {{? index >= 2 }}js-hidden-address hidden{{?}}" data-id="{{=addr.id}}">
+                            <span class="address-row__text">
+                                {{=addr.location.address_text}}
+                                {{? addr.apartment }}, кв. {{=addr.apartment}}{{?}}
+                                {{? addr.entrance }}, под. {{=addr.entrance}}{{?}}
+                                {{? addr.floor }}, эт. {{=addr.floor}}{{?}}
+                            </span>
+                        </div>
+                        {{~}}
+                    {{??}}
+                        <div class="empty-text">У вас пока нет сохраненных адресов</div>
                     {{?}}
+                </div>
+                <div class="link-orange mt-10" 
+                    id="show-more-addresses-btn" 
+                    style="display: {{? it.addresses && it.addresses.length > 2 }}block{{??}}none{{?}}">
+                    остальные адреса
                 </div>
 
                 <div class="section-header mt-30">
