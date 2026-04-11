@@ -21,14 +21,13 @@ export const addressPickerTemplate = `
     </div>
     {{?}}
 
-    <!-- Модальное окно -->
+    <!-- Модалка с картой -->
     <div class="modal-overlay js-map-modal">
         <div class="address-modal">
             <div class="address-modal__close js-close-map-modal">&times;</div>
             <div class="address-modal__header">
                 <h2 class="address-modal__title">Укажите адрес доставки</h2>
             </div>
-            
             <div class="address-modal__search-row">
                 <div class="modal-search-container">
                     <div class="modal-search">
@@ -39,11 +38,38 @@ export const addressPickerTemplate = `
                 </div>
                 <button class="button button_modal-ok js-confirm-address-btn">ОК</button>
             </div>
-
             <div class="address-modal__map-container">
                 <div class="js-yandex-map" style="width: 100%; height: 297px; border-radius: 24px;"></div>
                 <div class="map-center-pin">📍</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Модалка с деталями (квартира и т.д.) -->
+    <div class="modal-overlay js-details-modal">
+        <div class="address-modal" style="width: 500px;">
+            <div class="address-modal__close js-close-details-modal">&times;</div>
+            <h2 class="address-modal__title">Детали адреса</h2>
+            <form class="auth-form js-details-form" style="max-width:100%">
+                <div class="input-group">
+                    <label>Адрес</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" class="input-field js-display-address" disabled style="background:#eee; flex: 1;">
+                        <button type="button" class="button js-change-address-btn" style="width: 48px; background: #eee; border-radius: 12px;">✏️</button>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group"><label>Квартира</label><input name="apartment" class="input-field"></div>
+                    <div class="input-group"><label>Подъезд</label><input name="entrance" class="input-field"></div>
+                    <div class="input-group"><label>Этаж</label><input name="floor" class="input-field"></div>
+                    <div class="input-group"><label>Код</label><input name="door_code" class="input-field"></div>
+                </div>
+                <div class="input-group">
+                    <label>Комментарий курьеру</label>
+                    <input name="courier_comment" class="input-field">
+                </div>
+                <button type="submit" class="button button_primary">Сохранить</button>
+            </form>
         </div>
     </div>
 `;

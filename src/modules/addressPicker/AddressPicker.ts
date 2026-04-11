@@ -69,16 +69,6 @@ export class AddressPicker extends Component {
         }
     }
 
-    private selectAddress(address: string): void {
-        const input = this.element?.querySelector('.js-address-input') as HTMLInputElement;
-        if (input) input.value = address;   
-        
-        const dropdown = this.element?.querySelector('.js-address-dropdown');
-        if (dropdown) dropdown.classList.remove('active');
-
-        this.onSelectCallback(address, this.selectedCoords);
-    }
-
     async mount(container: HTMLElement, data: any) {
         this.savedAddresses = data?.savedAddresses || [];
         this.isAuth = data?.isAuth !== undefined ? data.isAuth : true;
@@ -86,12 +76,11 @@ export class AddressPicker extends Component {
     }
 
     afterRender(): void {
-        // 1. Ищем основные элементы
         const addressInput = this.element?.querySelector('.js-address-input') as HTMLInputElement | null;
         const addressDropdown = this.element?.querySelector('.js-address-dropdown') as HTMLElement | null;
         const openMapBtn = this.element?.querySelector('.js-open-map-btn') as HTMLElement | null;
 
-        // 2. Логика для главного инпута (будет работать только там, где он есть — например, в хедере)
+        // 1. Главный инпут в хедере
         if (addressInput && addressDropdown) {
             const handleInput = (e: Event) => {
                 if (!this.isAuth) {
@@ -99,101 +88,153 @@ export class AddressPicker extends Component {
                     window.router.go('/login');
                     return;
                 }
-
                 const target = e.target as HTMLInputElement;
                 const query = target.value.trim();
                 addressDropdown.classList.add('active');
 
                 if (!query) {
                     if (openMapBtn) openMapBtn.style.display = 'none';
-                    if (this.debounceTimer) clearTimeout(this.debounceTimer);
-                    this.renderSuggestions(this.savedAddresses, 'js-address-suggestions', (addr) => this.selectAddress(addr));
+                    this.renderSuggestions(this.savedAddresses, 'js-address-suggestions', false);
                 } else {
                     if (openMapBtn) openMapBtn.style.display = 'block';
-                    if (e.type === 'input') {
-                        if (this.debounceTimer) clearTimeout(this.debounceTimer);
-                        this.debounceTimer = setTimeout(async () => {
-                            const results = await this.fetchYandexSuggestions(query);
-                            this.renderSuggestions(results, 'js-address-suggestions', (addr) => this.selectAddress(addr));
-                        }, 400);
-                    }
+                    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+                    this.debounceTimer = setTimeout(async () => {
+                        const results = await this.fetchYandexSuggestions(query);
+                        this.renderSuggestions(results, 'js-address-suggestions', true);
+                    }, 400);
                 }
             };
-
             addressInput.addEventListener('focus', handleInput);
-            addressInput.addEventListener('click', handleInput);
             addressInput.addEventListener('input', handleInput);
-
-            document.addEventListener('click', (e) => {
-                if (!this.element?.contains(e.target as Node)) {
-                    addressDropdown.classList.remove('active');
-                }
-            });
         }
 
-        // 3. Кнопка открытия карты (может быть в выпадашке хедера)
+        // 2. Кнопка "Указать на карте"
         if (openMapBtn) {
-            openMapBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.openMapModal();
-            });
+            openMapBtn.onclick = () => this.openMapModal();
         }
 
-        // 4. Кнопка закрытия модалки карты (есть всегда в шаблоне модалки)
-        const closeMapBtn = this.element?.querySelector('.js-close-map-modal') as HTMLElement | null;
-        if (closeMapBtn) {
-            closeMapBtn.addEventListener('click', () => {
-                const modal = this.element?.querySelector('.js-map-modal');
-                if (modal) modal.classList.remove('active');
-            });
-        }
+        // 3. Закрытие модалки КАРТЫ
+        this.element?.querySelector('.js-close-map-modal')?.addEventListener('click', () => {
+            this.element?.querySelector('.js-map-modal')?.classList.remove('active');
+        });
 
-        // 5. Поиск и саджесты ВНУТРИ модалки карты
+        // 4. Кнопка ОК в модалке карты -> Открывает детали
+        const confirmBtn = this.element?.querySelector('.js-confirm-address-btn') as HTMLElement | null;
         const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
-        const modalSuggestContainer = this.element?.querySelector('.js-modal-suggestions') as HTMLElement | null;
+        if (confirmBtn && modalInput) {
+            confirmBtn.onclick = () => {
+                const addr = modalInput.value;
+                this.element?.querySelector('.js-map-modal')?.classList.remove('active');
+                this.openDetailsModal(addr, this.selectedCoords);
+            };
+        }
 
-        if (modalInput && modalSuggestContainer) {
-            modalInput.addEventListener('input', (e: Event) => {
-                const target = e.target as HTMLInputElement;
-                const query = target.value.trim();
-                
-                if (query.length < 3) {
-                    modalSuggestContainer.classList.remove('active');
-                    return;
-                }
-
+        // 5. Поиск внутри модалки карты
+        if (modalInput) {
+            modalInput.oninput = () => {
+                const query = modalInput.value.trim();
+                if (query.length < 3) return;
                 if (this.debounceTimer) clearTimeout(this.debounceTimer);
                 this.debounceTimer = setTimeout(async () => {
                     const results = await this.fetchYandexSuggestions(query);
                     this.renderModalSuggestions(results);
                 }, 300);
-            });
+            };
         }
 
-        // 6. Кнопка ОК в модалке
-        const confirmBtn = this.element?.querySelector('.js-confirm-address-btn') as HTMLElement | null;
-        if (confirmBtn && modalInput) {
-            confirmBtn.addEventListener('click', () => {
-                this.selectAddress(modalInput.value);
-                const modal = this.element?.querySelector('.js-map-modal');
-                if (modal) modal.classList.remove('active');
-            });
+        // 6. ФОРМА ДЕТАЛЕЙ (Квартира, этаж и т.д.)
+        const detailsForm = this.element?.querySelector('.js-details-form') as HTMLFormElement | null;
+        if (detailsForm) {
+            detailsForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const formData = new FormData(detailsForm);
+                const addressText = (this.element?.querySelector('.js-display-address') as HTMLInputElement).value;
+                
+                const payload = {
+                    address_text: addressText,
+                    lat: this.selectedCoords[0],
+                    lon: this.selectedCoords[1],
+                    apartment: formData.get('apartment'),
+                    entrance: formData.get('entrance'),
+                    floor: formData.get('floor'),
+                    door_code: formData.get('door_code'),
+                    courier_comment: formData.get('courier_comment'),
+                    label: "Дом"
+                };
+
+                if (this.isAuth) {
+                    try {
+                        await fetch('/api/profile/addresses', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            credentials: 'include'
+                        });
+                    } catch (err) { console.error(err); }
+                }
+
+                this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+                this.finalizeAddress(addressText, this.selectedCoords);
+            };
+        }
+
+        // 7. Кнопка "Карандаш" (вернуться к карте из деталей)
+        const changeBtn = this.element?.querySelector('.js-change-address-btn') as HTMLElement | null;
+        if (changeBtn) {
+            changeBtn.onclick = () => {
+                this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+                this.openMapModal();
+            };
+        }
+
+        // 8. Кнопка закрытия модалки ДЕТАЛЕЙ
+        this.element?.querySelector('.js-close-details-modal')?.addEventListener('click', () => {
+            this.element?.querySelector('.js-details-modal')?.classList.remove('active');
+        });
+
+        // Клик вне выпадашки
+        document.addEventListener('click', (e) => {
+            if (!this.element?.contains(e.target as Node)) {
+                addressDropdown?.classList.remove('active');
+            }
+        });
+    }
+
+    private finalizeAddress(address: string, coords: [number, number]): void {
+        const input = this.element?.querySelector('.js-address-input') as HTMLInputElement;
+        if (input) input.value = address;
+        localStorage.setItem('delivery_address', address);
+        localStorage.setItem('delivery_coords', JSON.stringify(coords));
+        this.onSelectCallback(address, coords);
+    }
+
+    private openDetailsModal(address: string, coords: [number, number]): void {
+        const modal = this.element?.querySelector('.js-details-modal') as HTMLElement;
+        const displayInput = this.element?.querySelector('.js-display-address') as HTMLInputElement;
+        const form = this.element?.querySelector('.js-details-form') as HTMLFormElement;
+
+        if (modal && displayInput && form) {
+            form.reset();
+            displayInput.value = address;
+            this.selectedCoords = coords;
+            modal.classList.add('active');
         }
     }
 
-    private renderSuggestions(list: string[], containerClass: string, onSelect: (addr: string) => void): void {
+    private renderSuggestions(list: string[], containerClass: string, isYandex: boolean): void {
         const container = this.element?.querySelector(`.${containerClass}`);
         if (!container) return;
-
-        container.innerHTML = list.map(addr => `
-            <div class="address-dropdown__item" data-addr="${addr}">${addr}</div>
-        `).join('');
-
+        container.innerHTML = list.map(addr => `<div class="address-dropdown__item" data-addr="${addr}">${addr}</div>`).join('');
+        
         container.querySelectorAll('.address-dropdown__item').forEach(el => {
-            const htmlEl = el as HTMLElement;
-            htmlEl.onclick = () => {
-                const addr = htmlEl.getAttribute('data-addr');
-                if (addr) onSelect(addr);
+            (el as HTMLElement).onclick = async () => {
+                const addr = el.getAttribute('data-addr') || '';
+                if (isYandex) {
+                    const res = await ymaps.geocode(addr);
+                    this.openDetailsModal(addr, res.geoObjects.get(0).geometry.getCoordinates());
+                } else {
+                    this.finalizeAddress(addr, this.selectedCoords);
+                }
             };
         });
     }
@@ -201,30 +242,17 @@ export class AddressPicker extends Component {
     private renderModalSuggestions(list: string[]): void {
         const container = this.element?.querySelector('.js-modal-suggestions');
         if (!container) return;
-
-        if (!list.length) {
-            container.classList.remove('active');
-            return;
-        }
-
         container.classList.add('active');
         container.innerHTML = list.map(addr => `<div class="modal-suggestion-item">${addr}</div>`).join('');
-
         container.querySelectorAll('.modal-suggestion-item').forEach(el => {
-            const htmlEl = el as HTMLElement;
-            htmlEl.onclick = () => {
-                const addr = htmlEl.innerText;
-                const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
-                if (modalInput) modalInput.value = addr;
-                
+            (el as HTMLElement).onclick = () => {
+                const addr = (el as HTMLElement).innerText;
+                (this.element?.querySelector('.js-modal-address-input') as HTMLInputElement).value = addr;
                 container.classList.remove('active');
-                
                 ymaps.geocode(addr).then((res: any) => {
                     const coords = res.geoObjects.get(0).geometry.getCoordinates();
-                    if (this.map) {
-                        this.map.setCenter(coords, 16);
-                        this.selectedCoords = coords;
-                    }
+                    this.map?.setCenter(coords, 16);
+                    this.selectedCoords = coords;
                 });
             };
         });
