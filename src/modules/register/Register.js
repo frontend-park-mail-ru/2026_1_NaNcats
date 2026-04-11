@@ -24,6 +24,20 @@ export class Register extends Component {
     afterRender() {
         const { errors } = setupAuthView(this, this.onSubmit);
         this.formErrors = errors;
+
+        const toggles = this.element.querySelectorAll('.password-icon');
+        toggles.forEach(icon => {
+            icon.onclick = () => {
+                const input = icon.parentElement.querySelector('input');
+                if (input.type === 'password') {
+                    input.type = 'text';
+                    icon.classList.add('password-icon_visible');
+                } else {
+                    input.type = 'password';
+                    icon.classList.remove('password-icon_visible');
+                }
+            };
+        });
     }
 
     /**
