@@ -103,6 +103,10 @@ export const profileTemplate = `
                                 {{? addr.entrance }}, под. {{=addr.entrance}}{{?}}
                                 {{? addr.floor }}, эт. {{=addr.floor}}{{?}}
                             </span>
+                            <div class="address-row__actions">
+                                <div class="edit-icon-orange edit-addr-btn" data-id="{{=addr.id}}"></div>
+                                <div class="delete-icon-orange delete-addr-btn" data-id="{{=addr.id}}"></div>
+                            </div>
                         </div>
                         {{~}}
                     {{??}}
