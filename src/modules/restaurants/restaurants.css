@@ -32,27 +32,29 @@ body, html {
 /* --- HEADER --- */
 .header {
     height: 64px;
-    flex-shrink: 0;
-    padding: 0 20px;
-    background: var(--white);
-    border-radius: 0 0 var(--card-radius) var(--card-radius);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    z-index: 10;
+    justify-content: flex-start;
+    padding: 0 20px;
     margin: 0 20px;
+    background: var(--white);
+    border-radius: 0 0 var(--card-radius) var(--card-radius);
+    z-index: 100;
 }
 
-.logo-container { margin-right: 20px; display: flex; align-items: center; }
+
+.logo-container {
+    margin-right: 20px;
+    flex-shrink: 0;
+}
 
 /* Search Bar */
 .search-bar { 
     display: flex; 
-    flex: 1; 
-    max-width: 640px; 
     height: 44px; 
-    align-items: center; 
-    margin-right: 20px;
+    width: 640px;
+    gap: 6px;
+    flex-shrink: 0;
 }
 
 .search-bar__group {
@@ -62,18 +64,16 @@ body, html {
     align-items: center;
 }
 
+.search-bar__group_address { 
+    width: 255px;
+    border-radius: 0 24px 24px 0;
+    padding: 0 16px 0 4px;
+}
+
 .search-bar__group_main { 
     flex: 1; 
     border-radius: 24px 0 0 24px; 
     padding: 0 20px;
-    gap: 10px;
-}
-
-.search-bar__group_address { 
-    border-radius: 0 24px 24px 0; 
-    padding: 0 24px 0 16px; 
-    margin-left: 2px; /* Имитация небольшого разделителя, если нужен. Либо gap в родителе */
-    gap: 10px;
 }
 
 .search-bar__input {
@@ -90,7 +90,12 @@ body, html {
 .search-bar__icon { display: flex; align-items: center; justify-content: center; }
 
 /* Right Controls */
-.header__controls { display: flex; align-items: center; gap: 20px; }
+.header__controls { 
+    display: flex; 
+    align-items: center; 
+    gap: 20px;
+    margin-left: auto;
+}
 
 .support-btn, .notif-btn { cursor: pointer; display: flex; align-items: center; justify-content: center;}
 
@@ -131,10 +136,24 @@ body, html {
 }
 
 
-.side-column-left { width: 203px; display: flex; flex-direction: column; min-height: 0; }
-.center-column { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; scrollbar-width: none;}
+.side-column_left, 
+.side-column_right { 
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 20px;
+    height: 100%;
+    min-height: 0;
+}
+
+.center-column { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    min-height: 0; 
+    overflow-y: auto; 
+    scrollbar-width: none;
+}
 .center-column::-webkit-scrollbar { display: none; }
-.side-column-right { width: 252px; display: flex; flex-direction: column; min-height: 0; }
 
 .card {
     background: var(--white);
@@ -160,19 +179,28 @@ body, html {
 .categories-list::-webkit-scrollbar { display: none; }
 
 .category-item {
-    display: flex; align-items: center; gap: 10px; 
-    padding: 10px; 
-    font-size: 14px; color: var(--text-dark);
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    padding: 10px 15px;
+    font-size: 14px; 
+    color: var(--text-dark);
     cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.2s ease;
     position: relative;
 }
-.category-item.active::after, .category-item:hover::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 24px; right: 10px;
-    height: 1px;
-    background: rgba(0, 0, 0, 0.08);
+
+.category-item::after {
+    display: none !important;
 }
+
+.category-item:hover,
+.category-item.active {
+    background-color: var(--input-bg);
+    color: var(--accent-pink);
+}
+
 .category-icon { font-size: 14px; }
 .category-name { font-weight: 400; }
 
@@ -181,9 +209,8 @@ body, html {
     height: 100%;
     overflow-y: auto;
     scrollbar-width: none;
-    /* Верхние углы ВСЕГДА круглые */
     border-radius: var(--card-radius) var(--card-radius) 0 0;
-    background: transparent; /* Чтобы не перекрывать фон страницы */
+    background: transparent;
 }
 .center-column::-webkit-scrollbar { display: none; }
 
@@ -191,8 +218,9 @@ body, html {
     background: var(--white);
     display: flex;
     flex-direction: column;
-    padding: 40px 32px 60px 32px;
+    padding: 40px 32px 40px 32px;
     border-radius: 0 0 var(--card-radius) var(--card-radius);
+    margin-bottom: 20px;
 }
 
 .sheet__header { margin-bottom: 23px; text-align: left; }
@@ -203,6 +231,7 @@ body, html {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 12px;
+    padding-bottom: 20px;
 }
 
 .res-card {
@@ -257,6 +286,14 @@ body, html {
     width: 100%; background: var(--accent-pink); color: white;
     padding: 10px; border-radius: 16px; font-size: 14px; border: none; cursor: pointer;
     display: flex; justify-content: center; gap: 10px; font-weight: 400;
+}
+
+.card_categories, 
+.card_cart { 
+    flex: 1; /* Карточка растягивается до нижнего отступа колонки */
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 /* --- OVERRIDES FOR ADDRESS PICKER --- */
