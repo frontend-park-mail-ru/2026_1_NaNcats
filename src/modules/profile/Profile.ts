@@ -14,6 +14,7 @@ interface UserProfile {
 export class Profile extends Component {
     private user: UserProfile | null = null;
     private addresses: any[] = [];
+    private cards: any[] = [];
     private isEditing: boolean = false;
 
     private editingAddressId: number | null = null;
@@ -31,17 +32,20 @@ export class Profile extends Component {
 
     async mount(container: HTMLElement) {
         try {
-            const [userRes, addrRes] = await Promise.all([
+            const [userRes, addrRes, cardsRes] = await Promise.all([
                 Ajax.get('/profile'),
-                Ajax.get('/profile/addresses')
+                Ajax.get('/profile/addresses'),
+                Ajax.get('/profile/cards')
             ]);
 
             if (userRes.ok) {
                 this.user = await userRes.json();
                 const addrData = addrRes.ok ? await addrRes.json() : { addresses: [] };
                 this.addresses = addrData.addresses || [];
+
+                this.cards = cardsRes.ok ? await cardsRes.json() : [];
                 
-                super.mount(container, { user: this.user, addresses: this.addresses });
+                super.mount(container, { user: this.user, addresses: this.addresses, cards: this.cards });
             } else {
                 window.router.go('/login');
             }
@@ -139,6 +143,69 @@ export class Profile extends Component {
                     this.openEditForm(Number(addrId));
                 }
             };
+        }
+
+        const addCardBtn = document.getElementById('add-card-btn');
+        if (addCardBtn) {
+            addCardBtn.onclick = () => this.bindNewCard();
+        }
+
+        const cardsList = document.getElementById('profile-cards-list');
+        if (cardsList) {
+            cardsList.onclick = (e) => {
+                const target = e.target as HTMLElement;
+                const cardId = target.getAttribute('data-id');
+                if (!cardId) return;
+
+                if (target.classList.contains('delete-card-btn')) {
+                    this.deleteCard(cardId);
+                } else if (target.classList.contains('set-default-card-btn')) {
+                    this.setDefaultCard(cardId);
+                }
+            };
+        }
+    }
+
+    private async bindNewCard() {
+        try {
+            const res = await Ajax.post('/profile/cards/bind', {});
+            if (res.ok) {
+                const data = await res.json();
+                if (data.confirmation_url) {
+                    window.location.href = data.confirmation_url; 
+                }
+            } else {
+                alert('Не удалось начать привязку карты. Попробуйте позже.');
+            }
+        } catch (e) {
+            console.error('Ошибка инициализации привязки:', e);
+        }
+    }
+
+    private async deleteCard(id: string) {
+        if (!confirm('Вы уверены, что хотите отвязать эту карту?')) return;
+        try {
+            const res = await Ajax.delete(`/profile/cards/${id}`);
+            if (res.ok) {
+                this.mount(this.element!);
+            } else {
+                alert('Не удалось удалить карту');
+            }
+        } catch (e) {
+            console.error('Ошибка удаления карты:', e);
+        }
+    }
+
+    private async setDefaultCard(id: string) {
+        try {
+            const res = await Ajax.put(`/profile/cards/${id}`);
+            if (res.ok) {
+                this.mount(this.element!);
+            } else {
+                alert('Не удалось изменить основную карту');
+            }
+        } catch (e) {
+            console.error('Ошибка установки карты по умолчанию:', e);
         }
     }
 

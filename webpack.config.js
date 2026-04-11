@@ -60,6 +60,13 @@ module.exports = (env, argv) => {
     devtool: isProduction ? false : 'eval-source-map',
 
     devServer: {
+      server: {
+        type: 'https',
+        options: {
+          key: './localhost+1-key.pem',
+          cert: './localhost+1.pem',
+        },
+      },
       port: 2033,
       hot: false, 
       liveReload: true,

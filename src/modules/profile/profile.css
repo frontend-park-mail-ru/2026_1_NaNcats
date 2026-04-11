@@ -152,13 +152,80 @@
 .address-item { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 400; }
 .edit-icon-small { width: 11px; height: 11px; background: #D78306; mask: url('data:image/svg+xml;utf8,<svg ...></svg>') no-repeat center; }
 
-.cards-list { display: flex; gap: 15px; padding-left: 5px; }
-.pay-card { width: 60px; height: 34px; border-radius: 5px; position: relative; display: flex; align-items: flex-end; padding: 4px; box-sizing: border-box; }
-.card-number { color: white; font-size: 8px; font-weight: 500; }
+/* Карты и оплата */
+.cards-list { 
+    display: flex; 
+    gap: 15px; 
+    padding-left: 5px; 
+    flex-wrap: wrap; 
+}
+
+.pay-card { 
+    width: 160px; 
+    height: 90px; 
+    border-radius: 12px; 
+    position: relative; 
+    display: flex; 
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px; 
+    box-sizing: border-box; 
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.pay-card:hover { transform: translateY(-2px); }
+
+.pay-card-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: flex-start; 
+}
+
+.pay-card-issuer { 
+    color: white; 
+    font-size: 12px; 
+    font-weight: 600; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    max-width: 90px;
+}
+
+.pay-card-actions { display: flex; gap: 8px; }
+
+.card-action-btn { 
+    cursor: pointer; 
+    opacity: 0.8; 
+    font-size: 14px; 
+    transition: opacity 0.2s; 
+}
+
+.card-action-btn:hover { 
+    opacity: 1; 
+    filter: drop-shadow(0 0 2px rgba(255,255,255,0.8)); 
+}
+
+.card-number { 
+    color: white; 
+    font-size: 16px; 
+    font-weight: 600; 
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3); 
+}
+
 .pay-card_sber { background: linear-gradient(50deg, rgba(237, 236, 2, 0.8) 0%, rgba(26, 204, 219, 0.8) 100%); }
-.pay-card_tinkoff { background: linear-gradient(141deg, #101112 0%, #C7C7C8 100%); }
-.pay-card_sbp { background: #F4F4F4; display: flex; align-items: center; justify-content: center; }
-.pay-card_sbp .card-number { color: black; font-weight: 700; font-size: 10px; }
+.pay-card_tinkoff { background: linear-gradient(141deg, #333 0%, #666 100%); }
+
+.pay-card-add { 
+    background: transparent; 
+    border: 2px dashed var(--accent-orange); 
+    box-shadow: none; 
+    align-items: center; 
+    justify-content: center; 
+    cursor: pointer; 
+}
+.pay-card-add:hover { background: rgba(253, 165, 34, 0.05); }
 
 /* История заказов */
 .orders-card { border-radius: 24px 24px 0 0; }

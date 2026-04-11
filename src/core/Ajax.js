@@ -69,4 +69,5 @@ export class Ajax {
 
     static async patch(url, body) { return this.#request(url, 'PATCH', body); }
     static async delete(url) { return this.#request(url, 'DELETE'); }
+    static async put(url, body = null) { return this.#request(url, 'PUT', body); }
 }

@@ -112,15 +112,30 @@ export const profileTemplate = `
                     <h2>Карты и оплата</h2>
                     <div class="orange-dot-large"></div>
                 </div>
-                <div class="cards-list">
-                    <div class="pay-card pay-card_sber">
-                        <span class="card-number">** 2974</span>
-                    </div>
-                    <div class="pay-card pay-card_tinkoff">
-                        <span class="card-number">** 2974</span>
-                    </div>
-                    <div class="pay-card pay-card_sbp">
-                        <span class="card-number">СБП</span>
+                <div class="cards-list" id="profile-cards-list">
+                    {{? it.cards && it.cards.length > 0 }}
+                        {{~it.cards :card}}
+                        <div class="pay-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'pay-card_sber' : 'pay-card_tinkoff' }}">
+                            <div class="pay-card-header">
+                                <span class="pay-card-issuer">{{=card.card_type}} {{=card.issuer_name ? card.issuer_name : ''}}</span>
+                                <div class="pay-card-actions">
+                                    {{? card.is_default }}
+                                        <span title="Основная карта" style="color: #FDA522; font-size: 16px;">★</span>
+                                    {{??}}
+                                        <span class="card-action-btn set-default-card-btn" data-id="{{=card.id}}" title="Сделать основной">☆</span>
+                                    {{?}}
+                                    <span class="card-action-btn delete-card-btn" data-id="{{=card.id}}" title="Удалить">🗑️</span>
+                                </div>
+                            </div>
+                            <span class="card-number">** {{=card.last4}}</span>
+                        </div>
+                        {{~}}
+                    {{??}}
+                        <span class="text-gray" style="align-self: center; margin-right: 10px;">У вас пока нет привязанных карт</span>
+                    {{?}}
+                    
+                    <div class="pay-card pay-card-add" id="add-card-btn">
+                        <span style="font-size: 32px; color: #FDA522;">+</span>
                     </div>
                 </div>
             </div>
