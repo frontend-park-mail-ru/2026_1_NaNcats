@@ -24,9 +24,10 @@ export class Profile extends Component {
     constructor() {
         super(profileTemplate);
 
-        this.addressPickerInstance = new AddressPicker((addr, coords) => {
-            this.selectedLocation = { text: addr, coords: coords };
-            this.openDetailsModal(); 
+        this.addressPickerInstance = new AddressPicker(() => {
+            if (this.element) {
+                this.mount(this.element); 
+            }
         });
     }
 
@@ -336,12 +337,6 @@ export class Profile extends Component {
     private showError(msg: string) {
         const errBlock = document.getElementById('profile-error');
         if (errBlock) errBlock.innerText = msg;
-    }
-
-    private handleAddAddressClick() {
-        if (this.addressPickerInstance) {
-            this.addressPickerInstance.openMapModal();
-        }
     }
 
     private openDetailsModal() {

@@ -1,193 +1,174 @@
 export const profileTemplate = `
 <div class="profile-page">
     <header class="profile-header">
-        <div class="profile-header__back router-link" href="/">
-            <div class="back-icon"></div>
-            <span>Назад</span>
-        </div>
-        <div class="profile-header__logo">
-            <!-- Твой логотип из фигмы -->
-            <div class="logo-bars">
-                <div class="bar bar-1"></div>
-                <div class="bar bar-2"></div>
-                <div class="bar bar-3"></div>
-                <div class="bar bar-4"></div>
+        <div class="profile-header__container">
+            <div class="profile-header__back router-link" href="/">
+                <div class="back-icon-arrow"></div>
+                <span>Назад</span>
             </div>
-            <img class="logo-avatar" src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" alt="mini-avatar">
+            
+            <div class="profile-header__right">
+                <div class="logo-bars">
+                    <div class="bar bar-1"></div>
+                    <div class="bar bar-2"></div>
+                    <div class="bar bar-3"></div>
+                    <div class="bar bar-4"></div>
+                </div>
+                <img class="logo-avatar" src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" alt="mini-avatar">
+            </div>
         </div>
     </header>
 
     <div class="profile-content">
-        <!-- ЛЕВАЯ КОЛОНКА (Инфо пользователя) -->
+        <!-- ЛЕВАЯ КОЛОНКА -->
         <aside class="profile-sidebar">
-            <div class="profile-card profile-user">
-                <div class="profile-user__header">
+            <!-- Имя и Аватар -->
+            <div class="profile-card profile-card_user">
+                <div class="profile-user-info">
                     <input type="text" id="profile-name" class="profile-input profile-input_name" value="{{=it.user.name}}" disabled>
-                    <div class="edit-icon" id="edit-profile-btn">✏️</div>
+                    <div class="edit-icon-orange" id="edit-profile-btn"></div>
                 </div>
-                
-                <div class="profile-avatar-container">
-                    <img id="profile-avatar-img" class="profile-avatar" src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" alt="avatar">
-                    <div class="profile-avatar-overlay" id="upload-avatar-btn">📷</div>
+                <div class="profile-avatar-wrapper">
+                    <img id="profile-avatar-img" class="profile-avatar-img" src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" alt="avatar">
+                    <div class="avatar-overlay" id="upload-avatar-btn">📷</div>
                     <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/webp" hidden>
                 </div>
                 {{? it.user.avatar_url }}
-                    <div class="delete-avatar" id="delete-avatar-btn">Удалить аватар</div>
+                    <div class="delete-avatar-link" id="delete-avatar-btn">Удалить аватар</div>
                 {{?}}
             </div>
 
-            <div class="profile-card profile-details">
-                <div class="detail-group">
-                    <span class="detail-label">Почта</span>
-                    <div class="detail-row">
+            <!-- Детали аккаунта -->
+            <div class="profile-card">
+                <div class="info-group">
+                    <label class="info-label">Почта</label>
+                    <div class="info-row">
                         <input type="email" id="profile-email" class="profile-input profile-input_email" value="{{=it.user.email}}" disabled>
+                        <div class="edit-icon-orange"></div>
                     </div>
                 </div>
-                <div class="detail-group">
-                    <span class="detail-label">Пароль</span>
-                    <span class="detail-value link-orange">Сменить пароль</span>
+                <div class="info-group">
+                    <label class="info-label">Пароль</label>
+                    <div class="link-orange">Сменить пароль</div>
                 </div>
-                <div class="detail-group">
-                    <span class="detail-label">Подписка</span>
-                    <span class="detail-value text-gray">Обычная</span>
-                    <span class="detail-subtext">Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий</span>
+                <div class="info-group">
+                    <label class="info-label">Подписка</label>
+                    <div class="subscription-status">Обычная</div>
+                    <p class="subscription-text">Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий</p>
                 </div>
-                
-                <button id="save-profile-btn" class="button button_primary hidden">Сохранить изменения</button>
+                <button id="save-profile-btn" class="button button_primary hidden" style="height: 40px; margin-top: 10px;">Сохранить</button>
                 <div id="profile-error" class="error-msg"></div>
             </div>
 
-            <div class="profile-card flex-row space-between">
-                <div class="flex-row gap-5 align-center">
-                    <span class="detail-label m-0">Стрик</span>
-                    <div class="orange-dot"></div>
+            <!-- Стрик -->
+            <div class="profile-card profile-card_row">
+                <div class="card-label-row">
+                    <span>Стрик</span>
+                    <div class="orange-dot-small"></div>
                 </div>
-                <span class="detail-value">14 недель - так держать! 🔥</span>
+                <div class="card-value-text">14 недель - так держать! 🔥</div>
             </div>
 
-            <div class="profile-card flex-row space-between">
-                <span class="detail-label m-0">Пять букв</span>
-                <span class="detail-subtext w-200">Вы ещё не отгадали сегодняшнее слово в игре «5 букв», <span class="link-orange">попробуйте</span>!</span>
+            <!-- Пять букв -->
+            <div class="profile-card profile-card_row">
+                <span class="card-label-row">Пять букв</span>
+                <p class="card-subtext">Вы ещё не отгадали сегодняшнее слово в игре «5 букв», <span class="link-orange">попробуйте</span>!</p>
             </div>
 
-            <div class="profile-card flex-row align-center gap-20">
-                <div class="bonuses-count">
-                    <span class="bonuses-number">67</span>
-                    <span class="detail-label">Мои бонусы:</span>
+            <!-- Бонусы -->
+            <div class="profile-card profile-card_row profile-card_bonuses">
+                <div class="bonuses-left">
+                    <div class="bonuses-num">67</div>
+                    <div class="info-label">Мои бонусы:</div>
                 </div>
-                <span class="detail-subtext w-200">Успей использовать 67 бонусов до их <span class="text-red">сгорания 01.04.2026</span></span>
+                <p class="card-subtext">Успей использовать 67 бонусов до их <span class="text-red">сгорания 01.04.2026</span></p>
             </div>
         </aside>
 
-        <!-- ПРАВАЯ КОЛОНКА (Адреса, Карты, Заказы) -->
+        <!-- ПРАВАЯ КОЛОНКА -->
         <main class="profile-main">
-            <div class="profile-card p-20">
+            <div class="profile-card profile-card_main">
                 <div class="section-header">
-                    <h2>Адреса доставки</h2>
+                    <h2 class="section-title">Адреса доставки</h2>
                     <div class="orange-dot-large"></div>
-                    <button class="link-orange" id="add-address-btn" style="background:none; border:none; margin-left:auto; cursor:pointer;">+ Добавить</button>
                 </div>
-                <div class="address-list" id="profile-address-list"> <!-- ID совпадает с кодом -->
+                
+                <div class="address-list" id="profile-address-list">
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~it.addresses :addr}}
-                        <div class="address-item" data-id="{{=addr.id}}">
-                            <div class="address-info">
-                                <span class="address-text">{{=addr.location.address_text}}</span>
-                                <span class="address-details">
-                                    {{=addr.apartment ? 'кв. ' + addr.apartment : ''}} {{=addr.floor ? 'эт. ' + addr.floor : ''}}
-                                </span>
-                            </div>
-                            <div class="address-actions">
-                                <span class="edit-addr-btn" data-id="{{=addr.id}}" style="cursor:pointer; margin-right:10px;">✏️</span>
-                                <span class="delete-addr-btn" data-id="{{=addr.id}}" style="cursor:pointer;">🗑️</span>
+                        <div class="address-row" data-id="{{=addr.id}}">
+                            <span class="address-row__text">{{=addr.location.address_text}}...</span>
+                            <div class="address-row__actions">
+                                <div class="edit-icon-orange edit-addr-btn" data-id="{{=addr.id}}"></div>
+                                <div class="delete-icon-orange delete-addr-btn" data-id="{{=addr.id}}"></div>
                             </div>
                         </div>
                         {{~}}
                     {{??}}
-                        <span class="text-gray">У вас пока нет сохраненных адресов</span>
+                        <div class="empty-text">У вас пока нет сохраненных адресов</div>
                     {{?}}
+                    <div class="link-orange mt-10" id="add-address-btn">+ добавить адрес</div>
                 </div>
 
-                <div class="section-header mt-20">
-                    <h2>Карты и оплата</h2>
+                <div class="section-header mt-30">
+                    <h2 class="section-title">Карты и оплата</h2>
                     <div class="orange-dot-large"></div>
                 </div>
-                <div class="cards-list" id="profile-cards-list">
+
+                <div class="cards-grid" id="profile-cards-list">
                     {{? it.cards && it.cards.length > 0 }}
                         {{~it.cards :card}}
-                        <div class="pay-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'pay-card_sber' : 'pay-card_tinkoff' }}">
-                            <div class="pay-card-header">
-                                <span class="pay-card-issuer">{{=card.card_type}} {{=card.issuer_name ? card.issuer_name : ''}}</span>
-                                <div class="pay-card-actions">
-                                    {{? card.is_default }}
-                                        <span title="Основная карта" style="color: #FDA522; font-size: 16px;">★</span>
-                                    {{??}}
-                                        <span class="card-action-btn set-default-card-btn" data-id="{{=card.id}}" title="Сделать основной">☆</span>
-                                    {{?}}
-                                    <span class="card-action-btn delete-card-btn" data-id="{{=card.id}}" title="Удалить">🗑️</span>
-                                </div>
+                        <div class="mini-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'mini-card_sber' : 'mini-card_tinkoff' }}">
+                            <div class="mini-card__top">
+                                <div class="mini-card__logo"></div>
                             </div>
-                            <span class="card-number">** {{=card.last4}}</span>
+                            <div class="mini-card__number">** {{=card.last4}}</div>
+                            <div class="mini-card__delete delete-card-btn" data-id="{{=card.id}}">×</div>
                         </div>
                         {{~}}
-                    {{??}}
-                        <span class="text-gray" style="align-self: center; margin-right: 10px;">У вас пока нет привязанных карт</span>
                     {{?}}
-                    
-                    <div class="pay-card pay-card-add" id="add-card-btn">
-                        <span style="font-size: 32px; color: #FDA522;">+</span>
-                    </div>
+                    <div class="mini-card mini-card_add" id="add-card-btn">+</div>
                 </div>
             </div>
 
-            <div class="profile-card p-20 orders-card">
-                <h2 class="orders-title">История заказов</h2>
-                <div class="order-item">
-                    <img src="https://placehold.co/75x75" alt="order">
-                    <span class="order-date">15.03.2026</span>
-                    <div class="order-info">
-                        <span class="order-name">4 вида премиума метр</span>
-                        <span class="order-weight">2 кг</span>
+            <div class="profile-card profile-card_main profile-card_orders">
+                <h2 class="section-title">История заказов</h2>
+                <div class="orders-list">
+                    <div class="order-row">
+                        <img class="order-row__img" src="https://placehold.co/75x75" alt="order">
+                        <div class="order-row__date">15.03.2026</div>
+                        <div class="order-row__info">
+                            <div class="order-row__name">4 вида премиума метр</div>
+                            <div class="order-row__meta">2 кг</div>
+                        </div>
+                        <div class="order-row__price">4 317,20₽</div>
                     </div>
-                    <span class="order-price">4 317,20₽</span>
-                </div>
-                <div class="order-item">
-                    <img src="https://placehold.co/75x75" alt="order">
-                    <span class="order-date">15.03.2026</span>
-                    <div class="order-info">
-                        <span class="order-name">4 вида премиума метр</span>
-                        <span class="order-weight">2 кг</span>
-                    </div>
-                    <span class="order-price">4 317,20₽</span>
                 </div>
             </div>
         </main>
     </div>
-
-    <!-- Контейнер для AddressPicker (карты) -->
+    
     <div id="profile-address-picker-container"></div>
-
-    <!-- Модалка деталей -->
     <div class="modal-overlay" id="address-details-modal">
         <div class="address-modal" style="width: 500px;">
             <div class="address-modal__close" id="close-details-modal">&times;</div>
-            <h2>Детали адреса</h2>
+            <h2 class="section-title">Детали адреса</h2>
             <form id="address-full-form" class="auth-form" style="max-width:100%">
                 <div class="input-group">
-                    <label>Адрес</label>
+                    <label class="info-label">Адрес</label>
                     <input type="text" id="display-address-text" class="input-field" disabled style="background:#eee">
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                    <div class="input-group"><label>Квартира</label><input name="apartment" class="input-field"></div>
-                    <div class="input-group"><label>Подъезд</label><input name="entrance" class="input-field"></div>
-                    <div class="input-group"><label>Этаж</label><input name="floor" class="input-field"></div>
-                    <div class="input-group"><label>Код двери</label><input name="door_code" class="input-field"></div>
+                    <div class="input-group"><label class="info-label">Квартира</label><input name="apartment" class="input-field"></div>
+                    <div class="input-group"><label class="info-label">Подъезд</label><input name="entrance" class="input-field"></div>
+                    <div class="input-group"><label class="info-label">Этаж</label><input name="floor" class="input-field"></div>
+                    <div class="input-group"><label class="info-label">Код</label><input name="door_code" class="input-field"></div>
                 </div>
                 <div class="input-group">
-                    <label>Комментарий</label>
+                    <label class="info-label">Комментарий</label>
                     <input name="courier_comment" class="input-field">
                 </div>
-                <button type="submit" class="button button_primary">Сохранить адрес</button>
+                <button type="submit" class="button button_primary" style="height: 48px; margin-top: 20px;">Сохранить адрес</button>
             </form>
         </div>
     </div>
