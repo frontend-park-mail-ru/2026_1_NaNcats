@@ -247,80 +247,6 @@ export class Profile extends Component {
         }
     }
 
-    private editAddress(element: HTMLElement, id: string | null) {
-        if (!id) return;
-        
-        const textSpan = element.querySelector('.address-text') as HTMLElement;
-        const oldText = textSpan.innerText;
-        
-        textSpan.innerHTML = `<input type="text" class="address-edit-input" value="${oldText}" style="width: 100%;">`;
-        const input = textSpan.querySelector('input') as HTMLInputElement;
-        input.focus();
-
-        input.onblur = async () => {
-            const newText = input.value.trim();
-            if (!newText || newText === oldText) {
-                textSpan.innerText = oldText;
-                return;
-            }
-            
-            try {
-                const res = await fetch(`/api/profile/addresses/${id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        address_text: newText,
-                        lat: 55.75,
-                        lon: 37.61 
-                    }),
-                    credentials: 'include'
-                });
-
-                if (res.ok) {
-                    this.mount(this.element!);
-                } else {
-                    alert('Ошибка при сохранении');
-                    textSpan.innerText = oldText;
-                }
-            } catch (e) {
-                console.error(e);
-                textSpan.innerText = oldText;
-            }
-        };
-
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') input.blur();
-            if (e.key === 'Escape') { input.value = oldText; input.blur(); }
-        };
-    }
-
-    private async addNewAddress() {
-        const address = prompt('Введите новый адрес:');
-        if (!address) return;
-
-        try {
-            const res = await fetch('/api/profile/addresses', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    address_text: address,
-                    lat: 55.75,
-                    lon: 37.61,
-                    label: 'Дом'
-                }),
-                credentials: 'include'
-            });
-
-            if (res.ok) {
-                this.mount(this.element!);
-            } else {
-                alert('Не удалось добавить адрес');
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
     private async uploadAvatar(file: File) {
         const formData = new FormData();
         formData.append('avatar', file);
@@ -423,11 +349,11 @@ export class Profile extends Component {
         const displayInput = document.getElementById('display-address-text') as HTMLInputElement;
         
         if (modal && displayInput) {
-            displayInput.value = this.selectedLocation?.text || "";
-            // Сбрасываем форму, если это новый адрес
             if (!this.editingAddressId) {
                 (document.getElementById('address-full-form') as HTMLFormElement).reset();
             }
+            
+            displayInput.value = this.selectedLocation?.text || "";
             modal.classList.add('active');
         }
     }

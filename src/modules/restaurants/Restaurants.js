@@ -66,6 +66,7 @@ export class Restaurants extends Component {
             console.warn("Ошибка при получении данных:", e);
         }
 
+        this.user = user;
         const savedAddr = localStorage.getItem('delivery_address');
 
         super.mount(container, { restaurants, user, currentAddress: savedAddr});
@@ -205,19 +206,30 @@ export class Restaurants extends Component {
             });
 
             const savedAddr = localStorage.getItem('delivery_address') || '';
+            const isAuth = !!this.user;
             
-            Ajax.get('/profile/addresses').then(res => res.json()).then(data => {
-                const userAddresses = data.addresses ? data.addresses.map(a => a.location.address_text) : [];
+            if (isAuth) {
+                Ajax.get('/profile/addresses').then(res => res.json()).then(data => {
+                    const userAddresses = data.addresses ? data.addresses.map(a => a.location.address_text) : [];
+                    addressPicker.mount(addressSlot, { 
+                        currentAddress: savedAddr, 
+                        savedAddresses: userAddresses,
+                        isAuth: true
+                    });
+                }).catch(() => {
+                    addressPicker.mount(addressSlot, { 
+                        currentAddress: savedAddr, 
+                        savedAddresses: [],
+                        isAuth: true
+                    });
+                });
+            } else {
                 addressPicker.mount(addressSlot, { 
                     currentAddress: savedAddr, 
-                    savedAddresses: userAddresses 
+                    savedAddresses: [],
+                    isAuth: false
                 });
-            }).catch(() => {
-                addressPicker.mount(addressSlot, { 
-                    currentAddress: savedAddr, 
-                    savedAddresses: [] 
-                });
-            });
+            }
         }
     }
 }

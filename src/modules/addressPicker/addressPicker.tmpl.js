@@ -13,7 +13,7 @@ export const addressPickerTemplate = `
         autocomplete="off">
         
         <div class="address-dropdown js-address-dropdown">
-            <div class="address-dropdown__map-button-wrapper js-open-map-btn">
+            <div class="address-dropdown__map-button-wrapper js-open-map-btn" style="display: none;">
                 <div class="address-dropdown__map-button">Указать на карте</div>
             </div>
             <div class="address-dropdown__suggestions js-address-suggestions"></div>

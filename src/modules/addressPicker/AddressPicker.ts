@@ -6,6 +6,7 @@ declare var ymaps: any;
 declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
 
 export class AddressPicker extends Component {
+    private isAuth: boolean = true;
     private suggestKey: string;
     private savedAddresses: string[];
     private map: any | null;
@@ -80,28 +81,48 @@ export class AddressPicker extends Component {
 
     async mount(container: HTMLElement, data: any) {
         this.savedAddresses = data?.savedAddresses || [];
+        this.isAuth = data?.isAuth !== undefined ? data.isAuth : true;
         super.mount(container, data);
     }
 
     afterRender(): void {
-        const addressInput = this.element?.querySelector('.js-address-input') as HTMLInputElement;
-        const addressDropdown = this.element?.querySelector('.js-address-dropdown');
-        const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
-        const modalSuggestContainer = this.element?.querySelector('.js-modal-suggestions');
+        // 1. Ищем основные элементы
+        const addressInput = this.element?.querySelector('.js-address-input') as HTMLInputElement | null;
+        const addressDropdown = this.element?.querySelector('.js-address-dropdown') as HTMLElement | null;
+        const openMapBtn = this.element?.querySelector('.js-open-map-btn') as HTMLElement | null;
 
+        // 2. Логика для главного инпута (будет работать только там, где он есть — например, в хедере)
         if (addressInput && addressDropdown) {
-            addressInput.oninput = (e: Event) => {
+            const handleInput = (e: Event) => {
+                if (!this.isAuth) {
+                    addressInput.blur();
+                    window.router.go('/login');
+                    return;
+                }
+
                 const target = e.target as HTMLInputElement;
                 const query = target.value.trim();
                 addressDropdown.classList.add('active');
 
-                if (this.debounceTimer) clearTimeout(this.debounceTimer);
-                
-                this.debounceTimer = setTimeout(async () => {
-                    const results = query ? await this.fetchYandexSuggestions(query) : this.savedAddresses;
-                    this.renderSuggestions(results, 'js-address-suggestions', (addr) => this.selectAddress(addr));
-                }, 400);
+                if (!query) {
+                    if (openMapBtn) openMapBtn.style.display = 'none';
+                    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+                    this.renderSuggestions(this.savedAddresses, 'js-address-suggestions', (addr) => this.selectAddress(addr));
+                } else {
+                    if (openMapBtn) openMapBtn.style.display = 'block';
+                    if (e.type === 'input') {
+                        if (this.debounceTimer) clearTimeout(this.debounceTimer);
+                        this.debounceTimer = setTimeout(async () => {
+                            const results = await this.fetchYandexSuggestions(query);
+                            this.renderSuggestions(results, 'js-address-suggestions', (addr) => this.selectAddress(addr));
+                        }, 400);
+                    }
+                }
             };
+
+            addressInput.addEventListener('focus', handleInput);
+            addressInput.addEventListener('click', handleInput);
+            addressInput.addEventListener('input', handleInput);
 
             document.addEventListener('click', (e) => {
                 if (!this.element?.contains(e.target as Node)) {
@@ -110,21 +131,29 @@ export class AddressPicker extends Component {
             });
         }
 
-        const openMapBtn = this.element?.querySelector('.js-open-map-btn');
+        // 3. Кнопка открытия карты (может быть в выпадашке хедера)
         if (openMapBtn) {
-            (openMapBtn as HTMLElement).onclick = () => this.openMapModal();
+            openMapBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openMapModal();
+            });
         }
 
-        const closeMapBtn = this.element?.querySelector('.js-close-map-modal');
+        // 4. Кнопка закрытия модалки карты (есть всегда в шаблоне модалки)
+        const closeMapBtn = this.element?.querySelector('.js-close-map-modal') as HTMLElement | null;
         if (closeMapBtn) {
-            (closeMapBtn as HTMLElement).onclick = () => {
+            closeMapBtn.addEventListener('click', () => {
                 const modal = this.element?.querySelector('.js-map-modal');
                 if (modal) modal.classList.remove('active');
-            };
+            });
         }
 
+        // 5. Поиск и саджесты ВНУТРИ модалки карты
+        const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
+        const modalSuggestContainer = this.element?.querySelector('.js-modal-suggestions') as HTMLElement | null;
+
         if (modalInput && modalSuggestContainer) {
-            modalInput.oninput = (e: Event) => {
+            modalInput.addEventListener('input', (e: Event) => {
                 const target = e.target as HTMLInputElement;
                 const query = target.value.trim();
                 
@@ -138,16 +167,17 @@ export class AddressPicker extends Component {
                     const results = await this.fetchYandexSuggestions(query);
                     this.renderModalSuggestions(results);
                 }, 300);
-            };
+            });
         }
 
-        const confirmBtn = this.element?.querySelector('.js-confirm-address-btn');
+        // 6. Кнопка ОК в модалке
+        const confirmBtn = this.element?.querySelector('.js-confirm-address-btn') as HTMLElement | null;
         if (confirmBtn && modalInput) {
-            (confirmBtn as HTMLElement).onclick = () => {
+            confirmBtn.addEventListener('click', () => {
                 this.selectAddress(modalInput.value);
                 const modal = this.element?.querySelector('.js-map-modal');
                 if (modal) modal.classList.remove('active');
-            };
+            });
         }
     }
 
