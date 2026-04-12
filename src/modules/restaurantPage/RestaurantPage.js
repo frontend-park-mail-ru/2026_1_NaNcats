@@ -1,6 +1,6 @@
 import './restaurantPage.css';
-import { Component } from '../../core/Component.js';
-import { Ajax } from '../../core/Ajax.js';
+import { Component } from '../../core/Component';
+import { Ajax } from '../../core/Ajax';
 import {restaurantPageTemplate} from './restaurantPage.tmpl.js'
 
 /**
