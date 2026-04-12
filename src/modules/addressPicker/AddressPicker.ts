@@ -42,20 +42,23 @@ export class AddressPicker extends Component {
         if (modal) {
             modal.classList.add('modal-overlay_active');
             ymaps.ready(() => {
-                if (this.map) return;
-                const mapContainer = this.element?.querySelector('.js-yandex-map') as HTMLElement;
-                this.map = new ymaps.Map(mapContainer, {
-                    center: this.selectedCoords,
-                    zoom: 16,
-                    controls: []
-                });
-
-                this.map.events.add('actionend', () => {
-                    const center = this.map.getCenter();
-                    this.selectedCoords = center;
-                    this.reverseGeocode(center);
-                });
+            if (this.map) return;
+            const mapContainer = this.element?.querySelector<HTMLElement>('.js-yandex-map');
+            if (!mapContainer) {
+                console.error('Контейнер для карты .js-yandex-map не найден');
+                return;
+            }
+            this.map = new ymaps.Map(mapContainer, {
+                center: this.selectedCoords,
+                zoom: 16,
+                controls: []
             });
+            this.map.events.add('actionend', () => {
+                const center = this.map.getCenter();
+                this.selectedCoords = center;
+                this.reverseGeocode(center);
+            });
+        });
         }
     }
 
@@ -83,9 +86,9 @@ export class AddressPicker extends Component {
     }
 
     afterRender(): void {
-        const addressInput = this.element?.querySelector('.js-address-input') as HTMLInputElement | null;
-        const addressDropdown = this.element?.querySelector('.js-address-dropdown') as HTMLElement | null;
-        const openMapBtn = this.element?.querySelector('.js-open-map-btn') as HTMLElement | null;
+        const addressInput = this.element?.querySelector<HTMLInputElement>('.js-address-input');
+        const addressDropdown = this.element?.querySelector<HTMLElement>('.js-address-dropdown');
+        const openMapBtn = this.element?.querySelector<HTMLElement>('.js-open-map-btn');
 
         if (addressInput && addressDropdown) {
             const handleInput = (e: Event) => {
@@ -214,58 +217,74 @@ export class AddressPicker extends Component {
     }
 
     private openDetailsModal(address: string, coords: [number, number]): void {
-        const modal = this.element?.querySelector('.js-details-modal') as HTMLElement;
-        const displayInput = this.element?.querySelector('.js-display-address') as HTMLInputElement;
-        const form = this.element?.querySelector('.js-details-form') as HTMLFormElement;
+        const modal = this.element?.querySelector<HTMLElement>('.js-details-modal');
+        const displayInput = this.element?.querySelector<HTMLInputElement>('.js-display-address');
+        const form = this.element?.querySelector<HTMLFormElement>('.js-details-form');
 
-        if (modal && displayInput && form) {
-            form.reset();
-            displayInput.value = address;
-            this.selectedCoords = coords;
-            modal.classList.add('modal-overlay_active');
+        if (!modal || !displayInput || !form) {
+            console.error('Элементы модалки деталей адреса не найдены в DOM');
+            return;
         }
+
+        form.reset();
+        displayInput.value = address;
+        this.selectedCoords = coords;
+        modal.classList.add('modal-overlay_active');
     }
 
     private renderSuggestions(list: string[], containerClass: string, isYandex: boolean): void {
-        const container = this.element?.querySelector(`.${containerClass}`);
+        const container = this.element?.querySelector<HTMLElement>(`.${containerClass}`);
         if (!container) return;
-        container.innerHTML = list.map(addr => `<div class="address-dropdown__item" data-addr="${addr}">${addr}</div>`).join('');
-        
-        container.querySelectorAll('.address-dropdown__item').forEach(el => {
-            (el as HTMLElement).onclick = async () => {
-                const addr = el.getAttribute('data-addr') || '';
+
+        container.innerHTML = list.map(addr => 
+            `<div class="address-dropdown__item" data-addr="${addr}">${addr}</div>`
+        ).join('');
+
+        container.onclick = async (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            const item = target.closest<HTMLElement>('.address-dropdown__item');
+            
+            if (item) {
+                const addr = item.getAttribute('data-addr') || '';
                 if (isYandex) {
                     const res = await ymaps.geocode(addr);
-                    this.openDetailsModal(addr, res.geoObjects.get(0).geometry.getCoordinates());
+                    const coords = res.geoObjects.get(0).geometry.getCoordinates();
+                    this.openDetailsModal(addr, coords);
                 } else {
                     this.finalizeAddress(addr, this.selectedCoords);
                 }
-            };
-        });
+            }
+        };
     }
 
     private renderModalSuggestions(list: string[]): void {
-        const container = this.element?.querySelector('.js-modal-suggestions') as HTMLElement;
+        const container = this.element?.querySelector<HTMLElement>('.js-modal-suggestions');
         if (!container) return;
 
         if (list.length > 0) {
-            container.classList.add('address-modal__suggestions_active'); // БЭМ
-            container.innerHTML = list.map(addr => `<div class="modal-suggestion-item">${addr}</div>`).join('');
+            container.classList.add('address-modal__suggestions_active');
+            container.innerHTML = list.map(addr => 
+                `<div class="modal-suggestion-item">${addr}</div>`
+            ).join('');
             
-            container.querySelectorAll('.modal-suggestion-item').forEach(el => {
-                (el as HTMLElement).onclick = () => {
-                    const addr = (el as HTMLElement).innerText;
-                    const modalInput = this.element?.querySelector('.js-modal-address-input') as HTMLInputElement;
+            container.onclick = (e: MouseEvent) => {
+                const target = e.target as HTMLElement;
+                const item = target.closest<HTMLElement>('.modal-suggestion-item');
+                
+                if (item) {
+                    const addr = item.innerText;
+                    const modalInput = this.element?.querySelector<HTMLInputElement>('.js-modal-address-input');
                     if (modalInput) modalInput.value = addr;
                     
                     container.classList.remove('address-modal__suggestions_active');
+                    
                     ymaps.geocode(addr).then((res: any) => {
                         const coords = res.geoObjects.get(0).geometry.getCoordinates();
                         this.map?.setCenter(coords, 16);
                         this.selectedCoords = coords;
                     });
-                };
-            });
+                }
+            };
         } else {
             container.classList.remove('address-modal__suggestions_active');
         }
