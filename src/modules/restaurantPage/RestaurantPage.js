@@ -48,25 +48,39 @@ export class RestaurantPage extends Component {
      * @returns {Promise<void>}
      */
     async mount(container) {
+        this.user = null;
         this.offset = 0;
         this.hasMore = true;
+        const restId = this.getRestaurantId();
+        
         let dishes = [];
+        let restaurantInfo = { name: 'Загрузка...' };
 
         try {
-            const userResponse = await Ajax.get('/auth/me');
-            if (userResponse.ok) {
-                this.user = await userResponse.json();
-            } else {
-                this.user = null;
-            }
+            const [userRes, dishesData, restRes] = await Promise.all([
+                Ajax.get('/auth/me'),
+                this.fetchDishes(),
+                Ajax.get(`/restaurants/brands/${restId}`)
+            ]);
 
-            dishes = await this.fetchDishes();
+            if (userRes.ok) this.user = await userRes.json();
+            dishes = dishesData;
+            if (restRes.ok) restaurantInfo = await restRes.json();
+
         } catch (e) {
             console.warn("Ошибка при получении данных:", e);
         }
 
-        dishes = dishes.map(d => ({...d, price_formatted: d.price / 1000000}));
-        super.mount(container, { dishes, user: this.user });
+        const formattedDishes = dishes.map(d => ({
+            ...d, 
+            price_formatted: d.price / 1000000
+        }));
+
+        super.mount(container, { 
+            dishes: formattedDishes, 
+            user: this.user,
+            restaurant: restaurantInfo 
+        });
     }
 
     /**

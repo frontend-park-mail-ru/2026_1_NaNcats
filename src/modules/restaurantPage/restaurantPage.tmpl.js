@@ -23,36 +23,29 @@ export const restaurantPageTemplate = `
         </div>
 
         <div class="header__controls">
-            {{? it.user }}
-                <div class="notif-btn">
-                    <div class="notif-btn__icon">
-                        <svg width="15" height="17" viewBox="0 0 15 17" fill="none">
-                            <path d="M5.83333 14.4524H9.16667C9.16667 15.3952 8.41667 16.1667 7.5 16.1667C6.58333 16.1667 5.83333 15.3952 5.83333 14.4524ZM15 12.7381V13.5952H0V12.7381L1.66667 11.0238V5.88095C1.66667 3.22381 3.33333 0.909525 5.83333 0.138097L6.5 1.07481e-06C7.5 1.07481e-06 6.58333 1.07481e-06 7.5 1.07481e-06C8.41667 1.07481e-06 7.5 0 8.5 1.65839e-07L9.16667 0.138097C11.6667 0.909525 13.3333 3.22381 13.3333 5.88095V11.0238L15 12.7381ZM11.6667 5.88095C11.6667 3.48095 9.83333 1.59524 7.5 1.59524C5.16667 1.59524 3.33333 3.48095 3.33333 5.88095V11.881H11.6667V5.88095Z" fill="#FFC1C1"/>
-                        </svg>
-                    </div>
-                    <div class="notif-btn__label">Уведомления</div>
+        {{? it.user }}
+            <div class="notif-btn">
+                <div class="notif-btn__icon">
+                    <svg width="21" height="24" viewBox="0 0 21 24" fill="none">
+                        <path d="M10.5422 23.89C11.6667 23.89 12.5714 22.9852 12.5714 21.8608H8.513C8.513 22.9852 9.41776 23.89 10.5422 23.89ZM18.6589 16.7878V10.7003C18.6589 7.54519 16.9748 4.88725 14.0933 4.18721V3.59554C14.0933 1.63751 12.5002 0.0444336 10.5422 0.0444336C8.58414 0.0444336 6.99105 1.63751 6.99105 3.59554V4.18721C4.10955 4.88725 2.42546 7.53504 2.42546 10.7003V16.7878L0.396286 18.8169V19.8315H20.6881V18.8169L18.6589 16.7878ZM16.6297 17.8024H4.45463V10.7003C4.45463 8.01188 6.07792 5.62804 8.513 5.62804H12.5714C15.0065 5.62804 16.6297 8.01188 16.6297 10.7003V17.8024Z" fill="#FFC1C1"/>
+                    </svg>
                 </div>
-                <div class="user-menu-wrapper">
-                    <div class="user-profile">
-                        <div class="user-profile__avatar"></div>
-                        <div class="user-profile__name">
-                            {{=it.user.name}}
-                        </div>
-                    </div>
-
-                    <div class="user-dropdown">
-                        <div class="user-dropdown__item logout" id="logout-btn">
-                            Выйти
-                        </div>
-                    </div>
+            </div>
+            <div class="user-menu-wrapper">
+                <a href="/profile" class="user-profile router-link">
+                    <img src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" class="user-profile__avatar">
+                </a>
+                <div class="user-dropdown">
+                    <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
                 </div>
-            {{??}}
-                <div class="auth-guest-controls">
-                    <button id="login-btn" class="button button_header-login">Войти</button>
-                    <button id="register-btn" class="button button_header-reg">Регистрация</button>
-                </div>
-            {{?}}
-        </div>
+            </div>
+        {{??}}
+            <div class="auth-guest-controls">
+                <button id="login-btn" class="button button_header-login">Войти</button>
+                <button id="register-btn" class="button button_header-reg">Регистрация</button>
+            </div>
+        {{?}}
+    </div>
     </header>
 
     <div class="main-layout">
@@ -83,9 +76,9 @@ export const restaurantPageTemplate = `
         <main class="center-column">
             <div class="sheet">
 
-                <!-- Заголовок ресторана (пока заглушка) -->
+                <!-- Заголовок ресторана -->
                 <div class="sheet__header" style="justify-content:center;">
-                    <h1 class="sheet__title" style="text-align:center;">Pizza Epic Family</h1>
+                    <h1 class="sheet__title" style="text-align:center;">{{=it.restaurant.name}}</h1>
                 </div>
 
                 <!-- Баннер ресторана (плейсхолдер) -->
@@ -139,10 +132,10 @@ export const restaurantPageTemplate = `
 
                             <div class="dish-card__prices" style="display:flex; gap:8px; align-items:baseline;">
                                 <div style="color:#ff6b6b; font-weight:700;">
-                                  {{=dish.price}} ₽
+                                  {{=dish.price_formatted}} ₽
                                 </div>
                                 <div style="color:#999; text-decoration:line-through; font-size:12px;">
-                                  {{=dish.price}} ₽
+                                  {{=dish.price_formatted}} ₽
                                 </div>
                             </div>
 
