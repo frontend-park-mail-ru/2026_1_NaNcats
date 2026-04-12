@@ -9,6 +9,7 @@ export class Checkout extends Component {
     private cart: any = null;
     private addresses: any[] = [];
     private cards: any[] = [];
+    private user: any = null;
     
     private selectedAddress: any = null;
     private selectedCard: any = null; // null означает "Новая карта / Стандартная оплата"
@@ -38,6 +39,11 @@ export class Checkout extends Component {
         this.element = container;
         await this.loadData();
 
+        if (!this.user) {
+            window.router.go('/login');
+            return;
+        }
+
         // Проверяем, есть ли товары в корзине
         if (!this.cart || !this.cart.items || this.cart.items.length === 0) {
             window.router.go('/'); // Если корзина пуста, отправляем на главную
@@ -55,15 +61,21 @@ export class Checkout extends Component {
             this.selectedCard = defaultCard;
         }
 
+        const backBtn = this.element.querySelector('.js-back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => window.router.back());
+        }
+
         this.updateUI();
     }
 
     private async loadData(): Promise<void> {
         try {
-            const [cartRes, addrRes, cardsRes] = await Promise.all([
+            const [cartRes, addrRes, cardsRes, userRes] = await Promise.all([
                 Ajax.get('/cart'),
                 Ajax.get('/profile/addresses'),
-                Ajax.get('/profile/cards')
+                Ajax.get('/profile/cards'),
+                Ajax.get('/auth/me')
             ]);
 
             if (cartRes.ok) {
@@ -76,6 +88,7 @@ export class Checkout extends Component {
             if (cardsRes.ok) {
                 this.cards = await cardsRes.json();
             }
+            if (userRes.ok) this.user = await userRes.json(); 
         } catch (e) {
             console.error("Ошибка загрузки данных для Checkout", e);
         }
@@ -95,6 +108,7 @@ export class Checkout extends Component {
         }
 
         super.mount(this.element, {
+            user: this.user,
             cart: this.cart,
             addresses: this.addresses,
             cards: this.cards,
