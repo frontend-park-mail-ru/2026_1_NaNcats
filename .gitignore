@@ -145,3 +145,5 @@ vite.config.ts.timestamp-*
 
 # macos
 .DS_Store
+
+*.pem

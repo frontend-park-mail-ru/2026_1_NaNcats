@@ -1,4 +1,4 @@
-import { Component } from '../core/Component.js';
+import { Component } from '../core/Component';
 
 /**
  * Компонент страницы ошибки 404 (Страница не найдена).

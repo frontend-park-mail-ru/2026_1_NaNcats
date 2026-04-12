@@ -16,7 +16,7 @@ module.exports = (env, argv) => {
     target: 'web',
     mode: isProduction ? 'production' : 'development',
     
-    entry: './src/app.js', 
+    entry: './src/app.ts', 
 
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -25,15 +25,19 @@ module.exports = (env, argv) => {
       clean: true,
     },
 
+    resolve: {
+      extensions: ['.ts', '.js', '.json'], 
+    },
+
     module: {
       rules: [
         {
-          test: /\.css$/i,
-          use: ['style-loader', 'css-loader'],
+          test: /\.(css|scss)$/i,
+          use: ['style-loader', 'css-loader', 'sass-loader'],
         },
         {
-          test: /\.ts$/,
-          use: 'ts-loader',
+          test: /\.(js|ts)$/,
+          use: 'babel-loader',
           exclude: /node_modules/,
         },
       ],
@@ -56,6 +60,13 @@ module.exports = (env, argv) => {
     devtool: isProduction ? false : 'eval-source-map',
 
     devServer: {
+      server: {
+        type: 'https',
+        options: {
+          key: './localhost+1-key.pem',
+          cert: './localhost+1.pem',
+        },
+      },
       port: 2033,
       hot: false, 
       liveReload: true,

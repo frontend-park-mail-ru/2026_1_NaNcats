@@ -1,9 +1,10 @@
-import './register.css';
+import './register.scss';
 import { registerTemplate } from './register.tmpl.js';
-import { Ajax } from '../../core/Ajax.js';
-import { validateEmail, validatePassword, validateName } from '../../shared/utils/Validator.js';
-import { Component } from '../../core/Component.js';
-import { setupAuthView } from '../../shared/utils/AuthSetup.js';
+import { Ajax } from '../../core/Ajax';
+import { validateEmail, validatePassword, validateName } from '../../shared/utils/Validator';
+import { Component } from '../../core/Component';
+import { setupAuthView } from '../../shared/utils/AuthSetup';
+import { FormErrors } from '../../shared/utils/FormErrors';
 
 /**
  * Компонент страницы регистрации пользователя.
@@ -12,6 +13,12 @@ import { setupAuthView } from '../../shared/utils/AuthSetup.js';
  * @extends Component
  */
 export class Register extends Component {
+    /** 
+     * Ошибки формы.
+     * @type {FormErrors} 
+     */
+    private formErrors!: FormErrors;
+
     constructor() {
         super(registerTemplate);
     }
@@ -21,9 +28,34 @@ export class Register extends Component {
      * @override
      * @returns {void}
      */
-    afterRender() {
-        const { errors } = setupAuthView(this, this.onSubmit);
+    public afterRender(): void {
+        const { errors } = setupAuthView(this, this.onSubmit.bind(this));
         this.formErrors = errors;
+        this.setupPasswordToggle();
+    }
+
+    private setupPasswordToggle(): void {
+        if (!this.element) return;
+
+        const toggles = this.element.querySelectorAll('.js-password-toggle');
+        
+        toggles.forEach(element => {
+            const icon = element as HTMLElement;
+            
+            icon.onclick = () => {
+                const input = icon.parentElement?.querySelector('input') as HTMLInputElement | null;
+                
+                if (input) {
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.add('password-wrapper__icon_visible');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('password-wrapper__icon_visible');
+                    }
+                }
+            };
+        });
     }
 
     /**
@@ -31,14 +63,19 @@ export class Register extends Component {
      * @param {HTMLFormElement} form - DOM-элемент формы регистрации.
      * @returns {Promise<void>}
      */
-    async onSubmit(form) {
+    private async onSubmit(form: HTMLFormElement): Promise<void> {
         this.formErrors.clearErrors();
 
+        const nameInput = form.elements.namedItem('name') as HTMLInputElement;
+        const emailInput = form.elements.namedItem('email') as HTMLInputElement;
+        const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
+        const repeatPasswordInput = form.elements.namedItem('repeatPassword') as HTMLInputElement;
+
         const data = {
-            name: form.name.value.trim(),
-            email: form.email.value.trim(),
-            password: form.password.value,
-            repeatPassword: form.repeatPassword.value
+            name: nameInput.value.trim(),
+            email: emailInput.value.trim(),
+            password: passwordInput.value,
+            repeatPassword: repeatPasswordInput.value
         };
 
         let isValid = true;
