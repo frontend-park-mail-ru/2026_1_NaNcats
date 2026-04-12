@@ -2,11 +2,13 @@
 
 .restaurant-details-page {
     .main-layout {
-        /* Принудительно растягиваем на всю оставшуюся высоту */
         display: grid;
         flex: 1; 
         min-height: 0;
         align-items: stretch;
+        min-height: 0;
+        height: calc(100vh - 64px);
+        overflow: hidden;
     }
 
     .header {
@@ -27,6 +29,7 @@
         display: flex;
         flex-direction: column;
         padding-bottom: 20px;
+        overflow: hidden;
     }
 
     .card_fixed {
@@ -34,10 +37,14 @@
         min-height: auto;
         padding: 15px;
     }
+    
+    .card_cart {
+        height: 100%;
+        overflow: hidden;
+    }
 
     .center-column {
         height: 100%;
-        /* Чтобы карточки блюд не "сплющивались", если их мало */
         display: flex;
         flex-direction: column;
     }

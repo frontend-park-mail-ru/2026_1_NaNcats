@@ -128,6 +128,13 @@ export class Cart extends Component {
 
         const clearBtn = this.element.querySelector('#clear-cart-btn') as HTMLElement;
         if (clearBtn) clearBtn.onclick = () => this.clearCart();
+
+        const checkoutBtn = this.element.querySelector('#checkout-btn') as HTMLElement;
+        if (checkoutBtn) {
+            checkoutBtn.onclick = () => {
+                window.router.go('/checkout');
+            };
+        }
     }
 
     mount(container: HTMLElement): void {

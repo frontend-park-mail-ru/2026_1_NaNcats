@@ -144,43 +144,21 @@ export const profileTemplate = `
             <div class="profile-card profile-card_main profile-card_orders">
                 <h2 class="section-title">История заказов</h2>
                 <div class="orders-list">
-                    <!-- Заказы -->
-                    <div class="order-row">
-                        <img class="order-row__img" src="https://placehold.co/75x75" alt="order">
-                        <div class="order-row__date">15.03.2026</div>
-                        <div class="order-row__info">
-                            <div class="order-row__name">4 вида премиума метр</div>
-                            <div class="order-row__meta">2 кг</div>
+                    {{? it.orders && it.orders.length > 0 }}
+                        {{~it.orders :order}}
+                        <div class="order-row">
+                            <img class="order-row__img" src="https://placehold.co/75x75?text=🍕" alt="order">
+                            <div class="order-row__date">{{=order.created_at}}</div>
+                            <div class="order-row__info">
+                                <div class="order-row__name">{{=order.restaurant_name}}</div> 
+                                <div class="order-row__meta">Статус: {{=order.status}}</div>
+                            </div>
+                            <div class="order-row__price">{{=order.total_cost / 1000000}}₽</div>
                         </div>
-                        <div class="order-row__price">4 317,20₽</div>
-                    </div>
-                    <div class="order-row">
-                        <img class="order-row__img" src="https://placehold.co/75x75" alt="order">
-                        <div class="order-row__date">15.03.2026</div>
-                        <div class="order-row__info">
-                            <div class="order-row__name">4 вида премиума метр</div>
-                            <div class="order-row__meta">2 кг</div>
-                        </div>
-                        <div class="order-row__price">4 317,20₽</div>
-                    </div>
-                    <div class="order-row">
-                        <img class="order-row__img" src="https://placehold.co/75x75" alt="order">
-                        <div class="order-row__date">15.03.2026</div>
-                        <div class="order-row__info">
-                            <div class="order-row__name">4 вида премиума метр</div>
-                            <div class="order-row__meta">2 кг</div>
-                        </div>
-                        <div class="order-row__price">4 317,20₽</div>
-                    </div>
-                    <div class="order-row">
-                        <img class="order-row__img" src="https://placehold.co/75x75" alt="order">
-                        <div class="order-row__date">15.03.2026</div>
-                        <div class="order-row__info">
-                            <div class="order-row__name">4 вида премиума метр</div>
-                            <div class="order-row__meta">2 кг</div>
-                        </div>
-                        <div class="order-row__price">4 317,20₽</div>
-                    </div>
+                        {{~}}
+                    {{??}}
+                        <div class="empty-text">История заказов пуста</div>
+                    {{?}}
                 </div>
             </div>
         </main>

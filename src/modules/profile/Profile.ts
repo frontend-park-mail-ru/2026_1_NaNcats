@@ -33,20 +33,22 @@ export class Profile extends Component {
     async mount(container: HTMLElement) {
         this.isEditing = false;
         try {
-            const [userRes, addrRes, cardsRes] = await Promise.all([
+            const [userRes, addrRes, cardsRes, ordersRes] = await Promise.all([
                 Ajax.get('/profile'),
                 Ajax.get('/profile/addresses'),
-                Ajax.get('/profile/cards')
+                Ajax.get('/profile/cards'),
+                Ajax.get('/profile/orders')
             ]);
 
             if (userRes.ok) {
                 this.user = await userRes.json();
                 const addrData = addrRes.ok ? await addrRes.json() : { addresses: [] };
+                const orders = ordersRes.ok ? await ordersRes.json() : [];
                 this.addresses = addrData.addresses || [];
 
                 this.cards = cardsRes.ok ? await cardsRes.json() : [];
                 
-                super.mount(container, { user: this.user, addresses: this.addresses, cards: this.cards });
+                super.mount(container, { user: this.user, addresses: this.addresses, cards: this.cards, orders: orders });
             } else {
                 window.router.go('/login');
             }

@@ -28,6 +28,10 @@ window.router
         const { Profile } = await import('./modules/profile/Profile');
         return new Profile();
     })
+    .register('/checkout', async () => {
+        const { Checkout } = await import('./modules/checkout/Checkout');
+        return new Checkout();
+    })
     .register('/404', new NotFound()); 
 
 const init = () => {
