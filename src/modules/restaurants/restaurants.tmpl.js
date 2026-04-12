@@ -97,41 +97,8 @@ export const restaurantsTemplate = `
             </div>
         </main>
 
-        <aside class="side-column side-column_right">
-            <div class="card card_cart">
-                <div class="cart-header-top">
-                    <h2 class="sidebar-title">Корзина</h2>
-                    <button class="cart-clear-btn">Очистить</button>
-                </div>
-                
-                <div class="cart-toggle">
-                    <div class="cart-toggle__btn cart-toggle__btn_active">Доставка</div>
-                    <div class="cart-toggle__btn">Самовывоз</div>
-                </div>
-
-                <div class="cart-items-list">
-                    <!-- Заглушки -->
-                    {{ for(let i=0; i<4; i++) { }}
-                    <div class="cart-item">
-                        <img src="https://placehold.co/46x37" class="cart-item__img">
-                        <div class="cart-item__price">115₽</div>
-                        <div class="cart-item__name">Чизбургер</div>
-                        <div class="cart-item__controls">
-                            <button class="qty-btn">-</button>
-                            <span class="qty-val">1</span>
-                            <button class="qty-btn">+</button>
-                        </div>
-                    </div>
-                    {{ } }}
-                </div>
-
-                <div class="cart-footer">
-                    <button class="button button_checkout">
-                        Оформить заказ
-                        <span class="checkout-price">115₽</span>
-                    </button>
-                </div>
-            </div>
+        <aside class="side-column">
+            <div class="card card_fixed" id="cart-widget-container"></div>
         </aside>
     </div>
 </div>

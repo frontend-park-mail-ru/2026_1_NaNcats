@@ -3,6 +3,7 @@ import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
 import { restaurantsTemplate } from "./restaurants.tmpl.js";
 import { AddressPicker } from '../addressPicker/AddressPicker';
+import { Cart } from '../cart/Cart';
 
 /**
  * Компонент главной страницы, отображающий список ресторанов.
@@ -236,6 +237,14 @@ export class Restaurants extends Component {
                     isAuth: false
                 });
             }
+        }
+
+        const cartContainer = document.getElementById('cart-widget-container');
+        if (cartContainer) {
+            const cartWidget = new Cart();
+            cartWidget.mount(cartContainer);
+        } else {
+            console.error("Не найден контейнер #cart-widget-container");
         }
     }
 }
