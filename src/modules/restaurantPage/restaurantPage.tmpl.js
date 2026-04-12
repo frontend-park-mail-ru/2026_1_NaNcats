@@ -33,7 +33,7 @@ export const restaurantPageTemplate = `
             </div>
             <div class="user-menu-wrapper">
                 <a href="/profile" class="user-profile router-link">
-                    <img src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" class="user-profile__avatar">
+                    <img src="{{=it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                 </a>
                 <div class="user-dropdown">
                     <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
@@ -127,7 +127,7 @@ export const restaurantPageTemplate = `
                               class="dish-card__img"
                               src="{{=dish.image_url}}"
                               alt="{{=dish.name}}"
-                              onerror="this.src='https://placehold.co/400x300/png?text={{=dish.name}}'"
+                              onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
                               style="width:100%; border-radius:16px; aspect-ratio: 1 / 1; object-fit:cover;"
                             />
 

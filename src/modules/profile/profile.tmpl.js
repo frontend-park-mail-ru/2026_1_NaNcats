@@ -12,7 +12,7 @@ export const profileTemplate = `
                 </svg>
             </div>
             <div class="profile-header__right">
-                <img class="logo-avatar" src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" alt="mini-avatar">
+                <img class="logo-avatar" src="{{=it.user.avatar_url}}" alt="mini-avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
             </div>
         </div>
     </header>
@@ -23,7 +23,7 @@ export const profileTemplate = `
             
             <div class="profile-user-header">
                 <div class="profile-avatar__wrapper">
-                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{=it.user.avatar_url || 'https://placehold.co/100x100'}}" alt="avatar">
+                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{=it.user.avatar_url}}" alt="avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                     <div class="profile-avatar__overlay" id="upload-avatar-btn">📷</div>
                     {{? it.user.avatar_url }}
                         <div class="profile-avatar__delete-hover" id="delete-avatar-btn">Удалить</div>

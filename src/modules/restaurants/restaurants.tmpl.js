@@ -30,7 +30,7 @@ export const restaurantsTemplate = `
                 </div>
                 <div class="user-menu-wrapper">
                     <a href="/profile" class="user-profile router-link">
-                        <img src="{{=it.user.avatar_url || 'https://placehold.co/40x40'}}" class="user-profile__avatar">
+                        <img src="{{=it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                     </a>
                     <div class="user-dropdown">
                         <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
