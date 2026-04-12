@@ -88,6 +88,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .cart-item__name {
@@ -95,12 +96,20 @@
     font-weight: 500;
     color: #333;
     margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .cart-item__price {
     font-size: 14px;
     font-weight: 700;
     color: #000;
+}
+
+.cart-empty-container {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 20px;
 }
 
 /* Счетчик (+ / -) */
@@ -111,6 +120,7 @@
     border-radius: 20px;
     padding: 4px 6px;
     color: white;
+    flex-shrink: 0;
 }
 
 .counter-btn {
@@ -135,7 +145,6 @@
 
 /* Футер и кнопка оформления */
 .cart-footer {
-    padding: 20px;
     margin-top: auto;
 }
 

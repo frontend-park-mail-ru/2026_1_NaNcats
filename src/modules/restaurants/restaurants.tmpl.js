@@ -97,8 +97,8 @@ export const restaurantsTemplate = `
             </div>
         </main>
 
-        <aside class="side-column">
-            <div class="card card_fixed" id="cart-widget-container"></div>
+        <aside class="side-column side-column_right">
+            <div class="card card_cart" id="cart-widget-container"></div>
         </aside>
     </div>
 </div>
