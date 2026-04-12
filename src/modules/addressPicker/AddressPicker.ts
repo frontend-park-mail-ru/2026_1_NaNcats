@@ -396,7 +396,7 @@ export class AddressPicker extends Component {
                     
                     container.classList.remove('address-modal__suggestions_active');
                     
-                    ymaps.geocode(addr).then((res: any) => {
+                    ymaps.geocode(addr).then((res: YandexGeocodeResult) => {
                         const coords = res.geoObjects.get(0).geometry.getCoordinates();
                         this.map?.setCenter(coords, 16);
                         this.selectedCoords = coords;

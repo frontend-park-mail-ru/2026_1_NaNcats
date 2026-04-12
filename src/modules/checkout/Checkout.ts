@@ -5,6 +5,32 @@ import { checkoutTemplate } from './checkout.tmpl.js';
 import { AddressPicker } from '../addressPicker/AddressPicker';
 import { Cart } from '../cart/Cart';
 
+interface CheckoutAddress {
+    id: string;
+    location: { address_text: string; latitude: number; longitude: number; };
+    apartment?: string;
+    entrance?: string;
+    floor?: string;
+    door_code?: string;
+    courier_comment?: string;
+}
+
+interface CheckoutCard {
+    id: string;
+    last4: string;
+    card_type: string;
+    is_default: boolean;
+}
+
+interface CheckoutCart {
+    restaurant_id: number;
+    items: Array<{ price: number; quantity: number; }>;
+}
+
+interface CheckoutUser {
+    avatar_url?: string;
+}
+
 /**
  * Компонент страницы оформления заказа.
  * Позволяет пользователю выбрать адрес, способ оплаты и подтвердить заказ.
@@ -13,19 +39,19 @@ import { Cart } from '../cart/Cart';
  * @extends Component
  */
 export class Checkout extends Component {
-    /** @type {any} Данные корзины */
-    private cart: any = null;
-    /** @type {any[]} Список адресов пользователя */
-    private addresses: any[] = [];
-    /** @type {any[]} Список сохраненных карт пользователя */
-    private cards: any[] = [];
-    /** @type {any} Данные профиля пользователя */
-    private user: any = null;
+    /** @type {CheckoutCart} Данные корзины */
+    private cart: CheckoutCart | null = null;
+    /** @type {CheckoutAddress[]} Список адресов пользователя */
+    private addresses: CheckoutAddress[] = [];
+    /** @type {CheckoutCard[]} Список сохраненных карт пользователя */
+    private cards: CheckoutCard[] = [];
+    /** @type {CheckoutUse} Данные профиля пользователя */
+    private user: CheckoutUser | null = null;
     
-    /** @type {any} Выбранный адрес для доставки */
-    private selectedAddress: any = null;
-    /** @type {any} Выбранная карта для оплаты (null = стандартная оплата/новая карта) */
-    private selectedCard: any = null; 
+    /** @type {CheckoutAddress | null | undefined} Выбранный адрес для доставки */
+    private selectedAddress: CheckoutAddress | null | undefined = null;
+    /** @type {CheckoutCard | null | undefined} Выбранная карта для оплаты */
+    private selectedCard: CheckoutCard | null | undefined = null;
 
     /** @type {number} Фиксированная стоимость доставки */
     private deliveryFee: number = 699;
@@ -122,7 +148,8 @@ export class Checkout extends Component {
 
         let cartItemsTotal = 0;
         if (this.cart && this.cart.items) {
-            cartItemsTotal = this.cart.items.reduce((sum: number, item: any) => sum + ((item.price / 1000000) * item.quantity), 0);
+            cartItemsTotal = this.cart.items.reduce((sum: number, item: { price: number; quantity: number }) => 
+                sum + ((item.price / 1000000) * item.quantity), 0);
         }
 
         let grandTotal = 0;

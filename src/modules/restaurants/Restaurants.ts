@@ -16,6 +16,16 @@ interface UserInfo {
 }
 
 /**
+ * Интерфейс для элемента адреса из API профиля.
+ * @interface AddressListItem
+ */
+interface AddressListItem {
+    location: {
+        address_text: string;
+    };
+}
+
+/**
  * Компонент главной страницы, отображающий список ресторанов.
  * Реализует бесконечную подгрузку данных при скролле и отображение профиля пользователя.
  * 
@@ -241,7 +251,7 @@ export class Restaurants extends Component {
             
             if (isAuth) {
                 Ajax.get('/profile/addresses').then(res => res.json()).then(data => {
-                    const userAddresses = data.addresses ? data.addresses.map((a: any) => a.location.address_text) : [];
+                    const userAddresses = data.addresses ? data.addresses.map((a: AddressListItem) => a.location.address_text) : [];
                     addressPicker.mount(addressSlot, { 
                         currentAddress: savedAddr, 
                         savedAddresses: userAddresses,
