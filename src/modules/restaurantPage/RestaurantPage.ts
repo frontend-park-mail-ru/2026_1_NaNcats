@@ -25,6 +25,10 @@ interface RestaurantInfo {
     logo_url?: string;
 }
 
+interface UserProfile {
+    avatar_url?: string;
+}
+
 /**
  * Компонент страницы ресторана с товарами
  * 
@@ -37,7 +41,7 @@ export class RestaurantPage extends Component {
     private isFetching: boolean = false;
     private hasMore: boolean = true;
     private cart: Cart;
-    private user: any = null;
+    private user: UserProfile | null = null;
 
     constructor() {
         super(restaurantPageTemplate);

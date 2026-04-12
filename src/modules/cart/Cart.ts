@@ -20,6 +20,18 @@ export interface CartItem {
     image_url: string;
 }
 
+export interface DishToAdd {
+    id: number;
+    name: string;
+    price: number;
+    image_url: string;
+}
+
+interface CartResponse {
+    items?: CartItem[];
+    restaurant_id?: number;
+}
+
 /**
  * Компонент корзины покупок.
  * Управляет состоянием корзины, синхронизирует её с сервером.
@@ -79,11 +91,11 @@ export class Cart extends Component {
 
     /**
      * Добавляет блюдо в корзину. Проверяет совместимость ресторанов.
-     * @param {any} dish - Объект добавляемого блюда.
+     * @param {DishToAdd} dish - Объект добавляемого блюда.
      * @param {number} restId - ID ресторана, из которого добавляется блюдо.
      * @returns {Promise<void>}
      */
-    public async addDish(dish: any, restId: number): Promise<void> {
+    public async addDish(dish: DishToAdd, restId: number): Promise<void> {
         if (this.items.length > 0 && this.restaurantId !== restId) {
             const confirmClear = confirm("В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?");
             if (confirmClear) {

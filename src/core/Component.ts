@@ -13,7 +13,7 @@ export abstract class Component {
      * @type {Function} 
      * @protected
      */
-    protected renderFunc: (data: any) => string;
+    protected renderFunc: (data: Record<string, unknown>) => string;
     /** 
      * Корневой HTML-элемент компонента в DOM. 
      * @type {HTMLElement|null} 
@@ -34,7 +34,7 @@ export abstract class Component {
      * @param {Object} [data={}] - Данные для шаблонизатора.
      * @returns {void}
      */
-    public mount(container: HTMLElement, data: any = {}): void {
+    public mount(container: HTMLElement, data: Record<string, unknown> = {}): void {
         this.element = container;
         container.innerHTML = this.renderFunc(data);
         this.afterRender();

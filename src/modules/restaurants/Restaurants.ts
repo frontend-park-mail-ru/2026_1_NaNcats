@@ -5,6 +5,16 @@ import { restaurantsTemplate } from "./restaurants.tmpl.js";
 import { AddressPicker } from '../addressPicker/AddressPicker';
 import { Cart } from '../cart/Cart';
 
+interface RestaurantItem {
+    id: string | number;
+    name: string;
+    logo_url: string;
+}
+
+interface UserInfo {
+    avatar_url?: string;
+}
+
 /**
  * Компонент главной страницы, отображающий список ресторанов.
  * Реализует бесконечную подгрузку данных при скролле и отображение профиля пользователя.
@@ -39,9 +49,9 @@ export class Restaurants extends Component {
 
     /**
      * Пользователь 
-     * @type {any | null}
+     * @type {UserInfo | null}
      */
-    private user: any | null;
+    private user: UserInfo | null;
 
     constructor() {
         super(restaurantsTemplate);
@@ -64,7 +74,7 @@ export class Restaurants extends Component {
     public async mount(container: HTMLElement): Promise<void> {
         this.offset = 0;
         this.hasMore = true;
-        let restaurants: any[] = [];
+        let restaurants: RestaurantItem[] = [];
         let user = null;
 
         try {
@@ -121,7 +131,7 @@ export class Restaurants extends Component {
      * @async
      * @returns {Promise<Array<Object>>} Массив объектов ресторанов.
      */
-    private async fetchRestaurants(): Promise<any[]> {
+    private async fetchRestaurants(): Promise<RestaurantItem[]> {
         if (this.isFetching || !this.hasMore) return [];
         
         this.isFetching = true;
@@ -167,7 +177,7 @@ export class Restaurants extends Component {
      * Добавляет новые карточки ресторанов в DOM без полной перерисовки страницы.
      * @param {Array<Object>} restaurants - Массив новых объектов ресторанов.
      */
-    private appendRestaurants(restaurants: any[]): void {
+    private appendRestaurants(restaurants: RestaurantItem[]): void {
         const grid = document.querySelector('.res-grid');
         if (!grid) return;
 

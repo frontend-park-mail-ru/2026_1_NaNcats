@@ -23,7 +23,7 @@ export class Ajax {
      * @private
      * @static
      */
-    private static async request(url: string, method: string, body: any = null): Promise<Response> {
+    private static async request(url: string, method: string, body: unknown = null): Promise<Response> {
         const options: RequestInit = {
             method,
             headers: {
@@ -63,7 +63,7 @@ export class Ajax {
      * @example
      * await Ajax.post('/auth/login', { login: '...', password: '...' });
      */
-    public static async post(url: string, body?: any): Promise<Response> {
+    public static async post(url: string, body?: unknown): Promise<Response> {
         return this.request(url, 'POST', body);
     }
 
@@ -77,7 +77,7 @@ export class Ajax {
      * @example
      * await Ajax.patch('/profile/addresses/${editingAddressId}', {...});
      */
-    public static async patch(url: string, body: any): Promise<Response> { 
+    public static async patch(url: string, body: unknown): Promise<Response> { 
         return this.request(url, 'PATCH', body); 
     }
     
@@ -104,7 +104,7 @@ export class Ajax {
      * @example
      * await Ajax.put('/profile/cards/${cardId}');
      */
-    public static async put(url: string, body: any = null): Promise<Response> { 
+    public static async put(url: string, body: unknown = null): Promise<Response> { 
         return this.request(url, 'PUT', body); 
     }
 }

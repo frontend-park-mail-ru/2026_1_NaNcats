@@ -18,6 +18,23 @@ interface UserProfile {
     avatar_url: string;
 }
 
+interface ProfileAddress {
+    id: string;
+    location: { address_text: string; latitude: number; longitude: number; };
+    apartment?: string;
+    entrance?: string;
+    floor?: string;
+    door_code?: string;
+    courier_comment?: string;
+}
+
+interface ProfileCard {
+    id: string;
+    last4: string;
+    issuer_name?: string;
+    is_default: boolean;
+}
+
 /**
  * Компонент страницы профиля пользователя.
  * Отвечает за редактирование личных данных, управление адресами, картами и отображение истории заказов.
@@ -28,10 +45,10 @@ interface UserProfile {
 export class Profile extends Component {
     /** @type {UserProfile | null} Данные пользователя */
     private user: UserProfile | null = null;
-    /** @type {any[]} Массив адресов пользователя */
-    private addresses: any[] = [];
-    /** @type {any[]} Массив привязанных карт */
-    private cards: any[] = [];
+    /** @type {ProfileAddress}[]} Массив адресов пользователя */
+    private addresses: ProfileAddress[] = [];
+    /** @type {ProfileCard[]} Массив привязанных карт */
+    private cards: ProfileCard[] = [];
     /** @type {boolean} Флаг режима редактирования профиля */
     private isEditing: boolean = false;
 

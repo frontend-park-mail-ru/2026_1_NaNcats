@@ -2,8 +2,41 @@ import './addressPicker.scss';
 import { Component } from '../../core/Component';
 import { addressPickerTemplate } from './addressPicker.tmpl';
 
-declare var ymaps: any;
+declare namespace ymaps {
+    function ready(callback: () => void): void;
+    function geocode(request: string | [number, number]): Promise<YandexGeocodeResult>;
+    class Map {
+        constructor(element: HTMLElement, state: { center: [number, number]; zoom: number; controls: string[] });
+        events: { add(eventName: string, callback: () => void): void };
+        getCenter(): [number, number];
+        setCenter(center: [number, number], zoom: number): void;
+        destroy(): void;
+    }
+}
+
 declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
+
+interface YandexGeocodeResult {
+    geoObjects: {
+        get(index: number): {
+            getAddressLine(): string;
+            geometry: { getCoordinates(): [number, number] };
+        };
+    };
+}
+
+interface YandexSuggestResponse {
+    results: Array<{ title: { text: string } }>;
+}
+
+declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
+
+interface AddressPickerData extends Record<string, unknown> {
+    savedAddresses?: string[];
+    isAuth?: boolean;
+    skipDetails?: boolean;
+    currentAddress?: string;
+}
 
 /**
  * Компонент выбора адреса доставки с использованием Яндекс.Карт.
@@ -25,8 +58,8 @@ export class AddressPicker extends Component {
     /** @type {string[]} Список сохраненных адресов пользователя */
     private savedAddresses: string[];
     
-    /** @type {any|null} Экземпляр Яндекс.Карты */
-    private map: any | null;
+    /** @type {ymaps|null} Экземпляр Яндекс.Карты */
+    private map: ymaps.Map | null;
     
     /** @type {[number, number]} Текущие выбранные координаты [широта, долгота] */
     private selectedCoords: [number, number];
@@ -61,8 +94,8 @@ export class AddressPicker extends Component {
             const response = await fetch(
                 `https://suggest-maps.yandex.ru/v1/suggest?text=${encodeURIComponent(query)}&lang=ru_RU&apikey=${this.suggestKey}`
             );
-            const data = await response.json();
-            return data.results.map((item: any) => item.title.text);
+            const data: YandexSuggestResponse = await response.json();
+            return data.results.map((item) => item.title.text);
         } catch (e) {
             return [];
         }
@@ -84,13 +117,15 @@ export class AddressPicker extends Component {
                     console.error('Контейнер для карты .js-yandex-map не найден');
                     return;
                 }
-                this.map = new ymaps.Map(mapContainer, {
+                const mapInstance = new ymaps.Map(mapContainer, {
                     center: this.selectedCoords,
                     zoom: 16,
                     controls: []
                 });
-                this.map.events.add('actionend', () => {
-                    const center = this.map.getCenter();
+
+                this.map = mapInstance;
+                mapInstance.events.add('actionend', () => {
+                    const center = mapInstance.getCenter();
                     this.selectedCoords = center;
                     this.reverseGeocode(center);
                 });
@@ -122,7 +157,7 @@ export class AddressPicker extends Component {
      * @param {Object} data - Данные для шаблона.
      * @returns {Promise<void>}
      */
-    async mount(container: HTMLElement, data: any): Promise<void> {
+    async mount(container: HTMLElement, data: AddressPickerData): Promise<void> {
         if (this.map) {
             this.map.destroy();
             this.map = null;
