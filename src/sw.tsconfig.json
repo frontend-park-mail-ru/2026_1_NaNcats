@@ -3,14 +3,12 @@
     "target": "ESnext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["DOM", "ESNext"],
+    "lib": ["WebWorker", "ESNext"],
     "strict": true,
     "allowJs": true,
-    "rootDir": "src",
-    "outDir": "./dist",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/sw.ts"]
+  "include": ["sw.ts"]
 }
