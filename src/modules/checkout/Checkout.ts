@@ -61,11 +61,6 @@ export class Checkout extends Component {
             this.selectedCard = defaultCard;
         }
 
-        const backBtn = this.element.querySelector('.js-back-btn');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => window.router.back());
-        }
-
         this.updateUI();
     }
 
