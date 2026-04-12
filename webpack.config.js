@@ -16,11 +16,18 @@ module.exports = (env, argv) => {
     target: 'web',
     mode: isProduction ? 'production' : 'development',
     
-    entry: './src/app.ts', 
+    entry: {
+      app: './src/app.ts',
+      sw: './src/sw.ts' 
+    },
 
     output: {
       path: path.resolve(__dirname, 'dist'),
-      filename: isProduction ? 'bundle.[contenthash].js' : 'bundle.js', 
+      filename: (pathData) => {
+        return pathData.chunk.name === 'sw' 
+          ? 'sw.js' 
+          : (isProduction ? '[name].[contenthash].js' : '[name].js');
+      }, 
       publicPath: '/',
       clean: true,
     },
@@ -46,13 +53,14 @@ module.exports = (env, argv) => {
     plugins: [
       new HtmlWebpackPlugin({
         template: './public/index.html',
+        excludeChunks: ['sw'],
         minify: isProduction ? {
           removeComments: true,
           collapseWhitespace: true,
         } : false,
         templateParameters: {
           yandexKey: process.env.YANDEX_JS_KEY,
-      }
+        }
       }),
       new webpack.DefinePlugin(envKeys)
     ],

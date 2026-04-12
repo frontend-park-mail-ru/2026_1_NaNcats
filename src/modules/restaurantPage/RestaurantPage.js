@@ -54,26 +54,34 @@ export class RestaurantPage extends Component {
         const restId = this.getRestaurantId();
         
         let dishes = [];
-        let restaurantInfo = { name: 'Загрузка...' };
+        let restaurantInfo = { name: 'Ресторан недоступен (оффлайн)' };
 
         try {
-            const [userRes, dishesData, restRes] = await Promise.all([
+            const results = await Promise.allSettled([
                 Ajax.get('/auth/me'),
                 this.fetchDishes(),
                 Ajax.get(`/restaurants/brands/${restId}`)
             ]);
 
-            if (userRes.ok) this.user = await userRes.json();
-            dishes = dishesData;
-            if (restRes.ok) restaurantInfo = await restRes.json();
+            if (results[0].status === 'fulfilled' && results[0].value.ok) {
+                this.user = await results[0].value.json();
+            }
+            
+            if (results[1].status === 'fulfilled') {
+                dishes = results[1].value || [];
+            }
+
+            if (results[2].status === 'fulfilled' && results[2].value.ok) {
+                restaurantInfo = await results[2].value.json();
+            }
 
         } catch (e) {
-            console.warn("Ошибка при получении данных:", e);
+            console.warn("Ошибка в mount:", e);
         }
 
-        const formattedDishes = dishes.map(d => ({
+        const formattedDishes = (dishes || []).map(d => ({
             ...d, 
-            price_formatted: d.price / 1000000
+            price_formatted: (d.price || 0) / 1000000
         }));
 
         super.mount(container, { 
@@ -122,6 +130,7 @@ export class RestaurantPage extends Component {
         } finally {
             this.isFetching = false;
         }
+        return [];
     }
 
     /**

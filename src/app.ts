@@ -36,6 +36,36 @@ window.router
 
 const init = () => {
     window.router.render(window.location.pathname);
+    
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then((registration) => {
+                    console.log('ServiceWorker успешно зарегистрирован:', registration.scope);
+                })
+                .catch((error) => {
+                    console.log('Ошибка регистрации ServiceWorker:', error);
+                });
+        });
+    }
+
+    const offlineBanner = document.createElement('div');
+    offlineBanner.className = 'offline-banner';
+    offlineBanner.innerText = 'Нет интернета. Приложение работает в автономном режиме.';
+    document.body.appendChild(offlineBanner);
+
+    const updateOnlineStatus = () => {
+        if (navigator.onLine) {
+            offlineBanner.classList.remove('offline-banner_active');
+        } else {
+            offlineBanner.classList.add('offline-banner_active');
+        }
+    };
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    updateOnlineStatus();
 };
 
 init();
