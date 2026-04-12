@@ -20,6 +20,9 @@ export class Router {
      */
     public routes: Record<string, Component | (() => Promise<Component>)>;
 
+    /**
+     *
+     */
     constructor(root: HTMLElement) {
         this.root = root;
         this.routes = {};
@@ -68,7 +71,7 @@ export class Router {
      * @returns {void}
      */
     public async render(path: string): Promise<void> {
-        let entry = this.routes[path] || this.routes['/404'];
+        const entry = this.routes[path] || this.routes['/404'];
 
         if (typeof entry === 'function') {
             const componentInstance = await entry();

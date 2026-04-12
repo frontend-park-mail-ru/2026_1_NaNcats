@@ -20,6 +20,9 @@ export abstract class Component {
      */
     public element: HTMLElement | null;
 
+    /**
+     *
+     */
     constructor(templateString: string) {
         this.renderFunc = doT.template(templateString);
         this.element = null;
