@@ -3,22 +3,48 @@ import { Component } from '../../core/Component';
 import { cartTemplate } from './cart.tmpl';
 import { Ajax } from '../../core/Ajax';
 
+/**
+ * Интерфейс, описывающий элемент корзины (блюдо).
+ * @interface CartItem
+ */
 export interface CartItem {
+    /** @type {number} ID блюда */
     dish_id: number;
+    /** @type {string} Название блюда */
     name: string;
+    /** @type {number} Цена в копейках */
     price: number;
+    /** @type {number} Количество товара */
     quantity: number;
+    /** @type {string} Ссылка на изображение */
     image_url: string;
 }
 
+/**
+ * Компонент корзины покупок.
+ * Управляет состоянием корзины, синхронизирует её с сервером.
+ * 
+ * @class Cart
+ * @extends Component
+ */
 export class Cart extends Component {
+    /** @type {CartItem[]} Массив товаров в корзине */
     private items: CartItem[] = [];
+    
+    /** @type {number} Идентификатор ресторана, к которому привязана корзина */
     private restaurantId: number = 0;
 
+    /**
+     * Создает экземпляр корзины.
+     */
     constructor() {
         super(cartTemplate);
     }
 
+    /**
+     * Загружает данные корзины с сервера.
+     * @returns {Promise<void>}
+     */
     public async loadCart(): Promise<void> {
         try {
             const res = await Ajax.get('/cart');
@@ -33,7 +59,11 @@ export class Cart extends Component {
         }
     }
 
-    // Синхронизация локальной корзины с БД
+    /**
+     * Синхронизирует локальное состояние корзины с базой данных сервера.
+     * @private
+     * @returns {Promise<void>}
+     */
     private async syncWithServer(): Promise<void> {
         try {
             const payload = {
@@ -41,21 +71,25 @@ export class Cart extends Component {
                 items: this.items.map(i => ({ dish_id: i.dish_id, quantity: i.quantity }))
             };
             await Ajax.put('/cart', payload);
-            // После успешного PUT можно еще раз сделать GET, чтобы получить правильные total_cost от сервера
             await this.loadCart(); 
         } catch (e) {
             console.error("Ошибка синхронизации корзины:", e);
         }
     }
 
-    // Метод добавления блюда из меню
+    /**
+     * Добавляет блюдо в корзину. Проверяет совместимость ресторанов.
+     * @param {any} dish - Объект добавляемого блюда.
+     * @param {number} restId - ID ресторана, из которого добавляется блюдо.
+     * @returns {Promise<void>}
+     */
     public async addDish(dish: any, restId: number): Promise<void> {
         if (this.items.length > 0 && this.restaurantId !== restId) {
             const confirmClear = confirm("В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?");
             if (confirmClear) {
-                this.items = []; // Очищаем корзину
+                this.items = []; 
             } else {
-                return; // Пользователь отменил добавление
+                return; 
             }
         }
 
@@ -78,6 +112,12 @@ export class Cart extends Component {
         await this.syncWithServer();
     }
 
+    /**
+     * Изменяет количество конкретного товара в корзине.
+     * @param {number} dishId - ID блюда.
+     * @param {number} delta - Изменение количества (например, 1 или -1).
+     * @returns {Promise<void>}
+     */
     public async changeQuantity(dishId: number, delta: number): Promise<void> {
         const item = this.items.find(i => i.dish_id === dishId);
         if (item) {
@@ -90,6 +130,10 @@ export class Cart extends Component {
         }
     }
 
+    /**
+     * Очищает корзину локально и на сервере.
+     * @returns {Promise<void>}
+     */
     public async clearCart(): Promise<void> {
         this.items = [];
         this.restaurantId = 0;
@@ -97,10 +141,20 @@ export class Cart extends Component {
         await this.syncWithServer();
     }
 
+    /**
+     * Вычисляет общую стоимость корзины.
+     * @private
+     * @returns {number} Сумма заказа.
+     */
     private getTotalCost(): number {
         return this.items.reduce((total, item) => total + ((item.price / 1000000) * item.quantity), 0);
     }
 
+    /**
+     * Перерисовывает UI корзины на основе текущих данных.
+     * @private
+     * @returns {void}
+     */
     private updateCartUI(): void {
         if (!this.element) return;
         super.mount(this.element, {
@@ -109,7 +163,12 @@ export class Cart extends Component {
         });
     }
 
-    afterRender(): void {
+    /**
+     * Навешивает обработчики событий (плюс/минус, очистка, оформление заказа).
+     * @override
+     * @returns {void}
+     */
+    public afterRender(): void {
         if (!this.element) return;
 
         this.element.querySelectorAll('.plus').forEach(btn => {
@@ -137,7 +196,13 @@ export class Cart extends Component {
         }
     }
 
-    mount(container: HTMLElement): void {
+    /**
+     * Монтирует компонент корзины и загружает данные.
+     * @override
+     * @param {HTMLElement} container - Контейнер для отрисовки.
+     * @returns {void}
+     */
+    public mount(container: HTMLElement): void {
         this.element = container;
         this.updateCartUI();
         this.loadCart();

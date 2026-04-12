@@ -5,16 +5,42 @@ import { addressPickerTemplate } from './addressPicker.tmpl';
 declare var ymaps: any;
 declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
 
+/**
+ * Компонент выбора адреса доставки с использованием Яндекс.Карт.
+ * Позволяет искать адрес через саджесты и выбирать точку на карте.
+ * 
+ * @class AddressPicker
+ * @extends Component
+ */
 export class AddressPicker extends Component {
+    /** @type {boolean} Флаг авторизации пользователя */
     private isAuth: boolean = true;
+    
+    /** @type {string} API-ключ для Яндекс Саджестов */
     private suggestKey: string;
+    
+    /** @type {boolean} Флаг пропуска модалки с деталями адреса (квартира, подъезд) */
     private skipDetails: boolean = false; 
+    
+    /** @type {string[]} Список сохраненных адресов пользователя */
     private savedAddresses: string[];
+    
+    /** @type {any|null} Экземпляр Яндекс.Карты */
     private map: any | null;
+    
+    /** @type {[number, number]} Текущие выбранные координаты [широта, долгота] */
     private selectedCoords: [number, number];
+    
+    /** @type {ReturnType<typeof setTimeout>|null} Таймер для дебаунса ввода */
     private debounceTimer: ReturnType<typeof setTimeout> | null;
+    
+    /** @type {Function} Коллбэк, вызываемый при успешном выборе адреса */
     private onSelectCallback: (address: string, coords: [number, number]) => void;
 
+    /**
+     * Создает экземпляр компонента AddressPicker.
+     * @param {Function} [onSelect] - Коллбэк при выборе адреса.
+     */
     constructor(onSelect?: (address: string, coords: [number, number]) => void) {
         super(addressPickerTemplate);
         this.suggestKey = process.env.YANDEX_SUGGEST_KEY;
@@ -25,6 +51,11 @@ export class AddressPicker extends Component {
         this.onSelectCallback = onSelect || (() => {});
     }
 
+    /**
+     * Получает подсказки адресов от API Яндекса.
+     * @param {string} query - Строка запроса.
+     * @returns {Promise<string[]>} Массив строк с предложенными адресами.
+     */
     async fetchYandexSuggestions(query: string): Promise<string[]> {
         try {
             const response = await fetch(
@@ -37,31 +68,42 @@ export class AddressPicker extends Component {
         }
     }
 
+    /**
+     * Открывает модальное окно с Яндекс Картой.
+     * Инициализирует карту при первом открытии.
+     * @returns {void}
+     */
     public openMapModal(): void {
         const modal = this.element?.querySelector('.js-map-modal');
         if (modal) {
             modal.classList.add('modal-overlay_active');
             ymaps.ready(() => {
-            if (this.map) return;
-            const mapContainer = this.element?.querySelector<HTMLElement>('.js-yandex-map');
-            if (!mapContainer) {
-                console.error('Контейнер для карты .js-yandex-map не найден');
-                return;
-            }
-            this.map = new ymaps.Map(mapContainer, {
-                center: this.selectedCoords,
-                zoom: 16,
-                controls: []
+                if (this.map) return;
+                const mapContainer = this.element?.querySelector<HTMLElement>('.js-yandex-map');
+                if (!mapContainer) {
+                    console.error('Контейнер для карты .js-yandex-map не найден');
+                    return;
+                }
+                this.map = new ymaps.Map(mapContainer, {
+                    center: this.selectedCoords,
+                    zoom: 16,
+                    controls: []
+                });
+                this.map.events.add('actionend', () => {
+                    const center = this.map.getCenter();
+                    this.selectedCoords = center;
+                    this.reverseGeocode(center);
+                });
             });
-            this.map.events.add('actionend', () => {
-                const center = this.map.getCenter();
-                this.selectedCoords = center;
-                this.reverseGeocode(center);
-            });
-        });
         }
     }
 
+    /**
+     * Выполняет обратное геокодирование (по координатам получает адрес).
+     * @private
+     * @param {[number, number]} coords - Координаты точки.
+     * @returns {Promise<void>}
+     */
     private async reverseGeocode(coords: [number, number]): Promise<void> {
         try {
             const res = await ymaps.geocode(coords);
@@ -73,7 +115,14 @@ export class AddressPicker extends Component {
         }
     }
 
-    async mount(container: HTMLElement, data: any) {
+    /**
+     * Отрисовывает компонент с переданными данными.
+     * @override
+     * @param {HTMLElement} container - DOM-контейнер.
+     * @param {Object} data - Данные для шаблона.
+     * @returns {Promise<void>}
+     */
+    async mount(container: HTMLElement, data: any): Promise<void> {
         if (this.map) {
             this.map.destroy();
             this.map = null;
@@ -85,6 +134,11 @@ export class AddressPicker extends Component {
         super.mount(container, data);
     }
 
+    /**
+     * Метод жизненного цикла: навешивает обработчики событий после рендера.
+     * @override
+     * @returns {void}
+     */
     afterRender(): void {
         const addressInput = this.element?.querySelector<HTMLInputElement>('.js-address-input');
         const addressDropdown = this.element?.querySelector<HTMLElement>('.js-address-dropdown');
@@ -141,6 +195,7 @@ export class AddressPicker extends Component {
                 }
             });
         }
+        
         if (confirmBtn && modalInput) {
             confirmBtn.onclick = () => {
                 const addr = modalInput.value;
@@ -208,6 +263,13 @@ export class AddressPicker extends Component {
         });
     }
 
+    /**
+     * Сохраняет выбранный адрес в локальное хранилище и вызывает коллбэк.
+     * @private
+     * @param {string} address - Строка адреса.
+     * @param {[number, number]} coords - Координаты адреса.
+     * @returns {void}
+     */
     private finalizeAddress(address: string, coords: [number, number]): void {
         const input = this.element?.querySelector('.js-address-input') as HTMLInputElement;
         if (input) input.value = address;
@@ -216,6 +278,13 @@ export class AddressPicker extends Component {
         this.onSelectCallback(address, coords);
     }
 
+    /**
+     * Открывает модальное окно для ввода деталей адреса (квартира, этаж).
+     * @private
+     * @param {string} address - Базовый адрес.
+     * @param {[number, number]} coords - Координаты.
+     * @returns {void}
+     */
     private openDetailsModal(address: string, coords: [number, number]): void {
         const modal = this.element?.querySelector<HTMLElement>('.js-details-modal');
         const displayInput = this.element?.querySelector<HTMLInputElement>('.js-display-address');
@@ -232,6 +301,14 @@ export class AddressPicker extends Component {
         modal.classList.add('modal-overlay_active');
     }
 
+    /**
+     * Отрисовывает список саджестов под строкой поиска.
+     * @private
+     * @param {string[]} list - Список адресов для отображения.
+     * @param {string} containerClass - Класс контейнера саджестов.
+     * @param {boolean} isYandex - Указывает, нужно ли геокодировать адрес при клике.
+     * @returns {void}
+     */
     private renderSuggestions(list: string[], containerClass: string, isYandex: boolean): void {
         const container = this.element?.querySelector<HTMLElement>(`.${containerClass}`);
         if (!container) return;
@@ -257,6 +334,12 @@ export class AddressPicker extends Component {
         };
     }
 
+    /**
+     * Отрисовывает саджесты внутри модалки с картой.
+     * @private
+     * @param {string[]} list - Список адресов.
+     * @returns {void}
+     */
     private renderModalSuggestions(list: string[]): void {
         const container = this.element?.querySelector<HTMLElement>('.js-modal-suggestions');
         if (!container) return;

@@ -5,29 +5,44 @@ import { checkoutTemplate } from './checkout.tmpl.js';
 import { AddressPicker } from '../addressPicker/AddressPicker';
 import { Cart } from '../cart/Cart';
 
+/**
+ * Компонент страницы оформления заказа.
+ * Позволяет пользователю выбрать адрес, способ оплаты и подтвердить заказ.
+ * 
+ * @class Checkout
+ * @extends Component
+ */
 export class Checkout extends Component {
+    /** @type {any} Данные корзины */
     private cart: any = null;
+    /** @type {any[]} Список адресов пользователя */
     private addresses: any[] = [];
+    /** @type {any[]} Список сохраненных карт пользователя */
     private cards: any[] = [];
+    /** @type {any} Данные профиля пользователя */
     private user: any = null;
     
+    /** @type {any} Выбранный адрес для доставки */
     private selectedAddress: any = null;
-    private selectedCard: any = null; // null означает "Новая карта / Стандартная оплата"
+    /** @type {any} Выбранная карта для оплаты (null = стандартная оплата/новая карта) */
+    private selectedCard: any = null; 
 
+    /** @type {number} Фиксированная стоимость доставки */
     private deliveryFee: number = 699;
+    /** @type {number} Фиксированный сервисный сбор */
     private serviceFee: number = 99;
 
+    /** @type {AddressPicker} Экземпляр компонента выбора адреса */
     private addressPicker!: AddressPicker;
 
+    /**
+     * Создает экземпляр страницы оформления заказа.
+     */
     constructor() {
         super(checkoutTemplate);
         
-        // Инстанцируем AddressPicker для добавления новых адресов в модалке
         this.addressPicker = new AddressPicker(async (addr, coords) => {
-            // При выборе адреса на карте и сохранении, он летит на бэкенд (если юзер авторизован)
-            // Поэтому просто перезагружаем список адресов с сервера
             await this.loadData();
-            // Выбираем только что добавленный (первый в списке)
             if (this.addresses.length > 0) {
                 this.selectedAddress = this.addresses[0];
             }
@@ -35,6 +50,12 @@ export class Checkout extends Component {
         });
     }
 
+    /**
+     * Монтирует компонент и загружает необходимые данные (корзина, адреса, карты, профиль).
+     * @override
+     * @param {HTMLElement} container - DOM-контейнер.
+     * @returns {Promise<void>}
+     */
     public async mount(container: HTMLElement): Promise<void> {
         this.element = container;
         await this.loadData();
@@ -44,18 +65,15 @@ export class Checkout extends Component {
             return;
         }
 
-        // Проверяем, есть ли товары в корзине
         if (!this.cart || !this.cart.items || this.cart.items.length === 0) {
-            window.router.go('/'); // Если корзина пуста, отправляем на главную
+            window.router.go('/'); 
             return;
         }
 
-        // Выбираем адрес по умолчанию (первый из списка, если есть)
         if (this.addresses.length > 0) {
             this.selectedAddress = this.addresses[0];
         }
 
-        // Выбираем дефолтную карту, если есть (is_default === true)
         const defaultCard = this.cards.find(c => c.is_default);
         if (defaultCard) {
             this.selectedCard = defaultCard;
@@ -64,6 +82,11 @@ export class Checkout extends Component {
         this.updateUI();
     }
 
+    /**
+     * Выполняет параллельные запросы для загрузки всех необходимых данных.
+     * @private
+     * @returns {Promise<void>}
+     */
     private async loadData(): Promise<void> {
         try {
             const [cartRes, addrRes, cardsRes, userRes] = await Promise.all([
@@ -89,6 +112,11 @@ export class Checkout extends Component {
         }
     }
 
+    /**
+     * Перерисовывает интерфейс оформления заказа с актуальными данными и суммами.
+     * @private
+     * @returns {void}
+     */
     private updateUI(): void {
         if (!this.element) return;
 
@@ -116,22 +144,24 @@ export class Checkout extends Component {
         });
     }
 
+    /**
+     * Навешивает обработчики событий для модалок, выбора адресов и карт, и кнопки оплаты.
+     * @override
+     * @returns {void}
+     */
     public afterRender(): void {
         if (!this.element) return;
 
-        // Модалка корзины
         const cartModal = this.element.querySelector('.js-cart-modal');
         this.element.querySelector('.js-open-cart-modal')?.addEventListener('click', () => cartModal?.classList.add('modal-overlay_active'));
         this.element.querySelector('.js-close-cart-modal')?.addEventListener('click', () => cartModal?.classList.remove('modal-overlay_active'));
 
-        // Модалка адресов
         const addressModal = this.element.querySelector('.js-address-modal');
         this.element.querySelectorAll('.js-open-address-modal').forEach(btn => {
             btn.addEventListener('click', () => addressModal?.classList.add('modal-overlay_active'));
         });
         this.element.querySelector('.js-close-address-modal')?.addEventListener('click', () => addressModal?.classList.remove('modal-overlay_active'));
 
-        // Выбор адреса
         this.element.querySelectorAll('.js-select-address').forEach(el => {
             el.addEventListener('click', (e) => {
                 const id = (e.currentTarget as HTMLElement).dataset.id;
@@ -140,7 +170,6 @@ export class Checkout extends Component {
             });
         });
 
-        // Кнопка "Добавить новый адрес" внутри модалки адресов
         const pickerContainer = this.element.querySelector('#checkout-address-picker-container') as HTMLElement;
         const addNewAddrBtn = this.element.querySelector('.js-add-new-address-btn');
         if (pickerContainer && addNewAddrBtn) {
@@ -154,17 +183,15 @@ export class Checkout extends Component {
             });
         }
 
-        // Модалка оплаты
         const paymentModal = this.element.querySelector('.js-payment-modal');
         this.element.querySelector('.js-open-payment-modal')?.addEventListener('click', () => paymentModal?.classList.add('modal-overlay_active'));
         this.element.querySelector('.js-close-payment-modal')?.addEventListener('click', () => paymentModal?.classList.remove('modal-overlay_active'));
 
-        // Выбор карты
         this.element.querySelectorAll('.js-select-card').forEach(el => {
             el.addEventListener('click', (e) => {
                 const id = (e.currentTarget as HTMLElement).dataset.id;
                 if (!id) {
-                    this.selectedCard = null; // Выбрана стандартная новая оплата
+                    this.selectedCard = null; 
                 } else {
                     this.selectedCard = this.cards.find(c => c.id === id);
                 }
@@ -172,7 +199,6 @@ export class Checkout extends Component {
             });
         });
 
-        // Кнопка Оплатить (Оформить заказ)
         const payBtn = this.element.querySelector('.js-pay-btn') as HTMLButtonElement;
         if (payBtn) {
             payBtn.addEventListener('click', async () => {
@@ -181,6 +207,11 @@ export class Checkout extends Component {
         }
     }
 
+    /**
+     * Обрабатывает логику отправки заказа на сервер.
+     * @private
+     * @returns {Promise<void>}
+     */
     private async processCheckout(): Promise<void> {
         const errContainer = this.element?.querySelector('#checkout-error') as HTMLElement;
         if (errContainer) errContainer.innerText = '';
@@ -196,9 +227,9 @@ export class Checkout extends Component {
         }
 
         const payload = {
-            address_id: this.selectedAddress.id, // public_id адреса
-            branch_id: this.cart.restaurant_id, // Бэкенд пока принимает restaurant_brand_id как branch_id для корзины (по логике order.go и handler'a)
-            payment_method_id: this.selectedCard ? this.selectedCard.id : "" // Если пусто, бэк сгенерит ссылку на YooKassa
+            address_id: this.selectedAddress.id, 
+            branch_id: this.cart.restaurant_id, 
+            payment_method_id: this.selectedCard ? this.selectedCard.id : "" 
         };
 
         const btn = this.element?.querySelector('.js-pay-btn') as HTMLButtonElement;

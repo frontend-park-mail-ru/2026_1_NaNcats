@@ -5,22 +5,46 @@ import { profileTemplate } from './profile.tmpl';
 import { validateEmail, validateName } from '../../shared/utils/Validator';
 import { AddressPicker } from '../addressPicker/AddressPicker';
 
+/**
+ * Интерфейс, описывающий данные пользователя профиля.
+ * @interface UserProfile
+ */
 interface UserProfile {
+    /** @type {string} Имя пользователя */
     name: string;
+    /** @type {string} Почта пользователя */
     email: string;
+    /** @type {string} URL аватара */
     avatar_url: string;
 }
 
+/**
+ * Компонент страницы профиля пользователя.
+ * Отвечает за редактирование личных данных, управление адресами, картами и отображение истории заказов.
+ * 
+ * @class Profile
+ * @extends Component
+ */
 export class Profile extends Component {
+    /** @type {UserProfile | null} Данные пользователя */
     private user: UserProfile | null = null;
+    /** @type {any[]} Массив адресов пользователя */
     private addresses: any[] = [];
+    /** @type {any[]} Массив привязанных карт */
     private cards: any[] = [];
+    /** @type {boolean} Флаг режима редактирования профиля */
     private isEditing: boolean = false;
 
+    /** @type {string | null} ID адреса, который редактируется в данный момент */
     private editingAddressId: string | null = null;
+    /** @type {{ text: string, coords: [number, number] } | null} Временные данные выбранной локации */
     private selectedLocation: { text: string, coords: [number, number] } | null = null;
+    /** @type {AddressPicker} Экземпляр компонента AddressPicker для добавления/изменения адресов */
     private addressPickerInstance!: AddressPicker;
 
+    /**
+     * Создает экземпляр страницы профиля.
+     */
     constructor() {
         super(profileTemplate);
         
@@ -30,7 +54,13 @@ export class Profile extends Component {
         });
     }
 
-    async mount(container: HTMLElement) {
+    /**
+     * Монтирует компонент и загружает данные с сервера.
+     * @override
+     * @param {HTMLElement} container - DOM-контейнер.
+     * @returns {Promise<void>}
+     */
+    async mount(container: HTMLElement): Promise<void> {
         this.isEditing = false;
         try {
             const [userRes, addrRes, cardsRes, ordersRes] = await Promise.all([
@@ -57,7 +87,12 @@ export class Profile extends Component {
         }
     }
 
-    afterRender() {
+    /**
+     * Навешивает обработчики событий после отрисовки.
+     * @override
+     * @returns {void}
+     */
+    afterRender(): void {
         const uploadBtn = document.getElementById('upload-avatar-btn');
         const fileInput = document.getElementById('avatar-input') as HTMLInputElement;
         
@@ -99,7 +134,8 @@ export class Profile extends Component {
                 };
             });
         }
-        saveBtn.onclick = () => this.saveProfile(nameInput.value, emailInput.value);
+        
+        if (saveBtn) saveBtn.onclick = () => this.saveProfile(nameInput.value, emailInput.value);
 
         const addBtn = document.getElementById('add-address-btn');
         if (addBtn) {
@@ -182,7 +218,12 @@ export class Profile extends Component {
         }
     }
 
-    private async bindNewCard() {
+    /**
+     * Инициирует процесс привязки новой карты через платежный шлюз.
+     * @private
+     * @returns {Promise<void>}
+     */
+    private async bindNewCard(): Promise<void> {
         try {
             const res = await Ajax.post('/profile/cards/bind', {});
             if (res.ok) {
@@ -198,7 +239,13 @@ export class Profile extends Component {
         }
     }
 
-    private async deleteCard(id: string) {
+    /**
+     * Удаляет привязанную карту.
+     * @private
+     * @param {string} id - ID карты.
+     * @returns {Promise<void>}
+     */
+    private async deleteCard(id: string): Promise<void> {
         if (!confirm('Вы уверены, что хотите отвязать эту карту?')) return;
         try {
             const res = await Ajax.delete(`/profile/cards/${id}`);
@@ -212,7 +259,13 @@ export class Profile extends Component {
         }
     }
 
-    private async setDefaultCard(id: string) {
+    /**
+     * Устанавливает карту как основную (по умолчанию).
+     * @private
+     * @param {string} id - ID карты.
+     * @returns {Promise<void>}
+     */
+    private async setDefaultCard(id: string): Promise<void> {
         try {
             const res = await Ajax.put(`/profile/cards/${id}`);
             if (res.ok) {
@@ -225,7 +278,12 @@ export class Profile extends Component {
         }
     }
 
-    private async loadAndRenderAddresses() {
+    /**
+     * Загружает и перерисовывает список адресов пользователя.
+     * @private
+     * @returns {Promise<void>}
+     */
+    private async loadAndRenderAddresses(): Promise<void> {
         try {
             const res = await Ajax.get('/profile/addresses');
             if (res.ok) {
@@ -238,7 +296,12 @@ export class Profile extends Component {
         }
     }
 
-    private renderAddressesDOM() {
+    /**
+     * Отрисовывает список адресов в DOM.
+     * @private
+     * @returns {void}
+     */
+    private renderAddressesDOM(): void {
         const list = document.getElementById('profile-address-list');
         const showMoreBtn = document.getElementById('show-more-addresses-btn');
         if (!list) return;
@@ -271,7 +334,13 @@ export class Profile extends Component {
         }
     }
 
-    private openEditForm(id: string) {
+    /**
+     * Открывает форму для редактирования существующего адреса.
+     * @private
+     * @param {string} id - ID редактируемого адреса.
+     * @returns {void}
+     */
+    private openEditForm(id: string): void {
         const addr = this.addresses.find(a => a.id === id);
         if (!addr) return;
 
@@ -296,7 +365,13 @@ export class Profile extends Component {
         }
     }
 
-    private async deleteAddress(id: string) {
+    /**
+     * Удаляет адрес по его ID.
+     * @private
+     * @param {string} id - ID адреса.
+     * @returns {Promise<void>}
+     */
+    private async deleteAddress(id: string): Promise<void> {
         if (!confirm('Удалить этот адрес?')) return;
         try {
             const res = await Ajax.delete(`/profile/addresses/${id}`);
@@ -308,7 +383,13 @@ export class Profile extends Component {
         }
     }
 
-    private async uploadAvatar(file: File) {
+    /**
+     * Загружает новую картинку аватара на сервер.
+     * @private
+     * @param {File} file - Файл изображения.
+     * @returns {Promise<void>}
+     */
+    private async uploadAvatar(file: File): Promise<void> {
         const formData = new FormData();
         formData.append('avatar', file);
 
@@ -338,9 +419,13 @@ export class Profile extends Component {
         }
     }
 
-    private async deleteAvatar() {
+    /**
+     * Удаляет текущий аватар пользователя.
+     * @private
+     * @returns {Promise<void>}
+     */
+    private async deleteAvatar(): Promise<void> {
         try {
-            const response = await Ajax.get('/profile/avatar');
             const res = await fetch('/api/profile/avatar', { method: 'DELETE', credentials: 'include' });
             
             if (res.ok) {
@@ -353,7 +438,14 @@ export class Profile extends Component {
         }
     }
 
-    private async saveProfile(newName: string, newEmail: string) {
+    /**
+     * Сохраняет отредактированные имя и почту.
+     * @private
+     * @param {string} newName - Новое имя пользователя.
+     * @param {string} newEmail - Новая почта пользователя.
+     * @returns {Promise<void>}
+     */
+    private async saveProfile(newName: string, newEmail: string): Promise<void> {
         this.showError('');
         const name = newName.trim();
         const email = newEmail.trim();
@@ -366,8 +458,6 @@ export class Profile extends Component {
         }
 
         try {
-            const response = await Ajax.post('/profile', { name, email });
-            
             const patchRes = await fetch('/api/profile', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -394,12 +484,23 @@ export class Profile extends Component {
         }
     }
 
-    private showError(msg: string) {
+    /**
+     * Выводит сообщение об ошибке профиля в UI.
+     * @private
+     * @param {string} msg - Текст ошибки.
+     * @returns {void}
+     */
+    private showError(msg: string): void {
         const errBlock = document.getElementById('profile-error');
         if (errBlock) errBlock.innerText = msg;
     }
 
-    private openDetailsModal() {
+    /**
+     * Открывает модалку для заполнения деталей адреса (квартира, код двери).
+     * @private
+     * @returns {void}
+     */
+    private openDetailsModal(): void {
         const modal = document.getElementById('address-details-modal');
         const displayInput = document.getElementById('display-address-text') as HTMLInputElement;
         
@@ -414,7 +515,13 @@ export class Profile extends Component {
     }
 
 
-    private async submitFinalAddress(e: Event) {
+    /**
+     * Обрабатывает отправку формы сохранения деталей адреса.
+     * @private
+     * @param {Event} e - Событие сабмита формы.
+     * @returns {Promise<void>}
+     */
+    private async submitFinalAddress(e: Event): Promise<void> {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = new FormData(form);
