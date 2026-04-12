@@ -1,6 +1,6 @@
+import './cart.scss';
 import { Component } from '../../core/Component';
 import { cartTemplate } from './cart.tmpl';
-import './cart.css';
 
 // Интерфейс для одного элемента корзины
 export interface CartItem {
