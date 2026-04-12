@@ -1,8 +1,8 @@
 import './cart.scss';
 import { Component } from '../../core/Component';
 import { cartTemplate } from './cart.tmpl';
+import { Ajax } from '../../core/Ajax';
 
-// Интерфейс для одного элемента корзины
 export interface CartItem {
     dish_id: number;
     name: string;
@@ -11,133 +11,128 @@ export interface CartItem {
     image_url: string;
 }
 
-// Интерфейс данных, которые передаются в шаблонизатор
-interface CartTemplateData {
-    items: CartItem[];
-    totalCost: number;
-}
-
 export class Cart extends Component {
-    private items: CartItem[];
+    private items: CartItem[] = [];
+    private restaurantId: number = 0;
 
     constructor() {
         super(cartTemplate);
+    }
+
+    public async loadCart(): Promise<void> {
+        try {
+            const res = await Ajax.get('/cart');
+            if (res.ok) {
+                const data = await res.json();
+                this.items = data.items || [];
+                this.restaurantId = data.restaurant_id || 0;
+                this.updateCartUI();
+            }
+        } catch (e) {
+            console.error("Ошибка загрузки корзины:", e);
+        }
+    }
+
+    // Синхронизация локальной корзины с БД
+    private async syncWithServer(): Promise<void> {
+        try {
+            const payload = {
+                restaurant_id: this.restaurantId,
+                items: this.items.map(i => ({ dish_id: i.dish_id, quantity: i.quantity }))
+            };
+            await Ajax.put('/cart', payload);
+            // После успешного PUT можно еще раз сделать GET, чтобы получить правильные total_cost от сервера
+            await this.loadCart(); 
+        } catch (e) {
+            console.error("Ошибка синхронизации корзины:", e);
+        }
+    }
+
+    // Метод добавления блюда из меню
+    public async addDish(dish: any, restId: number): Promise<void> {
+        if (this.items.length > 0 && this.restaurantId !== restId) {
+            const confirmClear = confirm("В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?");
+            if (confirmClear) {
+                this.items = []; // Очищаем корзину
+            } else {
+                return; // Пользователь отменил добавление
+            }
+        }
+
+        this.restaurantId = restId;
+        const existing = this.items.find(i => i.dish_id === dish.id);
         
-        // ВРЕМЕННЫЕ МОК-ДАННЫЕ
-        // Позже здесь будет пустой массив [], а данные будут загружаться через Ajax
-        this.items = [
-            { dish_id: 1, name: 'Чизбургер', price: 115, quantity: 1, image_url: 'https://placehold.co/40x40' },
-            { dish_id: 2, name: 'Сырные палочки', price: 150, quantity: 2, image_url: 'https://placehold.co/40x40' },
-            { dish_id: 3, name: 'Кола 0.5', price: 90, quantity: 1, image_url: 'https://placehold.co/40x40' }
-        ];
+        if (existing) {
+            existing.quantity += 1;
+        } else {
+            this.items.push({
+                dish_id: dish.id,
+                name: dish.name,
+                price: dish.price,
+                quantity: 1,
+                image_url: dish.image_url
+            });
+        }
+
+        this.updateCartUI();
+        await this.syncWithServer();
     }
 
-    /**
-     * Вычисляет общую стоимость всех товаров в корзине
-     */
-    private getTotalCost(): number {
-        return this.items.reduce((total, item) => total + (item.price * item.quantity), 0);
-    }
-
-    /**
-     * Перерисовывает компонент корзины с новыми данными
-     */
-    private updateCartUI(): void {
-        if (!this.element) return;
-
-        const data: CartTemplateData = {
-            items: this.items,
-            totalCost: this.getTotalCost()
-        };
-
-        // super.mount принимает элемент и данные для doT.js
-        super.mount(this.element, data);
-    }
-
-    /**
-     * Изменяет количество товара в корзине
-     * @param dishId ID блюда
-     * @param delta Изменение (+1 или -1)
-     */
-    public changeQuantity(dishId: number, delta: number): void {
+    public async changeQuantity(dishId: number, delta: number): Promise<void> {
         const item = this.items.find(i => i.dish_id === dishId);
-        
         if (item) {
             item.quantity += delta;
-            
-            // Если количество стало 0 или меньше, удаляем товар
             if (item.quantity <= 0) {
                 this.items = this.items.filter(i => i.dish_id !== dishId);
             }
-            
             this.updateCartUI();
-            
-            // TODO: Отправка "бакета" на бэкенд (PUT /api/cart)
-            // this.syncWithServer();
+            await this.syncWithServer();
         }
     }
 
-    /**
-     * Полностью очищает корзину
-     */
-    public clearCart(): void {
+    public async clearCart(): Promise<void> {
         this.items = [];
+        this.restaurantId = 0;
         this.updateCartUI();
-        // TODO: Отправка пустого бакета на бэкенд
+        await this.syncWithServer();
     }
 
-    /**
-     * Метод жизненного цикла, вызывается после вставки HTML в DOM
-     */
+    private getTotalCost(): number {
+        return this.items.reduce((total, item) => total + ((item.price / 1000000) * item.quantity), 0);
+    }
+
+    private updateCartUI(): void {
+        if (!this.element) return;
+        super.mount(this.element, {
+            items: this.items.map(item => ({...item, price: item.price / 1000000})),
+            totalCost: this.getTotalCost()
+        });
+    }
+
     afterRender(): void {
         if (!this.element) return;
 
-        // Обработчики для кнопок "+"
-        const plusButtons = this.element.querySelectorAll('.plus');
-        plusButtons.forEach(btn => {
-            (btn as HTMLElement).onclick = (e: MouseEvent) => {
-                const target = e.currentTarget as HTMLElement;
-                const idStr = target.getAttribute('data-id');
-                if (idStr) {
-                    this.changeQuantity(parseInt(idStr, 10), 1);
-                }
+        this.element.querySelectorAll('.plus').forEach(btn => {
+            (btn as HTMLElement).onclick = (e) => {
+                const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+                if (id) this.changeQuantity(parseInt(id, 10), 1);
             };
         });
 
-        // Обработчики для кнопок "-"
-        const minusButtons = this.element.querySelectorAll('.minus');
-        minusButtons.forEach(btn => {
-            (btn as HTMLElement).onclick = (e: MouseEvent) => {
-                const target = e.currentTarget as HTMLElement;
-                const idStr = target.getAttribute('data-id');
-                if (idStr) {
-                    this.changeQuantity(parseInt(idStr, 10), -1);
-                }
+        this.element.querySelectorAll('.minus').forEach(btn => {
+            (btn as HTMLElement).onclick = (e) => {
+                const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+                if (id) this.changeQuantity(parseInt(id, 10), -1);
             };
         });
 
-        // Обработчик кнопки "Очистить"
         const clearBtn = this.element.querySelector('#clear-cart-btn') as HTMLElement;
-        if (clearBtn) {
-            clearBtn.onclick = () => this.clearCart();
-        }
-        
-        // Визуальное переключение табов (Доставка / Самовывоз)
-        const tabs = this.element.querySelectorAll('.cart-tab');
-        tabs.forEach(tab => {
-            (tab as HTMLElement).onclick = (e: MouseEvent) => {
-                tabs.forEach(t => t.classList.remove('active'));
-                (e.currentTarget as HTMLElement).classList.add('active');
-            };
-        });
+        if (clearBtn) clearBtn.onclick = () => this.clearCart();
     }
 
-    /**
-     * Первичная инициализация компонента
-     * @param container DOM-элемент, куда вставляется корзина
-     */
     mount(container: HTMLElement): void {
         this.element = container;
         this.updateCartUI();
+        this.loadCart();
     }
 }

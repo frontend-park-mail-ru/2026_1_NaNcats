@@ -84,7 +84,7 @@ export const restaurantsTemplate = `
                 </div>
                 <div class="res-grid">
                     {{~it.restaurants :res}}
-                        <div class="res-card">
+                        <div class="res-card" data-id="{{=res.id}}">
                             <img class="res-card__rect" src="{{=res.logo_url}}" alt="{{=res.name}}"
                             onerror="this.src='https://placehold.co/400x225/png?text={{=res.name}}'">
                             <div class="res-card__info">

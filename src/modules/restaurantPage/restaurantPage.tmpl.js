@@ -1,5 +1,5 @@
 export const restaurantPageTemplate = `
-<div class="page-wrapper">
+<div class="page-wrapper restaurant-details-page">
     <header class="header">
 
         <button class="button header__back-btn" type="button" id="header__back-btn" aria-label="Назад">
@@ -78,16 +78,6 @@ export const restaurantPageTemplate = `
                     <div class="category-item"><span>—</span><span>Шашлык и гриль</span></div>
                 </div>
             </div>
-
-            <div class="button button_support">
-                <svg width="31" height="24" viewBox="0 0 31 24" fill="none">
-                    <path d="M1.70947 22.3117L0.120783 21.7613C0.0072668 22.01 -0.0270883 22.2808 0.0213384 22.5451C0.0697651 22.8093 0.19918 23.0573 0.395941 23.2629C0.592701 23.4685 0.849518 23.6241 1.13932 23.7132C1.42912 23.8023 1.74118 23.8217 2.04258 23.7694L1.70947 22.3117ZM9.74857 20.9194L10.5583 19.609L10.0168 19.3561L9.41546 19.4602L9.74857 20.9194ZM4.4837 16.2384L6.07238 16.7888L6.35083 16.173L6.01601 15.5795L4.4837 16.2384ZM27.3335 11.8996C27.3335 16.7278 22.4598 20.8242 16.1785 20.8242V23.7991C24.1066 23.7991 30.75 18.5722 30.75 11.8996H27.3335ZM5.02522 11.8996C5.02522 7.07131 9.90061 2.97489 16.1802 2.97489V0C8.25213 0 1.60697 5.22688 1.60697 11.8996H5.02522ZM16.1802 2.97489C22.4598 2.97489 27.3335 7.07131 27.3335 11.8996H30.75C30.75 5.22688 24.1083 0 16.1802 0V2.97489ZM16.1785 20.8242C14.12 20.8242 12.2034 20.378 10.5583 19.609L8.93885 22.2284C11.1653 23.2677 13.6523 23.8075 16.1785 23.7991V20.8242ZM2.04258 23.7694L10.0817 22.3771L9.41546 19.4602L1.37636 20.8525L2.04258 23.7709V23.7694ZM6.01601 15.5795C5.36567 14.4353 5.02781 13.1762 5.02522 11.8996H1.60697C1.60697 13.6845 2.08871 15.3772 2.94967 16.8974L6.01601 15.5795ZM2.89672 15.6881L0.120783 21.7628L3.29474 22.8605L6.06897 16.7873L2.89501 15.6881H2.89672Z" fill="#FFC1C1"/>
-                    <circle cx="10.25" cy="11.9" r="1.5" fill="#FFC1C1"/>
-                    <circle cx="16.23" cy="11.9" r="1.5" fill="#FFC1C1"/>
-                    <circle cx="22.21" cy="11.9" r="1.5" fill="#FFC1C1"/>
-                </svg>
-                Поддержка
-            </div>
         </aside>
 
         <main class="center-column">
@@ -164,7 +154,12 @@ export const restaurantPageTemplate = `
                                 {{=dish.description || 'Описание появится позже'}}
                             </div>
 
-                            <button class="button" type="button" style="
+                            <button class="button js-add-to-cart" type="button" 
+                                data-id="{{=dish.id}}" 
+                                data-name="{{=dish.name}}" 
+                                data-price="{{=dish.price}}" 
+                                data-image="{{=dish.image_url}}"
+                                style="
                                 margin-top:auto;
                                 background: #FFE3E3;
                                 border-radius: 14px;
@@ -181,19 +176,7 @@ export const restaurantPageTemplate = `
         </main>
 
         <aside class="side-column">
-            <div class="card card_fixed">
-                <div class="cart-container">
-                    <p class="label-text" style="padding:0">Корзина</p>
-                    <div class="cart-empty-container">
-                        <div class="empty-icon">🛍️</div>
-                        <div class="empty-title">Тут пока пусто</div>
-                        <div class="empty-subtitle">Выберите что-нибудь вкусное</div>
-                    </div>
-                </div>
-                <div class="cart-footer">
-                    <button class="button button_checkout" disabled>Оформить заказ</button>
-                </div>
-            </div>
+            <div class="card card_cart" id="restaurant-cart-container" style="flex: 1; padding: 15px; display: flex; flex-direction: column;"></div>
         </aside>
     </div>
 </div>

@@ -1,7 +1,8 @@
-import './restaurantPage.css';
+import './restaurantPage.scss';
 import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
 import {restaurantPageTemplate} from './restaurantPage.tmpl.js'
+import { Cart } from '../cart/Cart';
 
 /**
  * Компонент страницы ресторана с товарами
@@ -36,6 +37,8 @@ export class RestaurantPage extends Component {
          * @type {boolean} 
          */
         this.hasMore = true;
+
+        this.cart = new Cart();
     }
 
     /**
@@ -60,7 +63,9 @@ export class RestaurantPage extends Component {
         } catch (e) {
             console.warn("Ошибка при получении данных:", e);
         }
-        super.mount(container, { dishes, user });
+
+        dishes = dishes.map(d => ({...d, price_formatted: d.price / 1000000}));
+        super.mount(container, { dishes, user: this.user });
     }
 
     /**
@@ -162,5 +167,33 @@ export class RestaurantPage extends Component {
         if (registerBtn) {
             registerBtn.onclick = () => this.handleRegisterRedirect();
         }
+
+        const cartContainer = document.getElementById('restaurant-cart-container');
+        if (cartContainer) {
+            this.cart.mount(cartContainer);
+        }
+
+        const addButtons = this.element.querySelectorAll('.js-add-to-cart');
+        const restId = parseInt(this.getRestaurantId(), 10);
+
+        addButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (!this.user) {
+                    window.router.go('/login');
+                    return;
+                }
+
+                // Собираем данные из data-атрибутов
+                const dish = {
+                    id: parseInt(btn.dataset.id, 10),
+                    name: btn.dataset.name,
+                    price: parseInt(btn.dataset.price, 10), // Берем оригинальную цену (в микроединицах)
+                    image_url: btn.dataset.image
+                };
+
+                // Добавляем в корзину (там внутри есть проверка ресторана)
+                this.cart.addDish(dish, restId);
+            });
+        });
     }
 }
