@@ -1,8 +1,29 @@
 import './restaurantPage.scss';
 import { Component } from '../../core/Component';
 import { Ajax } from '../../core/Ajax';
-import {restaurantPageTemplate} from './restaurantPage.tmpl.js'
+import { restaurantPageTemplate } from './restaurantPage.tmpl.js';
 import { Cart } from '../cart/Cart';
+
+/**
+ * Интерфейс для объекта блюда
+ */
+interface Dish {
+    id: number;
+    name: string;
+    price: number;
+    image_url: string;
+    description?: string;
+    price_formatted?: number;
+}
+
+/**
+ * Интерфейс для информации о ресторане
+ */
+interface RestaurantInfo {
+    id?: number;
+    name: string;
+    logo_url?: string;
+}
 
 /**
  * Компонент страницы ресторана с товарами
@@ -11,33 +32,15 @@ import { Cart } from '../cart/Cart';
  * @extends Component
  */
 export class RestaurantPage extends Component {
+    private limit: number = 20;
+    private offset: number = 0;
+    private isFetching: boolean = false;
+    private hasMore: boolean = true;
+    private cart: Cart;
+    private user: any = null;
+
     constructor() {
         super(restaurantPageTemplate);
-
-        /**
-         * Количество позиций ресторана, запрашиваемых за один раз
-         * @type {number}
-         */
-        this.limit = 20;
-
-        /** 
-         * Смещение для пагинации данных.
-         * @type {number} 
-         */
-        this.offset = 0;
-
-        /**
-         * Статус выполнения асинхронного запроса в данный момент
-         * @type {boolean}
-         */
-        this.isFetching = false;
-
-        /** 
-         * Флаг наличия доступных данных для дальнейшей подгрузки.
-         * @type {boolean} 
-         */
-        this.hasMore = true;
-
         this.cart = new Cart();
     }
 
@@ -47,14 +50,16 @@ export class RestaurantPage extends Component {
      * @override
      * @returns {Promise<void>}
      */
-    async mount(container) {
+    public async mount(container: HTMLElement): Promise<void> {
+        this.element = container;
         this.user = null;
         this.offset = 0;
         this.hasMore = true;
+        
         const restId = this.getRestaurantId();
         
-        let dishes = [];
-        let restaurantInfo = { name: 'Ресторан недоступен (оффлайн)' };
+        let dishes: Dish[] = [];
+        let restaurantInfo: RestaurantInfo = { name: 'Ресторан недоступен (оффлайн)' };
 
         try {
             const results = await Promise.allSettled([
@@ -68,7 +73,7 @@ export class RestaurantPage extends Component {
             }
             
             if (results[1].status === 'fulfilled') {
-                dishes = results[1].value || [];
+                dishes = results[1].value as Dish[];
             }
 
             if (results[2].status === 'fulfilled' && results[2].value.ok) {
@@ -79,6 +84,7 @@ export class RestaurantPage extends Component {
             console.warn("Ошибка в mount:", e);
         }
 
+        // Безопасное форматирование цен
         const formattedDishes = (dishes || []).map(d => ({
             ...d, 
             price_formatted: (d.price || 0) / 1000000
@@ -92,10 +98,10 @@ export class RestaurantPage extends Component {
     }
 
     /**
-     * Возвращает айдишник ресторана
+     * Возвращает айдишник ресторана из URL
      * @returns {string|null}
      */
-    getRestaurantId() {
+    private getRestaurantId(): string | null {
         const params = new URLSearchParams(window.location.search);
         return params.get('id');
     }
@@ -103,9 +109,9 @@ export class RestaurantPage extends Component {
     /**
      * Запрашивает порцию данных о блюдах ресторана.
      * @async
-     * @returns {Promise<Array<Object>>} Массив объектов блюд.
+     * @returns {Promise<Dish[]>} Массив объектов блюд.
      */
-    async fetchDishes() {
+    private async fetchDishes(): Promise<Dish[]> {
         if (this.isFetching || !this.hasMore) return [];
 
         const id = this.getRestaurantId();
@@ -116,7 +122,7 @@ export class RestaurantPage extends Component {
             const resResponse = await Ajax.get(`/restaurants/brands/${id}/dishes?limit=${this.limit}&offset=${this.offset}`);
             if (resResponse.ok) {
                 const data = await resResponse.json();
-                const newDishes = data.dishes  || [];
+                const newDishes: Dish[] = data.dishes || [];
                 
                 if (newDishes.length < this.limit) {
                     this.hasMore = false;
@@ -126,54 +132,42 @@ export class RestaurantPage extends Component {
                 return newDishes;
             }
         } catch (e) {
-            console.error("Ошибка при подгрузке ресторанов:", e);
+            console.error("Ошибка при подгрузке блюд:", e);
         } finally {
             this.isFetching = false;
         }
         return [];
     }
 
-    /**
-     * Переход назад
-     * @returns {void}
-     */
-    handleBack() {
+    private handleBack(): void {
         window.router.go('/');
     }
 
-     /**
-     * Выполняет выход пользователя из системы и перенаправляет на главную.
-     * @returns {Promise<void>}
+    /**
+     * Выполняет выход пользователя из системы
      */
-    async handleLogout() {
+    private async handleLogout(): Promise<void> {
         const res = await Ajax.post('/auth/logout');
         if (res.ok) {
             window.router.go('/');
         }
     }
 
-    /**
-     * Переход на страницу авторизации.
-     * @returns {void}
-     */
-    handleLoginRedirect() {
+    private handleLoginRedirect(): void {
         window.router.go('/login');
     }
 
-    /**
-     * Переход на страницу регистрации.
-     * @returns {void}
-     */
-    handleRegisterRedirect() {
+    private handleRegisterRedirect(): void {
         window.router.go('/register');
     }
 
     /**
      * Установка обработчиков событий
      * @override
-     * @returns {void}
      */
-    afterRender() {
+    public afterRender(): void {
+        if (!this.element) return;
+
         const backBtn = document.getElementById('header__back-btn');
         backBtn?.addEventListener('click', () => this.handleBack());
 
@@ -198,24 +192,24 @@ export class RestaurantPage extends Component {
         }
 
         const addButtons = this.element.querySelectorAll('.js-add-to-cart');
-        const restId = parseInt(this.getRestaurantId(), 10);
+        const restIdStr = this.getRestaurantId();
+        const restId = restIdStr ? parseInt(restIdStr, 10) : 0;
 
         addButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            const htmlBtn = btn as HTMLElement;
+            htmlBtn.addEventListener('click', () => {
                 if (!this.user) {
                     window.router.go('/login');
                     return;
                 }
 
-                // Собираем данные из data-атрибутов
                 const dish = {
-                    id: parseInt(btn.dataset.id, 10),
-                    name: btn.dataset.name,
-                    price: parseInt(btn.dataset.price, 10), // Берем оригинальную цену (в микроединицах)
-                    image_url: btn.dataset.image
+                    id: parseInt(htmlBtn.dataset.id || '0', 10),
+                    name: htmlBtn.dataset.name || '',
+                    price: parseInt(htmlBtn.dataset.price || '0', 10),
+                    image_url: htmlBtn.dataset.image || ''
                 };
 
-                // Добавляем в корзину (там внутри есть проверка ресторана)
                 this.cart.addDish(dish, restId);
             });
         });

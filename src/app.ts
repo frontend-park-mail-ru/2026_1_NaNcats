@@ -21,7 +21,7 @@ window.router
         return new Register();
     })
     .register('/restaurant', async () => {
-        const { RestaurantPage } = await import('./modules/restaurantPage/RestaurantPage.js');
+        const { RestaurantPage } = await import('./modules/restaurantPage/RestaurantPage');
         return new RestaurantPage();
     })
     .register('/profile', async () => {
