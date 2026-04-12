@@ -4,9 +4,6 @@ declare module "*.scss" {
 }
 
 interface Window {
-    router: {
-        go(path: string): void;
-        render(path: string): Promise<void>;
-        register(path: string, component: unknown): unknown;
-    };
+    router: import('./core/Router').Router;
 }
+
