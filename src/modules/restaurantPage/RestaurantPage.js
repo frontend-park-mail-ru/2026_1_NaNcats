@@ -51,12 +51,13 @@ export class RestaurantPage extends Component {
         this.offset = 0;
         this.hasMore = true;
         let dishes = [];
-        let user = null;
 
         try {
             const userResponse = await Ajax.get('/auth/me');
             if (userResponse.ok) {
-                user = await userResponse.json();
+                this.user = await userResponse.json();
+            } else {
+                this.user = null;
             }
 
             dishes = await this.fetchDishes();
