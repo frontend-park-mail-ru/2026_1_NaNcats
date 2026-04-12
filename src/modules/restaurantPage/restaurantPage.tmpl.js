@@ -85,8 +85,9 @@ export const restaurantPageTemplate = `
                 <div class="restaurant-hero" style="margin-bottom:14px;">
                     <img
                       class="restaurant-hero__img"
-                      src="https://placehold.co/1200x360/png?text=Restaurant+Banner"
-                      alt="Баннер ресторана"
+                      src="{{=it.restaurant.logo_url}}"
+                      alt="{{=it.restaurant.name}}"
+                      onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/restaurants/default-restaurant-logo.webp'"
                       style="width:100%; border-radius:20px; object-fit:cover; aspect-ratio: 16 / 5;"
                     />
                 </div>
