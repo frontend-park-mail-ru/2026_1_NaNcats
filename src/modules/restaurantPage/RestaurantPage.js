@@ -1,0 +1,166 @@
+import './restaurantPage.css';
+import { Component } from '../../core/Component.js';
+import { Ajax } from '../../core/Ajax.js';
+import {restaurantPageTemplate} from './restaurantPage.tmpl.js'
+
+/**
+ * Компонент страницы ресторана с товарами
+ * 
+ * @class RestaurantPage
+ * @extends Component
+ */
+export class RestaurantPage extends Component {
+    constructor() {
+        super(restaurantPageTemplate);
+
+        /**
+         * Количество позиций ресторана, запрашиваемых за один раз
+         * @type {number}
+         */
+        this.limit = 20;
+
+        /** 
+         * Смещение для пагинации данных.
+         * @type {number} 
+         */
+        this.offset = 0;
+
+        /**
+         * Статус выполнения асинхронного запроса в данный момент
+         * @type {boolean}
+         */
+        this.isFetching = false;
+
+        /** 
+         * Флаг наличия доступных данных для дальнейшей подгрузки.
+         * @type {boolean} 
+         */
+        this.hasMore = true;
+    }
+
+    /**
+     * Выполняет первичную загрузку данных пользователя и списка позиций.
+     * @param {HTMLElement} container - Элемент, в который будет вставлен список.
+     * @override
+     * @returns {Promise<void>}
+     */
+    async mount(container) {
+        this.offset = 0;
+        this.hasMore = true;
+        let dishes = [];
+        let user = null;
+
+        try {
+            const userResponse = await Ajax.get('/auth/me');
+            if (userResponse.ok) {
+                user = await userResponse.json();
+            }
+
+            dishes = await this.fetchDishes();
+        } catch (e) {
+            console.warn("Ошибка при получении данных:", e);
+        }
+        super.mount(container, { dishes, user });
+    }
+
+    /**
+     * Возвращает айдишник ресторана
+     * @returns {string|null}
+     */
+    getRestaurantId() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id');
+    }
+
+    /**
+     * Запрашивает порцию данных о блюдах ресторана.
+     * @async
+     * @returns {Promise<Array<Object>>} Массив объектов блюд.
+     */
+    async fetchDishes() {
+        if (this.isFetching || !this.hasMore) return [];
+
+        const id = this.getRestaurantId();
+        if (!id) return [];
+
+        this.isFetching = true;
+        try {
+            const resResponse = await Ajax.get(`/restaurants/brands/${id}/dishes?limit=${this.limit}&offset=${this.offset}`);
+            if (resResponse.ok) {
+                const data = await resResponse.json();
+                const newDishes = data.dishes  || [];
+                
+                if (newDishes.length < this.limit) {
+                    this.hasMore = false;
+                }
+                
+                this.offset += this.limit;
+                return newDishes;
+            }
+        } catch (e) {
+            console.error("Ошибка при подгрузке ресторанов:", e);
+        } finally {
+            this.isFetching = false;
+        }
+    }
+
+    /**
+     * Переход назад
+     * @returns {void}
+     */
+    handleBack() {
+        window.router.go('/');
+    }
+
+     /**
+     * Выполняет выход пользователя из системы и перенаправляет на главную.
+     * @returns {Promise<void>}
+     */
+    async handleLogout() {
+        const res = await Ajax.post('/auth/logout');
+        if (res.ok) {
+            window.router.go('/');
+        }
+    }
+
+    /**
+     * Переход на страницу авторизации.
+     * @returns {void}
+     */
+    handleLoginRedirect() {
+        window.router.go('/login');
+    }
+
+    /**
+     * Переход на страницу регистрации.
+     * @returns {void}
+     */
+    handleRegisterRedirect() {
+        window.router.go('/register');
+    }
+
+    /**
+     * Установка обработчиков событий
+     * @override
+     * @returns {void}
+     */
+    afterRender() {
+        const backBtn = document.getElementById('header__back-btn');
+        backBtn?.addEventListener('click', () => this.handleBack());
+
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.onclick = () => this.handleLogout();
+        }
+
+        const loginBtn = document.getElementById('login-btn');
+        if (loginBtn) {
+            loginBtn.onclick = () => this.handleLoginRedirect();
+        }
+
+        const registerBtn = document.getElementById('register-btn');
+        if (registerBtn) {
+            registerBtn.onclick = () => this.handleRegisterRedirect();
+        }
+    }
+}

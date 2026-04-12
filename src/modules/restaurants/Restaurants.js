@@ -159,16 +159,23 @@ export class Restaurants extends Component {
 
         restaurants.forEach(res => {
             const cardHtml = `
-                <div class="res-card">
-                    <img class="res-rect" src="${res.logo_url}" alt="${res.name}"
-                    onerror="this.src='https://placehold.co/400x225/png?text=${res.name}'">
-                    <div class="res-info">
-                        <span class="res-name">${res.name}</span>
-                    </div>
+            <div class="res-card" data-id="${res.id}">
+                <img class="res-rect" src="${res.logo_url}" alt="${res.name}">
+                <div class="res-info">
+                    <span class="res-name">${res.name}</span>
                 </div>
+            </div>
             `;
             grid.insertAdjacentHTML('beforeend', cardHtml);
         });
+
+        // Делегирование клика
+        grid.onclick = (e) => {
+            const card = e.target.closest('.res-card');
+            if (!card) return;
+            const id = card.dataset.id;
+            window.router.go(`/restaurant?id=${encodeURIComponent(id)}`);
+        };
     }
 
     /**
@@ -195,6 +202,19 @@ export class Restaurants extends Component {
         const scrollContainer = document.querySelector('.center-column');
         if (scrollContainer) {
             scrollContainer.addEventListener('scroll', this.handleScroll);
+        }
+
+        const grid = document.querySelector('.res-grid');
+        if (grid) {
+            grid.addEventListener('click', (e) => {
+            const card = e.target.closest('.res-card');
+            if (!card) return;
+
+            const id = card.dataset.id;
+            if (!id) return;
+
+            window.router.go(`/restaurant?id=${encodeURIComponent(id)}`);
+            });
         }
 
         const addressSlot = document.getElementById('address-picker-placeholder');

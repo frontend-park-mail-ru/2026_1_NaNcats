@@ -55,7 +55,7 @@ export class Router {
      */
     go(path) {
         window.history.pushState(null, '', path);
-        this.render(path);
+        this.render(path.split('?')[0]);
     }
 
     /**

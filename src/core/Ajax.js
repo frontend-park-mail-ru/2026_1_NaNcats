@@ -12,7 +12,10 @@ export class Ajax {
      * @private
      * @static
      */
-    static #baseUrl = '/api';
+    static #baseUrl =
+        window.location.hostname === 'localhost'
+            ? 'http://localhost:8080/api'
+            : '/api';
 
     /**
      * Универсальный внутренний метод для обертки над fetch.

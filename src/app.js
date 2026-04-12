@@ -17,7 +17,11 @@ window.router
         const { Register } = await import('./modules/register/Register.js');
         return new Register();
     })
-    .register('/404', new NotFound()); 
+    .register('/restaurant', async () => {
+        const { RestaurantPage } = await import('./modules/restaurantPage/RestaurantPage.js');
+        return new RestaurantPage();
+    })
+    .register('/404', new NotFound());
 
 const init = () => {
     window.router.render(window.location.pathname);
