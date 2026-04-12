@@ -174,7 +174,6 @@ export const checkoutTemplate = `
                         <p class="empty-text">У вас нет сохраненных адресов.</p>
                     {{?}}
                 </div>
-                <div id="checkout-address-picker-container" class="mt-20"></div>
                 <button class="button button_primary mt-20 js-add-new-address-btn">Добавить новый адрес (Карта)</button>
             </div>
         </div>
@@ -203,5 +202,6 @@ export const checkoutTemplate = `
             </div>
         </div>
     </div>
+    <div id="checkout-address-picker-container" class="mt-20"></div>
 </div>
 `;

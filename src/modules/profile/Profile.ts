@@ -131,7 +131,7 @@ export class Profile extends Component {
 
         const pickerPlaceholder = document.getElementById('profile-address-picker-container');
         if (pickerPlaceholder) {            
-            this.addressPickerInstance.mount(pickerPlaceholder, { hideInput: true });
+            this.addressPickerInstance.mount(pickerPlaceholder, { hideInput: true, skipDetails: true });
         }
 
 

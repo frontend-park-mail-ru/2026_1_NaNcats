@@ -8,6 +8,7 @@ declare var process: { env: { YANDEX_SUGGEST_KEY: string; }; };
 export class AddressPicker extends Component {
     private isAuth: boolean = true;
     private suggestKey: string;
+    private skipDetails: boolean = false; 
     private savedAddresses: string[];
     private map: any | null;
     private selectedCoords: [number, number];
@@ -70,8 +71,14 @@ export class AddressPicker extends Component {
     }
 
     async mount(container: HTMLElement, data: any) {
+        if (this.map) {
+            this.map.destroy();
+            this.map = null;
+        }
+
         this.savedAddresses = data?.savedAddresses || [];
         this.isAuth = data?.isAuth !== undefined ? data.isAuth : true;
+        this.skipDetails = data?.skipDetails || false;
         super.mount(container, data);
     }
 
@@ -136,9 +143,7 @@ export class AddressPicker extends Component {
                 const addr = modalInput.value;
                 this.element?.querySelector('.js-map-modal')?.classList.remove('modal-overlay_active');
                 
-                const hasMainInput = this.element?.querySelector('.js-address-input') !== null;
-                
-                if (!hasMainInput) {
+                if (this.skipDetails) {
                     this.finalizeAddress(addr, this.selectedCoords);
                 } else {
                     this.openDetailsModal(addr, this.selectedCoords);

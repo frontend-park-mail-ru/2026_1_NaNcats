@@ -135,11 +135,13 @@ export class Checkout extends Component {
         const pickerContainer = this.element.querySelector('#checkout-address-picker-container') as HTMLElement;
         const addNewAddrBtn = this.element.querySelector('.js-add-new-address-btn');
         if (pickerContainer && addNewAddrBtn) {
-            // Монтируем AddressPicker, но скрываем инпут (нам нужна только карта)
-            this.addressPicker.mount(pickerContainer, { hideInput: true, isAuth: true });
+            this.addressPicker.mount(pickerContainer, { hideInput: true });
+            
             addNewAddrBtn.addEventListener('click', () => {
                 addressModal?.classList.remove('modal-overlay_active');
-                this.addressPicker.openMapModal();
+                setTimeout(() => {
+                    this.addressPicker.openMapModal();
+                }, 100);
             });
         }
 
