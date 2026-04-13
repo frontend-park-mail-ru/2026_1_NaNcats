@@ -158,7 +158,7 @@ export const checkoutTemplate = `
                 {{? it.cart && it.cart.items.length > 0 }}
                     {{~ it.cart.items :item }}
                         <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
-                            <img src="{{!item.image_url}}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;">
+                            <img src="{{!item.image_url}}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                             <div style="flex: 1;">
                                 <div style="font-weight: 500; font-size: 14px;">{{!item.name}}</div>
                                 <div style="color: #777; font-size: 12px;">{{!item.quantity}} шт. х {{!item.price / 1000000}} ₽</div>

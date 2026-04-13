@@ -2,6 +2,7 @@ import './cart.scss';
 import { Component } from '../../core/Component';
 import { cartTemplate } from './cart.tmpl';
 import { Ajax } from '../../core/Ajax';
+import { Popup } from '../../shared/components/popup/Popup';
 
 /**
  * Интерфейс, описывающий элемент корзины (блюдо).
@@ -97,7 +98,7 @@ export class Cart extends Component {
      */
     public async addDish(dish: DishToAdd, restId: number): Promise<void> {
         if (this.items.length > 0 && this.restaurantId !== restId) {
-            const confirmClear = confirm("В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?");
+            const confirmClear = await Popup.confirm("В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?");
             if (confirmClear) {
                 this.items = []; 
             } else {

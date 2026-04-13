@@ -4,6 +4,7 @@ import { Ajax } from '../../core/Ajax';
 import { profileTemplate } from './profile.tmpl';
 import { validateEmail, validateName } from '../../shared/utils/Validator';
 import { AddressPicker } from '../addressPicker/AddressPicker';
+import { Popup } from '../../shared/components/popup/Popup';
 
 /**
  * Интерфейс, описывающий данные пользователя профиля.
@@ -94,6 +95,15 @@ export class Profile extends Component {
                 this.addresses = addrData.addresses || [];
 
                 this.cards = cardsRes.ok ? await cardsRes.json() : [];
+
+                if (this.cards.length === 1 && !this.cards[0].is_default) {
+                    try {
+                        await Ajax.put(`/profile/cards/${this.cards[0].id}`);
+                        this.cards[0].is_default = true;
+                    } catch (e) {
+                        console.error('Не удалось автоматически установить карту по умолчанию', e);
+                    }
+                }
                 
                 super.mount(container, { user: this.user, addresses: this.addresses, cards: this.cards, orders: orders });
             } else {
@@ -249,7 +259,7 @@ export class Profile extends Component {
                     window.location.href = data.confirmation_url; 
                 }
             } else {
-                alert('Не удалось начать привязку карты. Попробуйте позже.');
+                await Popup.alert('Не удалось начать привязку карты. Попробуйте позже.');
             }
         } catch (e) {
             console.error('Ошибка инициализации привязки:', e);
@@ -263,13 +273,15 @@ export class Profile extends Component {
      * @returns {Promise<void>}
      */
     private async deleteCard(id: string): Promise<void> {
-        if (!confirm('Вы уверены, что хотите отвязать эту карту?')) return;
+        const isConfirmed = await Popup.confirm('Вы уверены, что хотите отвязать эту карту?');
+        if (!isConfirmed) return;
+        
         try {
             const res = await Ajax.delete(`/profile/cards/${id}`);
             if (res.ok) {
                 this.mount(this.element!);
             } else {
-                alert('Не удалось удалить карту');
+                await Popup.alert('Не удалось удалить карту');
             }
         } catch (e) {
             console.error('Ошибка удаления карты:', e);
@@ -288,7 +300,7 @@ export class Profile extends Component {
             if (res.ok) {
                 this.mount(this.element!);
             } else {
-                alert('Не удалось изменить основную карту');
+                await Popup.alert('Не удалось изменить основную карту');
             }
         } catch (e) {
             console.error('Ошибка установки карты по умолчанию:', e);
@@ -389,7 +401,9 @@ export class Profile extends Component {
      * @returns {Promise<void>}
      */
     private async deleteAddress(id: string): Promise<void> {
-        if (!confirm('Удалить этот адрес?')) return;
+        const isConfirmed = await Popup.confirm('Удалить этот адрес?');
+        if (!isConfirmed) return;
+        
         try {
             const res = await Ajax.delete(`/profile/addresses/${id}`);
             if (res.ok) {
