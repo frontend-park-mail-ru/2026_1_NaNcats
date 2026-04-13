@@ -27,7 +27,7 @@ export const cartTemplate = `
         <div class="cart-items-list">
             {{~ it.items :item:index }}
                 <div class="cart-item">
-                    <img src="{{=item.image_url}}" alt="{{=item.name}}" class="cart-item__img" onerror="this.src='https://placehold.co/40x40?text=🍔'">
+                    <img src="{{=item.image_url}}" alt="{{=item.name}}" class="cart-item__img" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                     <div class="cart-item__info">
                         <div class="cart-item__name">{{=item.name}}</div>
                         <div class="cart-item__price">{{=item.price}}₽</div>
