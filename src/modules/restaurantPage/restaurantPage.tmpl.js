@@ -117,10 +117,10 @@ export const restaurantPageTemplate = `
 
                             <div class="dish-card__prices" style="display:flex; gap:8px; align-items:baseline;">
                                 <div style="color:#ff6b6b; font-weight:700;">
-                                  {{!dish.price_formatted}} ₽
+                                  {{!dish.price_formatted.toFixed(2)}} ₽
                                 </div>
                                 <div style="color:#999; text-decoration:line-through; font-size:12px;">
-                                  {{!dish.price_formatted}} ₽
+                                  {{!dish.price_formatted.toFixed(2)}} ₽
                                 </div>
                             </div>
 

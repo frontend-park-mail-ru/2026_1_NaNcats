@@ -149,7 +149,7 @@ export const profileTemplate = `
                                 <div class="order-row__name">{{!order.restaurant_name}}</div> 
                                 <div class="order-row__meta">Статус: {{!order.status}}</div>
                             </div>
-                            <div class="order-row__price">{{!order.total_cost / 1000000}}₽</div>
+                            <div class="order-row__price">{{!(order.total_cost / 1000000).toFixed(2)}}₽</div>
                         </div>
                         {{~}}
                     {{??}}

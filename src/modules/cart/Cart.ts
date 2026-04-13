@@ -157,10 +157,11 @@ export class Cart extends Component {
     /**
      * Вычисляет общую стоимость корзины.
      * @private
-     * @returns {number} Сумма заказа.
+     * @returns {string} Сумма заказа.
      */
-    private getTotalCost(): number {
-        return this.items.reduce((total, item) => total + ((item.price / 1000000) * item.quantity), 0);
+    private getTotalCost(): string {
+        const total =  this.items.reduce((total, item) => total + ((item.price / 1000000) * item.quantity), 0);
+        return total.toFixed(2);
     }
 
     /**
@@ -171,7 +172,7 @@ export class Cart extends Component {
     private updateCartUI(): void {
         if (!this.element) return;
         super.mount(this.element, {
-            items: this.items.map(item => ({...item, price: item.price / 1000000})),
+            items: this.items.map(item => ({...item, price: (item.price / 1000000).toFixed(2)})),
             totalCost: this.getTotalCost()
         });
     }

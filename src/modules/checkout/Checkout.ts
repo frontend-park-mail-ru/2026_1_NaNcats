@@ -164,10 +164,10 @@ export class Checkout extends Component {
             cards: this.cards,
             selectedAddress: this.selectedAddress,
             selectedCard: this.selectedCard,
-            cartItemsTotal,
-            deliveryFee: this.deliveryFee,
-            serviceFee: this.serviceFee,
-            grandTotal
+            cartItemsTotal: cartItemsTotal.toFixed(2),
+            deliveryFee: this.deliveryFee.toFixed(2),
+            serviceFee: this.serviceFee.toFixed(2),
+            grandTotal: grandTotal.toFixed(2)
         });
     }
 
@@ -253,17 +253,27 @@ export class Checkout extends Component {
             return;
         }
 
-        const payload = {
-            address_id: this.selectedAddress.id, 
-            branch_id: this.cart.restaurant_id, 
-            payment_method_id: this.selectedCard ? this.selectedCard.id : "" 
-        };
+        let cartItemsTotal = 0;
+        if (this.cart.items) {
+            cartItemsTotal = this.cart.items.reduce((sum: number, item: { price: number; quantity: number }) => 
+                sum + ((item.price / 1000000) * item.quantity), 0);
+        }
+        const grandTotal = cartItemsTotal > 0 ? cartItemsTotal + this.deliveryFee + this.serviceFee : 0;
 
         const btn = this.element?.querySelector('.js-pay-btn') as HTMLButtonElement;
         if (btn) {
             btn.disabled = true;
             btn.innerText = 'Оформляем...';
         }
+
+        const payload = {
+            address_id: this.selectedAddress.id, 
+            branch_id: this.cart.restaurant_id, 
+            payment_method_id: this.selectedCard ? this.selectedCard.id : "",
+            delivery_cost: this.deliveryFee * 1000000,
+            service_fee: this.serviceFee * 1000000,
+            total_cost: grandTotal * 1000000 
+        };
 
         try {
             const res = await Ajax.post('/orders', payload);
