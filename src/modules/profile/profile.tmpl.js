@@ -147,7 +147,7 @@ export const profileTemplate = `
                     {{? it.orders && it.orders.length > 0 }}
                         {{~it.orders :order}}
                         <div class="order-row">
-                            <img class="order-row__img" src="https://placehold.co/75x75?text=🍕" alt="order">
+                            <img class="order-row__img" src="{{!order.restaurant_image_url}}" alt="order" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                             <div class="order-row__date">{{!order.created_at}}</div>
                             <div class="order-row__info">
                                 <div class="order-row__name">{{!order.restaurant_name}}</div> 
