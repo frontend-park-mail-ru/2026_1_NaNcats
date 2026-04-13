@@ -30,7 +30,7 @@ export const restaurantsTemplate = `
                 </div>
                 <div class="user-menu-wrapper">
                     <a href="/profile" class="user-profile router-link">
-                        <img src="{{=it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+                        <img src="{{!it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                     </a>
                     <div class="user-dropdown">
                         <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
@@ -68,9 +68,9 @@ export const restaurantsTemplate = `
                         ]; 
                     }}
                     {{~categories :cat}}
-                        <div class="category-item {{=cat.active ? 'category-item_active' : ''}}">
-                            <span class="category-item__icon">{{=cat.i}}</span>
-                            <span class="category-item__name">{{=cat.n}}</span>
+                        <div class="category-item {{!cat.active ? 'category-item_active' : ''}}">
+                            <span class="category-item__icon">{{!cat.i}}</span>
+                            <span class="category-item__name">{{!cat.n}}</span>
                         </div>
                     {{~}}
                 </div>
@@ -84,11 +84,11 @@ export const restaurantsTemplate = `
                 </div>
                 <div class="res-grid">
                     {{~it.restaurants :res}}
-                        <div class="res-card" data-id="{{=res.id}}">
-                            <img class="res-card__rect" src="{{=res.logo_url}}" alt="{{=res.name}}"
-                            onerror="this.src='https://placehold.co/400x225/png?text={{=res.name}}'">
+                        <div class="res-card" data-id="{{!res.id}}">
+                            <img class="res-card__rect" src="{{!res.logo_url}}" alt="{{!res.name}}"
+                            onerror="this.src='https://placehold.co/400x225/png?text={{!res.name}}'">
                             <div class="res-card__info">
-                                <span class="res-card__name">{{=res.name}}</span>
+                                <span class="res-card__name">{{!res.name}}</span>
                                 <span class="res-card__desc">Пицца, суши, роллы</span>
                             </div>
                         </div>

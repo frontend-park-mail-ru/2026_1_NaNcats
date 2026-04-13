@@ -33,7 +33,7 @@ export const restaurantPageTemplate = `
             </div>
             <div class="user-menu-wrapper">
                 <a href="/profile" class="user-profile router-link">
-                    <img src="{{=it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+                    <img src="{{!it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                 </a>
                 <div class="user-dropdown">
                     <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
@@ -78,15 +78,15 @@ export const restaurantPageTemplate = `
 
                 <!-- Заголовок ресторана -->
                 <div class="sheet__header" style="justify-content:center;">
-                    <h1 class="sheet__title" style="text-align:center;">{{=it.restaurant.name}}</h1>
+                    <h1 class="sheet__title" style="text-align:center;">{{!it.restaurant.name}}</h1>
                 </div>
 
                 <!-- Баннер ресторана (плейсхолдер) -->
                 <div class="restaurant-hero" style="margin-bottom:14px;">
                     <img
                       class="restaurant-hero__img"
-                      src="{{=it.restaurant.logo_url}}"
-                      alt="{{=it.restaurant.name}}"
+                      src="{{!it.restaurant.logo_url}}"
+                      alt="{{!it.restaurant.name}}"
                       onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/restaurants/default-restaurant-logo.webp'"
                       style="width:100%; border-radius:20px; object-fit:cover; aspect-ratio: 16 / 5;"
                     />
@@ -125,34 +125,34 @@ export const restaurantPageTemplate = `
                         ">
                             <img
                               class="dish-card__img"
-                              src="{{=dish.image_url}}"
-                              alt="{{=dish.name}}"
+                              src="{{!dish.image_url}}"
+                              alt="{{!dish.name}}"
                               onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
                               style="width:100%; border-radius:16px; aspect-ratio: 1 / 1; object-fit:cover;"
                             />
 
                             <div class="dish-card__prices" style="display:flex; gap:8px; align-items:baseline;">
                                 <div style="color:#ff6b6b; font-weight:700;">
-                                  {{=dish.price_formatted}} ₽
+                                  {{!dish.price_formatted}} ₽
                                 </div>
                                 <div style="color:#999; text-decoration:line-through; font-size:12px;">
-                                  {{=dish.price_formatted}} ₽
+                                  {{!dish.price_formatted}} ₽
                                 </div>
                             </div>
 
                             <div class="dish-card__title" style="font-weight:600;">
-                                {{=dish.name}}
+                                {{!dish.name}}
                             </div>
 
                             <div class="dish-card__desc" style="color:#777; font-size:12px; line-height:1.35;">
-                                {{=dish.description || 'Описание появится позже'}}
+                                {{!dish.description || 'Описание появится позже'}}
                             </div>
 
                             <button class="button js-add-to-cart" type="button" 
-                                data-id="{{=dish.id}}" 
-                                data-name="{{=dish.name}}" 
-                                data-price="{{=dish.price}}" 
-                                data-image="{{=dish.image_url}}"
+                                data-id="{{!dish.id}}" 
+                                data-name="{{!dish.name}}" 
+                                data-price="{{!dish.price}}" 
+                                data-image="{{!dish.image_url}}"
                                 style="
                                 margin-top:auto;
                                 background: #FFE3E3;

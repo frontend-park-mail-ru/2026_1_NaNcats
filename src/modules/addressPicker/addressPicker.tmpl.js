@@ -9,7 +9,7 @@ export const addressPickerTemplate = `
         <input type="text" 
         class="address-picker__input js-address-input" 
         placeholder="Укажите адрес доставки" 
-        value="{{=it.currentAddress || ''}}"
+        value="{{!it.currentAddress || ''}}"
         autocomplete="off">
         
         <div class="address-dropdown js-address-dropdown">

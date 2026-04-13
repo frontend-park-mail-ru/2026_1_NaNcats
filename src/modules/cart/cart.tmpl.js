@@ -27,15 +27,15 @@ export const cartTemplate = `
         <div class="cart-items-list">
             {{~ it.items :item:index }}
                 <div class="cart-item">
-                    <img src="{{=item.image_url}}" alt="{{=item.name}}" class="cart-item__img" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
+                    <img src="{{!item.image_url}}" alt="{{!item.name}}" class="cart-item__img" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                     <div class="cart-item__info">
-                        <div class="cart-item__name">{{=item.name}}</div>
-                        <div class="cart-item__price">{{=item.price}}₽</div>
+                        <div class="cart-item__name">{{!item.name}}</div>
+                        <div class="cart-item__price">{{!item.price}}₽</div>
                     </div>
                     <div class="cart-item__counter">
-                        <button class="counter-btn minus" data-id="{{=item.dish_id}}">−</button>
-                        <span class="counter-value">{{=item.quantity}}</span>
-                        <button class="counter-btn plus" data-id="{{=item.dish_id}}">+</button>
+                        <button class="counter-btn minus" data-id="{{!item.dish_id}}">−</button>
+                        <span class="counter-value">{{!item.quantity}}</span>
+                        <button class="counter-btn plus" data-id="{{!item.dish_id}}">+</button>
                     </div>
                 </div>
             {{~}}
@@ -44,7 +44,7 @@ export const cartTemplate = `
         <div class="cart-footer">
             <button class="button button_checkout active" id="checkout-btn">
                 <span>Оформить заказ</span>
-                <span>{{=it.totalCost}}₽</span>
+                <span>{{!it.totalCost}}₽</span>
             </button>
         </div>
     {{?}}

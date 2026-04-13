@@ -12,7 +12,7 @@ export const profileTemplate = `
                 </svg>
             </div>
             <div class="profile-header__right">
-                <img class="logo-avatar" src="{{=it.user.avatar_url}}" alt="mini-avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+                <img class="logo-avatar" src="{{!it.user.avatar_url}}" alt="mini-avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
             </div>
         </div>
     </header>
@@ -23,7 +23,7 @@ export const profileTemplate = `
             
             <div class="profile-user-header">
                 <div class="profile-avatar__wrapper">
-                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{=it.user.avatar_url}}" alt="avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{!it.user.avatar_url}}" alt="avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                     <div class="profile-avatar__overlay" id="upload-avatar-btn">📷</div>
                     {{? it.user.avatar_url }}
                         <div class="profile-avatar__delete-hover" id="delete-avatar-btn">Удалить</div>
@@ -32,7 +32,7 @@ export const profileTemplate = `
                 </div>
                 <div class="profile-name-card">
                     <div class="profile-user-info">
-                        <input type="text" id="profile-name" class="profile-input profile-input_name" value="{{=it.user.name}}" disabled>
+                        <input type="text" id="profile-name" class="profile-input profile-input_name" value="{{!it.user.name}}" disabled>
                         <div class="edit-icon-orange js-edit-trigger"></div>
                     </div>
                 </div>
@@ -42,7 +42,7 @@ export const profileTemplate = `
                 <div class="info-group">
                     <label class="info-label">Почта</label>
                     <div class="info-row">
-                        <input type="email" id="profile-email" class="profile-input profile-input_email" value="{{=it.user.email}}" disabled>
+                        <input type="email" id="profile-email" class="profile-input profile-input_email" value="{{!it.user.email}}" disabled>
                         <!-- Карандашик у email -->
                         <div class="edit-icon-orange js-edit-trigger"></div>
                     </div>
@@ -96,16 +96,16 @@ export const profileTemplate = `
                 <div class="address-list" id="profile-address-list">
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~it.addresses :addr:index}}
-                        <div class="address-row {{? index >= 2 }}js-hidden-address address-row_hidden{{?}}" data-id="{{=addr.id}}">
+                        <div class="address-row {{? index >= 2 }}js-hidden-address address-row_hidden{{?}}" data-id="{{!addr.id}}">
                             <span class="address-row__text">
-                                {{=addr.location.address_text}}
-                                {{? addr.apartment }}, кв. {{=addr.apartment}}{{?}}
-                                {{? addr.entrance }}, под. {{=addr.entrance}}{{?}}
-                                {{? addr.floor }}, эт. {{=addr.floor}}{{?}}
+                                {{!addr.location.address_text}}
+                                {{? addr.apartment }}, кв. {{!addr.apartment}}{{?}}
+                                {{? addr.entrance }}, под. {{!addr.entrance}}{{?}}
+                                {{? addr.floor }}, эт. {{!addr.floor}}{{?}}
                             </span>
                             <div class="address-row__actions">
-                                <div class="edit-icon-orange edit-addr-btn" data-id="{{=addr.id}}"></div>
-                                <div class="delete-icon-orange delete-addr-btn" data-id="{{=addr.id}}"></div>
+                                <div class="edit-icon-orange edit-addr-btn" data-id="{{!addr.id}}"></div>
+                                <div class="delete-icon-orange delete-addr-btn" data-id="{{!addr.id}}"></div>
                             </div>
                         </div>
                         {{~}}
@@ -128,13 +128,13 @@ export const profileTemplate = `
                 <div class="cards-grid" id="profile-cards-list">
                     {{? it.cards && it.cards.length > 0 }}
                         {{~it.cards :card}}
-                        <div class="mini-card {{= card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'mini-card_sber' : 'mini-card_tinkoff' }}">
+                        <div class="mini-card {{! card.issuer_name && card.issuer_name.toLowerCase().includes('sber') ? 'mini-card_sber' : 'mini-card_tinkoff' }}">
                             <!-- Звездочка выбора основной -->
-                            <div class="mini-card__star set-default-card-btn {{? card.is_default }}mini-card__star_active{{?}}" data-id="{{=card.id}}">
+                            <div class="mini-card__star set-default-card-btn {{? card.is_default }}mini-card__star_active{{?}}" data-id="{{!card.id}}">
                                 {{? card.is_default }}★{{??}}☆{{?}}
                             </div>
-                            <div class="mini-card__number">** {{=card.last4}}</div>
-                            <div class="mini-card__delete delete-card-btn" data-id="{{=card.id}}">×</div>
+                            <div class="mini-card__number">** {{!card.last4}}</div>
+                            <div class="mini-card__delete delete-card-btn" data-id="{{!card.id}}">×</div>
                         </div>
                         {{~}}
                     {{?}}
@@ -148,12 +148,12 @@ export const profileTemplate = `
                         {{~it.orders :order}}
                         <div class="order-row">
                             <img class="order-row__img" src="https://placehold.co/75x75?text=🍕" alt="order">
-                            <div class="order-row__date">{{=order.created_at}}</div>
+                            <div class="order-row__date">{{!order.created_at}}</div>
                             <div class="order-row__info">
-                                <div class="order-row__name">{{=order.restaurant_name}}</div> 
-                                <div class="order-row__meta">Статус: {{=order.status}}</div>
+                                <div class="order-row__name">{{!order.restaurant_name}}</div> 
+                                <div class="order-row__meta">Статус: {{!order.status}}</div>
                             </div>
-                            <div class="order-row__price">{{=order.total_cost / 1000000}}₽</div>
+                            <div class="order-row__price">{{!order.total_cost / 1000000}}₽</div>
                         </div>
                         {{~}}
                     {{??}}

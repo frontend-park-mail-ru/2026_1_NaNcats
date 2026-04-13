@@ -22,7 +22,7 @@ export const checkoutTemplate = `
                 </div>
                 <div class="user-menu-wrapper">
                     <a href="/profile" class="user-profile router-link">
-                        <img src="{{=it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
+                        <img src="{{!it.user.avatar_url}}" class="user-profile__avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                     </a>
                     <div class="user-dropdown">
                         <div class="user-dropdown__item user-dropdown__item_logout" id="logout-btn">Выйти</div>
@@ -62,23 +62,23 @@ export const checkoutTemplate = `
                     <div class="address-display">
                         <div class="address-display__icon">🏠</div>
                         <div class="address-display__text">
-                            {{=it.selectedAddress.location.address_text}}
-                            {{? it.selectedAddress.apartment }}, кв. {{=it.selectedAddress.apartment}}{{?}}
-                            {{? it.selectedAddress.entrance }}, под. {{=it.selectedAddress.entrance}}{{?}}
-                            {{? it.selectedAddress.floor }}, эт. {{=it.selectedAddress.floor}}{{?}}
+                            {{!it.selectedAddress.location.address_text}}
+                            {{? it.selectedAddress.apartment }}, кв. {{!it.selectedAddress.apartment}}{{?}}
+                            {{? it.selectedAddress.entrance }}, под. {{!it.selectedAddress.entrance}}{{?}}
+                            {{? it.selectedAddress.floor }}, эт. {{!it.selectedAddress.floor}}{{?}}
                         </div>
                         <button class="button button_ghost js-open-address-modal" style="height: 30px; margin: 0; padding: 0 10px;">Изменить</button>
                     </div>
 
                     <div class="address-details-grid">
-                        <div class="address-detail-box">Кв./офис: <br><b>{{=it.selectedAddress.apartment || '-'}}</b></div>
-                        <div class="address-detail-box">Домофон: <br><b>{{=it.selectedAddress.door_code || '-'}}</b></div>
-                        <div class="address-detail-box">Подъезд: <br><b>{{=it.selectedAddress.entrance || '-'}}</b></div>
-                        <div class="address-detail-box">Этаж: <br><b>{{=it.selectedAddress.floor || '-'}}</b></div>
+                        <div class="address-detail-box">Кв./офис: <br><b>{{!it.selectedAddress.apartment || '-'}}</b></div>
+                        <div class="address-detail-box">Домофон: <br><b>{{!it.selectedAddress.door_code || '-'}}</b></div>
+                        <div class="address-detail-box">Подъезд: <br><b>{{!it.selectedAddress.entrance || '-'}}</b></div>
+                        <div class="address-detail-box">Этаж: <br><b>{{!it.selectedAddress.floor || '-'}}</b></div>
                     </div>
 
                     <div class="address-comment">
-                        Комментарий курьеру: {{=it.selectedAddress.courier_comment || 'Нет комментария'}}
+                        Комментарий курьеру: {{!it.selectedAddress.courier_comment || 'Нет комментария'}}
                     </div>
                 {{?}}
             </div>
@@ -110,7 +110,7 @@ export const checkoutTemplate = `
                 {{??}}
                     <div class="payment-display">
                         <div class="payment-display__icon">💳</div>
-                        <div class="payment-display__text">**{{=it.selectedCard.last4}}</div>
+                        <div class="payment-display__text">**{{!it.selectedCard.last4}}</div>
                         <button class="button button_ghost js-open-payment-modal" style="height: 30px; margin: 0; padding: 0 10px;">Изменить</button>
                     </div>
                 {{?}}
@@ -121,15 +121,15 @@ export const checkoutTemplate = `
                 
                 <div class="summary-row">
                     <span>Товары в заказе</span>
-                    <span>{{=it.cartItemsTotal}} ₽</span>
+                    <span>{{!it.cartItemsTotal}} ₽</span>
                 </div>
                 <div class="summary-row">
                     <span>Доставка</span>
-                    <span>{{=it.deliveryFee}} ₽</span>
+                    <span>{{!it.deliveryFee}} ₽</span>
                 </div>
                 <div class="summary-row">
                     <span>Сервисный сбор</span>
-                    <span>{{=it.serviceFee}} ₽</span>
+                    <span>{{!it.serviceFee}} ₽</span>
                 </div>
 
                 <div class="promo-input-wrapper mt-10">
@@ -140,7 +140,7 @@ export const checkoutTemplate = `
                     <button class="button button_primary js-pay-btn" style="width: auto; padding: 0 40px; margin: 0;" {{? !it.selectedAddress || it.cartItemsTotal === 0}}disabled{{?}}>
                         Оплатить
                     </button>
-                    <div class="checkout-total-price">{{=it.grandTotal}} ₽</div>
+                    <div class="checkout-total-price">{{!it.grandTotal}} ₽</div>
                 </div>
                 <div id="checkout-error" class="error-msg" style="text-align: right; margin-top: 5px;"></div>
             </div>
@@ -158,12 +158,12 @@ export const checkoutTemplate = `
                 {{? it.cart && it.cart.items.length > 0 }}
                     {{~ it.cart.items :item }}
                         <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
-                            <img src="{{=item.image_url}}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;">
+                            <img src="{{!item.image_url}}" style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;">
                             <div style="flex: 1;">
-                                <div style="font-weight: 500; font-size: 14px;">{{=item.name}}</div>
-                                <div style="color: #777; font-size: 12px;">{{=item.quantity}} шт. х {{=item.price / 1000000}} ₽</div>
+                                <div style="font-weight: 500; font-size: 14px;">{{!item.name}}</div>
+                                <div style="color: #777; font-size: 12px;">{{!item.quantity}} шт. х {{!item.price / 1000000}} ₽</div>
                             </div>
-                            <div style="font-weight: 700;">{{=(item.price * item.quantity) / 1000000}} ₽</div>
+                            <div style="font-weight: 700;">{{!(item.price * item.quantity) / 1000000}} ₽</div>
                         </div>
                     {{~}}
                 {{??}}
@@ -182,9 +182,9 @@ export const checkoutTemplate = `
                 <div class="selection-list">
                     {{? it.addresses && it.addresses.length > 0 }}
                         {{~ it.addresses :addr }}
-                            <div class="selection-item js-select-address {{? it.selectedAddress && it.selectedAddress.id === addr.id }}selection-item_active{{?}}" data-id="{{=addr.id}}">
-                                <div style="font-weight: 600;">{{=addr.location.address_text}}</div>
-                                <div style="font-size: 12px; color: #777;">Кв. {{=addr.apartment || '-'}}, эт. {{=addr.floor || '-'}}</div>
+                            <div class="selection-item js-select-address {{? it.selectedAddress && it.selectedAddress.id === addr.id }}selection-item_active{{?}}" data-id="{{!addr.id}}">
+                                <div style="font-weight: 600;">{{!addr.location.address_text}}</div>
+                                <div style="font-size: 12px; color: #777;">Кв. {{!addr.apartment || '-'}}, эт. {{!addr.floor || '-'}}</div>
                             </div>
                         {{~}}
                     {{??}}
@@ -209,9 +209,9 @@ export const checkoutTemplate = `
                     </div>
                     {{? it.cards && it.cards.length > 0 }}
                         {{~ it.cards :card }}
-                            <div class="selection-item js-select-card {{? it.selectedCard && it.selectedCard.id === card.id }}selection-item_active{{?}}" data-id="{{=card.id}}">
-                                <div style="font-weight: 600;">💳 **{{=card.last4}}</div>
-                                <div style="font-size: 12px; color: #777;">{{=card.card_type}}</div>
+                            <div class="selection-item js-select-card {{? it.selectedCard && it.selectedCard.id === card.id }}selection-item_active{{?}}" data-id="{{!card.id}}">
+                                <div style="font-weight: 600;">💳 **{{!card.last4}}</div>
+                                <div style="font-size: 12px; color: #777;">{{!card.card_type}}</div>
                             </div>
                         {{~}}
                     {{?}}
