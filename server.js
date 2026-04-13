@@ -27,18 +27,18 @@ const server = http.createServer(async (req, res) => {
         }
     };
 
-    let filePath = path.join(__dirname, urlPath === '/' ? 'public/index.html' : urlPath);
+    let filePath = path.join(__dirname, urlPath === '/' ? 'dist/index.html' : urlPath);
     let ext = path.extname(filePath).toLowerCase();
     let stats = await getStats(filePath);
 
     if (!stats) {
-        filePath = path.join(__dirname, 'public', urlPath);
+        filePath = path.join(__dirname, 'dist', urlPath);
         ext = path.extname(filePath).toLowerCase();
         stats = await getStats(filePath);
     }
 
     if (!stats && (!ext || ext === '')) {
-        filePath = path.join(__dirname, 'public', 'index.html');
+        filePath = path.join(__dirname, 'dist', 'index.html');
         ext = '.html';
         stats = await getStats(filePath);
     }

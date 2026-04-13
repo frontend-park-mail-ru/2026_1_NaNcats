@@ -1,11 +1,23 @@
 {
     "source": {
         "include": ["src"],
-        "includePattern": ".+\\.js$",
+        "includePattern": ".+\\.(j|t)s$",
         "excludePattern": "(^|\\/|\\\\)_"
+    },
+    "plugins": [
+        "node_modules/jsdoc-babel"
+    ],
+    "babel": {
+        "extensions": ["ts", "js"],
+        "presets": ["@babel/preset-env", "@babel/preset-typescript"]
+    },
+    "templates": {
+        "cleverLinks": false,
+        "monospaceLinks": false
     },
     "opts": {
         "destination": "./out/",
-        "recurse": true
+        "recurse": true,
+        "readme": "README.md"
     }
 }

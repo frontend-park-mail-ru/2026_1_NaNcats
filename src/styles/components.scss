@@ -1,0 +1,123 @@
+.button {
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+
+  &_primary {
+    height: 56px;
+    background: var(--accent-orange);
+    color: var(--white);
+    border-radius: 16px;
+    width: 100%;
+    margin-top: 10px;
+
+    &:hover { filter: brightness(1.1); box-shadow: 0 4px 12px rgba(255, 122, 0, 0.2); }
+    &:active { transform: translateY(0); filter: brightness(0.9); }
+  }
+
+  &_checkout {
+    width: 100%;
+    background: #FFC1C1;
+    padding: 16px;
+    border-radius: 16px;
+    color: var(--white);
+    font-weight: 300;
+    &:disabled { cursor: not-allowed; opacity: 1; }
+  }
+
+  &_support {
+    flex-shrink: 0;
+    margin-top: 8px;
+    background: var(--white);
+    border-radius: 20px;
+    padding: 10px 25px;
+    gap: 12px;
+    font-size: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+  }
+
+  &_hidden {
+    display: none !important;
+  }
+
+  &_ghost {
+    height: 56px;
+    background: none;
+    color: var(--text-grey);
+    border-radius: 16px;
+    width: auto;
+    margin-top: 10px;
+  }
+}
+
+.input-field {
+  width: 100%;
+  height: 48px;
+  background: var(--white);
+  border: none;
+  border-radius: 16px;
+  padding: 0 20px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  font-size: 14px;
+  outline: none;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-text {
+  padding: 25px 25px 10px 25px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #aaa;
+  letter-spacing: 1px;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+
+  &_active {
+    display: flex;
+  }
+}
+
+.offline-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #ff4d4d;
+  color: white;
+  text-align: center;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  z-index: 9999;
+  
+  transform: translateY(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+
+  &_active {
+    transform: translateY(0);
+  }
+}
