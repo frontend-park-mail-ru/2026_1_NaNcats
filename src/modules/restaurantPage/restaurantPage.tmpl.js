@@ -92,22 +92,6 @@ export const restaurantPageTemplate = `
                     />
                 </div>
 
-                <!-- Плашка про скидку (заглушка) -->
-                <div class="promo-note" style="
-                    background:#E6F3E0;
-                    border-radius:14px;
-                    padding:12px 14px;
-                    margin-bottom:18px;
-                    font-size:13px;
-                    color:#1f2a1f;
-                    display:flex;
-                    gap:10px;
-                    align-items:center;
-                ">
-                    <span style="font-size:16px;">🍀</span>
-                    <span><b>В ресторане активна выбранная Вами категория месяца</b> — скидка 10% на пиццы, это знак — пора заказывать!</span>
-                </div>
-
                 <!-- Секция -->
                 <h2 style="margin: 0 0 14px 0; font-size:20px;">Выбор пользователей</h2>
 

@@ -48,10 +48,6 @@ export const profileTemplate = `
                     </div>
                 </div>
                 <div class="info-group">
-                    <label class="info-label">Пароль</label>
-                    <div class="link-orange">Сменить пароль</div>
-                </div>
-                <div class="info-group">
                     <label class="info-label">Подписка</label>
                     <div class="subscription-status">Обычная</div>
                     <div class="subscription-text">Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий</div>

@@ -133,7 +133,7 @@ export const checkoutTemplate = `
                 </div>
 
                 <div class="promo-input-wrapper mt-10">
-                    <input type="text" class="input-field" placeholder="У меня есть промокод">
+                    <input type="text" class="input-field promo-input" placeholder="У меня есть промокод">
                 </div>
                 
                 <div class="checkout-total-row mt-20">

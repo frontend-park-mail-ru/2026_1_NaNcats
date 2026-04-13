@@ -206,6 +206,14 @@ export class Cart extends Component {
                 window.router.go('/checkout');
             };
         }
+
+        const tabs = this.element.querySelectorAll('.cart-tab');
+        tabs.forEach(tab => {
+            (tab as HTMLElement).onclick = (e: MouseEvent) => {
+                tabs.forEach(t => t.classList.remove('active'));
+                (e.currentTarget as HTMLElement).classList.add('active');
+            };
+        });
     }
 
     /**
