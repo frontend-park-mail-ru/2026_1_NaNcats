@@ -460,13 +460,7 @@ export class Profile extends Component {
      */
     private async deleteAvatar(): Promise<void> {
         try {
-            const res = await fetch('/api/profile/avatar', { 
-                method: 'DELETE', 
-                credentials: 'include',
-                headers: {
-                    'X-CSRF-Token': Ajax.getCsrfToken() || ''
-                }
-            });
+            const res = await Ajax.delete('/profile/avatar');
             
             if (res.ok) {
                 const data = await res.json();
@@ -498,12 +492,7 @@ export class Profile extends Component {
         }
 
         try {
-            const patchRes = await fetch('/api/profile', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ name, email })
-            });
+            const patchRes = await Ajax.patch('/profile', { name, email });
 
             if (patchRes.ok) {
                 if (this.user) {
