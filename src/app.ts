@@ -3,6 +3,7 @@ import './styles/base.scss';
 import './styles/components.scss';
 import { Router } from './core/Router';
 import { NotFound } from './errors/NotFound';
+import { Ajax } from './core/Ajax';
 
 const root = document.getElementById('root') as HTMLElement;
 
@@ -35,7 +36,6 @@ window.router
     .register('/404', new NotFound()); 
 
 const init = async () => {
-    const { Ajax } = await import('./core/Ajax');
     await Ajax.fetchCsrf();
     
     window.router.render(window.location.pathname);

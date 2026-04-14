@@ -48,17 +48,19 @@ export class Ajax {
      * @static
      */
     private static async request(url: string, method: string, body: unknown = null): Promise<Response> {
-        const options: RequestInit = {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            credentials: 'include', 
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
         };
 
         if (method !== 'GET' && this.csrfToken) {
-            (options.headers as Record<string, string>)['X-CSRF-Token'] = this.csrfToken;
+            headers['X-CSRF-Token'] = this.csrfToken;
         }
+
+        const options: RequestInit = {
+            method,
+            headers,
+            credentials: 'include', 
+        };
 
         if (body) {
             options.body = JSON.stringify(body);
