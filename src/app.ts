@@ -34,7 +34,10 @@ window.router
     })
     .register('/404', new NotFound()); 
 
-const init = () => {
+const init = async () => {
+    const { Ajax } = await import('./core/Ajax');
+    await Ajax.fetchCsrf();
+    
     window.router.render(window.location.pathname);
     
     if ('serviceWorker' in navigator) {

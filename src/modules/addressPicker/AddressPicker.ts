@@ -1,4 +1,5 @@
 import './addressPicker.scss';
+import { Ajax } from '../../core/Ajax';
 import { Component } from '../../core/Component';
 import { addressPickerTemplate } from './addressPicker.tmpl';
 
@@ -265,12 +266,7 @@ export class AddressPicker extends Component {
 
                 if (this.isAuth) {
                     try {
-                        await fetch('/api/profile/addresses', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload),
-                            credentials: 'include'
-                        });
+                        await Ajax.post('/profile/addresses', payload);
                     } catch (err) { console.error(err); }
                 }
 

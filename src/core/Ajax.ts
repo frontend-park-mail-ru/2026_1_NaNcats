@@ -14,6 +14,30 @@ export class Ajax {
      */
     private static baseUrl: string = '/api';
 
+    private static csrfToken: string | null = null;
+
+    public static getCsrfToken(): string | null {
+        return this.csrfToken;
+    }
+
+    public static setCsrfToken(token: string): void {
+        this.csrfToken = token;
+    }
+
+    public static async fetchCsrf(): Promise<void> {
+        try {
+            const res = await fetch(`${this.baseUrl}/csrf`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.csrf_token) {
+                    this.csrfToken = data.csrf_token;
+                }
+            }
+        } catch (e) {
+            console.warn('Не удалось получить CSRF токен', e);
+        }
+    }
+
     /**
      * Универсальный внутренний метод для обертки над fetch.
      * @param {string} url - Относительный путь эндпоинта.
@@ -31,6 +55,10 @@ export class Ajax {
             },
             credentials: 'include', 
         };
+
+        if (method !== 'GET' && this.csrfToken) {
+            (options.headers as Record<string, string>)['X-CSRF-Token'] = this.csrfToken;
+        }
 
         if (body) {
             options.body = JSON.stringify(body);

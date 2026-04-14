@@ -118,6 +118,10 @@ export class Register extends Component {
             });
 
             if (resp.ok) {
+                const respData = await resp.json();
+                if (respData.csrf_token) {
+                    Ajax.setCsrfToken(respData.csrf_token);
+                }
                 window.router.go('/');
             } else {
                 const errData = await resp.json();

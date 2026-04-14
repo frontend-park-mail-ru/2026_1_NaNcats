@@ -95,6 +95,10 @@ export class Login extends Component {
             const response = await Ajax.post('/auth/login', { login: email, password });
             
             if (response.ok) {
+                const data = await response.json();
+                if (data.csrf_token) {
+                    Ajax.setCsrfToken(data.csrf_token);
+                }
                 window.router.go('/');
             } else {
                 const errData = await response.json();

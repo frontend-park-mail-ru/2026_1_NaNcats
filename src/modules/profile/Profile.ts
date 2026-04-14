@@ -428,7 +428,10 @@ export class Profile extends Component {
             const response = await fetch('/api/profile/avatar', {
                 method: 'POST',
                 body: formData,
-                credentials: 'include'
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': Ajax.getCsrfToken() || ''
+                }
             });
 
             if (response.ok) {
@@ -457,7 +460,13 @@ export class Profile extends Component {
      */
     private async deleteAvatar(): Promise<void> {
         try {
-            const res = await fetch('/api/profile/avatar', { method: 'DELETE', credentials: 'include' });
+            const res = await fetch('/api/profile/avatar', { 
+                method: 'DELETE', 
+                credentials: 'include',
+                headers: {
+                    'X-CSRF-Token': Ajax.getCsrfToken() || ''
+                }
+            });
             
             if (res.ok) {
                 const data = await res.json();

@@ -25,7 +25,7 @@ export const profileTemplate = `
                 <div class="profile-avatar__wrapper">
                     <img id="profile-avatar-img" class="profile-avatar__img" src="{{!it.user.avatar_url}}" alt="avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
                     <div class="profile-avatar__overlay" id="upload-avatar-btn">📷</div>
-                    {{? it.user.avatar_url }}
+                    {{? it.user.avatar_url && it.user.avatar_url !== 'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp' }}
                         <div class="profile-avatar__delete-hover" id="delete-avatar-btn">Удалить</div>
                     {{?}}
                     <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/webp" hidden>
