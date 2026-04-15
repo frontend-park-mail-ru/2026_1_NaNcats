@@ -24,6 +24,10 @@ export class Ajax {
         this.csrfToken = token;
     }
 
+    public static clearCsrfToken(): void {
+        this.csrfToken = null;
+    }
+
     public static async fetchCsrf(): Promise<void> {
         try {
             const res = await fetch(`${this.baseUrl}/csrf`, { credentials: 'include' });
@@ -47,7 +51,7 @@ export class Ajax {
      * @private
      * @static
      */
-    private static async request(url: string, method: string, body: unknown = null): Promise<Response> {
+    private static async request(url: string, method: string, body: unknown = null, isRetry: boolean = false): Promise<Response> {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
         };
@@ -66,7 +70,16 @@ export class Ajax {
             options.body = JSON.stringify(body);
         }
 
-        return fetch(`${this.baseUrl}${url}`, options);
+        const response = await fetch(`${this.baseUrl}${url}`, options);
+
+        if (response.status === 403 && !isRetry && method !== 'GET') {
+            console.warn('CSRF token expired or invalid, trying to refresh...');
+            await this.fetchCsrf();
+            
+            return this.request(url, method, body, true);
+        }
+
+        return response;
     }
 
     /**

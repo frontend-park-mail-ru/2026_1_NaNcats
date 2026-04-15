@@ -153,6 +153,7 @@ export class RestaurantPage extends Component {
     private async handleLogout(): Promise<void> {
         const res = await Ajax.post('/auth/logout');
         if (res.ok) {
+            Ajax.clearCsrfToken();
             window.router.go('/');
         }
     }
