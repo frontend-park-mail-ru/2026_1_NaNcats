@@ -207,6 +207,45 @@ export class Restaurants extends Component {
     }
 
     /**
+     * Рисует стрик.
+     */
+    private renderStreakWidget(streakWeeks = 6, dotsCount = 6): void {
+        const widget = document.getElementById('streak-widget') as HTMLElement | null;
+        if (!widget) return;
+
+        const raw = widget.dataset.streak;
+        const streak = Math.max(0, parseInt(raw || String(streakWeeks), 10) || 0);
+
+        const valueEl = widget.querySelector('.js-streak-value') as HTMLElement | null;
+        if (valueEl) valueEl.textContent = String(streak);
+
+        const track = widget.querySelector('.js-streak-track') as HTMLElement | null;
+        if (!track) return;
+
+        // окно недель: последняя точка = "следующая неделя"
+        const startWeek = Math.max(1, streak - (dotsCount - 2));
+
+        track.innerHTML = '';
+
+        for (let i = 0; i < dotsCount; i++) {
+            const w = startWeek + i;
+
+            const dot = document.createElement('span');
+            dot.setAttribute('role', 'listitem');
+
+            let className = 'streak-dot';
+            if (w <= streak) className += ' streak-dot_filled';
+            if (w === streak) className += ' streak-dot_current';
+
+            dot.className = className;
+            dot.title = `Неделя ${w}`;
+            dot.setAttribute('aria-label', `Неделя ${w}`);
+
+            track.appendChild(dot);
+        }
+    }
+
+    /**
      * Устанавливает обработчики событий для кнопок навигации и контейнера прокрутки.
      * @override
      * @returns {void}
@@ -281,5 +320,7 @@ export class Restaurants extends Component {
         } else {
             console.error("Не найден контейнер #cart-widget-container");
         }
+
+        this.renderStreakWidget(6, 6);
     }
 }

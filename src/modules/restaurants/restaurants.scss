@@ -287,3 +287,98 @@
     flex-direction: column;
   }
 }
+
+/* Streak widget */
+.card_streak_points {
+  padding: 10px 14px;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.streak-widget {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  &__label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-dark);
+    letter-spacing: 0.2px;
+  }
+
+  &__value {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-gray);
+    white-space: nowrap;
+  }
+
+  &__fire {
+    margin-left: 4px;
+  }
+
+  &__track {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 4px;
+  }
+
+  /* Линия позади точек */
+  &__track::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    background: rgba(125, 125, 125, 0.18); /* мягко под стиль */
+    border-radius: 999px;
+  }
+}
+
+.streak-dot {
+  position: relative;
+  z-index: 1;
+
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+
+  background: #ffffff;
+  border: 2px solid rgba(125, 125, 125, 0.22);
+
+  box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+
+  &_filled {
+    background: #FFC1C1;
+    border-color: #FFC1C1;
+    box-shadow: 0 6px 14px rgba(255, 193, 193, 0.35);
+  }
+
+  /* Текущую неделю можно слегка выделять */
+  &_current {
+    transform: scale(1.08);
+  }
+}
+
+/* Немного "живости" при наведении */
+#card_streak_points:hover .streak-dot {
+  transform: translateY(-1px);
+}
+#card_streak_points:hover .streak-dot_current {
+  transform: translateY(-1px) scale(1.08);
+}

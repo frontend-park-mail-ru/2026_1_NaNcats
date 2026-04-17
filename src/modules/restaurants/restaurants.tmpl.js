@@ -98,6 +98,23 @@ export const restaurantsTemplate = `
         </main>
 
         <aside class="side-column side-column_right">
+            <div class="card card_streak_points" id="card_streak_points">
+                <div class="streak-widget" id="streak-widget" data-streak="{{!
+                    (it && it.user && (it.user.streakWeeks || it.user.streak_weeks))
+                        ? (it.user.streakWeeks || it.user.streak_weeks)
+                        : 6
+                }}">
+                <div class="streak-widget__top">
+                    <span class="streak-widget__label">Стрик</span>
+                    <span class="streak-widget__value">
+                        <span class="js-streak-value">6</span> недель
+                        <span class="streak-widget__fire" aria-hidden="true">🔥</span>
+                    </span>
+                </div>
+
+                    <div class="streak-widget__track js-streak-track" role="list" aria-label="Прогресс по неделям"></div>
+                </div>
+            </div>
             <div class="card card_cart" id="cart-widget-container"></div>
         </aside>
     </div>
