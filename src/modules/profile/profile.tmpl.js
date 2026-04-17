@@ -68,7 +68,10 @@ export const profileTemplate = `
 
             <div class="profile-card profile-card_row">
                 <div class="card-side-label">Пять букв</div>
-                <div class="card-side-content card-subtext">Вы ещё не отгадали сегодняшнее слово в игре «5 букв», <span class="link-orange">попробуйте</span>!</div>
+                <div class="card-side-content card-subtext">
+                    Вы ещё не отгадали сегодняшнее слово в игре «5 букв», 
+                    <span class="link-orange" id="open-wordle-btn">попробуйте</span>!
+                </div>
             </div>
 
             <div class="profile-card profile-card_row">
@@ -186,5 +189,7 @@ export const profileTemplate = `
     </div>
     
     <div id="profile-address-picker-container"></div>
+
+    <div id="wordle-container"></div>
 </div>
 `;

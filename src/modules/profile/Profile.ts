@@ -5,6 +5,7 @@ import { profileTemplate } from './profile.tmpl';
 import { validateEmail, validateName } from '../../shared/utils/Validator';
 import { AddressPicker } from '../addressPicker/AddressPicker';
 import { Popup } from '../../shared/components/popup/Popup';
+import { Wordle } from '../../shared/components/wordle/Wordle';
 
 /**
  * Интерфейс, описывающий данные пользователя профиля.
@@ -59,6 +60,7 @@ export class Profile extends Component {
     private selectedLocation: { text: string, coords: [number, number] } | null = null;
     /** @type {AddressPicker} Экземпляр компонента AddressPicker для добавления/изменения адресов */
     private addressPickerInstance!: AddressPicker;
+    private wordleInstance: Wordle;
 
     /**
      * Создает экземпляр страницы профиля.
@@ -69,6 +71,9 @@ export class Profile extends Component {
         this.addressPickerInstance = new AddressPicker((addr, coords) => {
             this.selectedLocation = { text: addr, coords: coords };
             this.openDetailsModal(); 
+        });
+        this.wordleInstance = new Wordle(() => {
+            this.handleWordleWin();
         });
     }
 
@@ -242,6 +247,23 @@ export class Profile extends Component {
                 hiddenAddresses.forEach(el => el.classList.remove('address-row_hidden'));
                 showMoreBtn.style.display = 'none';
             };
+        }
+
+        const wordleContainer = document.getElementById('wordle-container');
+        if (wordleContainer) {
+            this.wordleInstance.mount(wordleContainer);
+        }
+
+        const openWordleBtn = document.getElementById('open-wordle-btn');
+        if (openWordleBtn) {
+            openWordleBtn.onclick = () => {
+                this.wordleInstance.open();
+            };
+        }
+
+        if (localStorage.getItem('wordle_solved') === 'true') {
+            const container = document.getElementById('open-wordle-btn')?.parentElement;
+            if (container) container.innerHTML = '<b>Поздравляем!</b> Вы отгадали слово дня 🎉';
         }
     }
 
@@ -590,6 +612,14 @@ export class Profile extends Component {
             }
         } catch (err) {
             console.error("Ошибка при сохранении:", err);
+        }
+    }
+
+    private handleWordleWin(): void {
+        const container = document.getElementById('open-wordle-btn')?.parentElement;
+        if (container) {
+            container.innerHTML = '<b>Поздравляем!</b> Вы отгадали слово дня 🎉';
+            localStorage.setItem('wordle_solved', 'true');
         }
     }
 }
