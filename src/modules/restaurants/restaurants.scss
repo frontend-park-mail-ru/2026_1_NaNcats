@@ -374,11 +374,3 @@
     transform: scale(1.08);
   }
 }
-
-/* Немного "живости" при наведении */
-#card_streak_points:hover .streak-dot {
-  transform: translateY(-1px);
-}
-#card_streak_points:hover .streak-dot_current {
-  transform: translateY(-1px) scale(1.08);
-}

@@ -63,7 +63,7 @@ export const profileTemplate = `
                     <span>Стрик</span>
                     <div class="orange-dot orange-dot_small"></div>
                 </div>
-                <div class="card-side-content card-value-text">14 недель - так держать! 🔥</div>
+                <div class="card-side-content card-value-text">6 недель - так держать! 🔥</div>
             </div>
 
             <div class="profile-card profile-card_row">
