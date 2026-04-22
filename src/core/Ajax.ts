@@ -74,11 +74,12 @@ export class Ajax {
             'Content-Type': 'application/json',
         };
 
-        if (method !== 'GET' && this.csrfToken) {
-            headers['X-CSRF-Token'] = this.csrfToken;
-
+        if (method !== 'GET') {
             headers['Idempotency-Key'] = this.generateIdempotencyKey();
 
+            if (this.csrfToken) {
+                headers['X-CSRF-Token'] = this.csrfToken;
+            }
         }
 
         const options: RequestInit = {
