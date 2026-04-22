@@ -43,6 +43,24 @@ export class Ajax {
     }
 
     /**
+     * Генерирует уникальный идентификатор (UUID v4) для Idempotency-Key.
+     * Использует встроенный Web Crypto API.
+     * @private
+     * @static
+     */
+    private static generateIdempotencyKey(): string {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            return crypto.randomUUID();
+        }
+        
+        // фоллбек для старых браузеров
+        return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => {
+            const num = Number(c);
+            return (num ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (num / 4)))).toString(16);
+        });
+    }
+
+    /**
      * Универсальный внутренний метод для обертки над fetch.
      * @param {string} url - Относительный путь эндпоинта.
      * @param {string} method - HTTP-метод запроса (GET, POST, и т.д.).
@@ -58,6 +76,9 @@ export class Ajax {
 
         if (method !== 'GET' && this.csrfToken) {
             headers['X-CSRF-Token'] = this.csrfToken;
+
+            headers['Idempotency-Key'] = this.generateIdempotencyKey();
+
         }
 
         const options: RequestInit = {
