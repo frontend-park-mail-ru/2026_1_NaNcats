@@ -269,7 +269,7 @@ export class Checkout extends Component {
         const payload = {
             address_id: this.selectedAddress.id, 
             branch_id: this.cart.restaurant_id, // TODO: состыковаться с бэкендом по этому делу, т.к. бэк сейчас для корзины хранит только id бренда, а не конкретного филиала
-            restaurant_brand_id: this.cart.restaurant_id,
+            brand_id: this.cart.restaurant_id,
             payment_method_id: this.selectedCard ? this.selectedCard.id : "",
             delivery_cost: this.deliveryFee * 1000000,
             service_fee: this.serviceFee * 1000000,
