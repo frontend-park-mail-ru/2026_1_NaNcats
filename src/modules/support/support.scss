@@ -1,0 +1,74 @@
+.support-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.support-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+}
+
+.support-modal__panel {
+  position: relative;
+  width: min(920px, calc(100vw - 40px));
+  height: min(720px, calc(100vh - 40px));
+  background: var(--white);
+  border-radius: var(--card-radius);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 193, 193, 0.55);
+}
+
+.support-modal__header {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 16px;
+  border-bottom: 1px solid rgba(125, 125, 125, 0.12);
+}
+
+.support-modal__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.support-modal__close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 12px;
+  background: var(--input-bg);
+  color: var(--text-dark);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+
+  &:hover {
+    background: #fff5f5;
+    color: var(--accent-pink);
+  }
+}
+
+.support-modal__content {
+  flex: 1;
+  min-height: 0;
+}
+
+.support-modal__iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
