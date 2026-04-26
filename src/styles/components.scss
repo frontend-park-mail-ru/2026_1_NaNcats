@@ -20,6 +20,18 @@
     &:active { transform: translateY(0); filter: brightness(0.9); }
   }
 
+  &_secondary {
+    height: 40px;
+    background: #ff4d4d;
+    color: var(--white);
+    border-radius: 16px;
+    padding: 0 20px;
+    font-weight: 500;
+
+    &:hover { filter: brightness(1.1); }
+    &:active { filter: brightness(0.9); }
+  }
+
   &_checkout {
     width: 100%;
     background: #FFC1C1;
