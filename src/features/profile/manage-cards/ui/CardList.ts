@@ -1,7 +1,6 @@
 import { Component } from '@shared/lib/component';
 import { Popup } from '@shared/ui/popup';
-import { cardStore } from '@entities/card';
-import type { Card } from '@entities/card';
+import { cardStore, type Card } from '@entities/card';
 import { removeCard, setDefaultCard } from '../model/manageCards';
 
 export interface CardListProps {

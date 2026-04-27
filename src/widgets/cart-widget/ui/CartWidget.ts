@@ -1,8 +1,7 @@
 import './cartWidget.scss';
 import { Component } from '@shared/lib/component';
 import { ROUTES } from '@shared/config/routes';
-import { cartStore, fromMicros } from '@entities/cart';
-import type { CartItem } from '@entities/cart';
+import { cartStore, fromMicros, type CartItem } from '@entities/cart';
 import { ClearCartButton } from '@features/cart/clear-cart';
 import { cartWidgetTemplate } from './cartWidget.tmpl.js';
 

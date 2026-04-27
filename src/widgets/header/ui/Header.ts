@@ -1,6 +1,5 @@
 import { Component } from '@shared/lib/component';
-import { userStore } from '@entities/user';
-import type { User } from '@entities/user';
+import { userStore, type User } from '@entities/user';
 import { LogoutButton } from '@features/auth/logout';
 import { headerTemplate } from './header.tmpl.js';
 

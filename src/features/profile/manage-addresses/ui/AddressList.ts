@@ -1,7 +1,6 @@
 import { Component } from '@shared/lib/component';
 import { Popup } from '@shared/ui/popup';
-import { addressStore } from '@entities/address';
-import type { Address } from '@entities/address';
+import { addressStore, type Address } from '@entities/address';
 import { removeAddress } from '../model/manageAddresses';
 
 export interface AddressListProps {

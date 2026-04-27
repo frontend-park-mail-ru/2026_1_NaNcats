@@ -1,10 +1,8 @@
 import './addressPicker.scss';
 import { Component } from '@shared/lib/component';
 import { ROUTES } from '@shared/config/routes';
-import { yandexMaps } from '@shared/api/yandex';
-import type { MapInstance } from '@shared/api/yandex';
-import { addressStore } from '@entities/address';
-import type { Coordinates } from '@entities/address';
+import { yandexMaps, type MapInstance } from '@shared/api/yandex';
+import { addressStore, type Coordinates } from '@entities/address';
 import { userStore } from '@entities/user';
 import { pickAddress } from '@features/address/pick-address';
 import { addressPickerTemplate } from './addressPicker.tmpl.js';

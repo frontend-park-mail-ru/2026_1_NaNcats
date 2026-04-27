@@ -1,5 +1,4 @@
-import { addressStore, addressApi } from '@entities/address';
-import type { AddressDetails, Coordinates } from '@entities/address';
+import { addressStore, addressApi, type AddressDetails, type Coordinates } from '@entities/address';
 import { userStore } from '@entities/user';
 
 export interface PickAddressInput {

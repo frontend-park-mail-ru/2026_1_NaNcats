@@ -1,6 +1,5 @@
 import { ApiError } from './ApiError';
-import { csrfStore } from './csrfStore';
-import type { CsrfStore } from './csrfStore';
+import { csrfStore, type CsrfStore } from './csrfStore';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 

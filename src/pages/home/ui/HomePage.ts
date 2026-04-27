@@ -1,8 +1,7 @@
 import './home.scss';
 import { Component } from '@shared/lib/component';
 import { ROUTES } from '@shared/config/routes';
-import { restaurantApi } from '@entities/restaurant';
-import type { Restaurant } from '@entities/restaurant';
+import { restaurantApi, type Restaurant } from '@entities/restaurant';
 import { userStore } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cartStore } from '@entities/cart';

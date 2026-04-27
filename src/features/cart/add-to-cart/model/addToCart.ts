@@ -1,5 +1,4 @@
-import { cartStore } from '@entities/cart';
-import type { CartConfirmer, DishToAdd } from '@entities/cart';
+import { cartStore, type CartConfirmer, type DishToAdd } from '@entities/cart';
 
 export const addToCart = async (
     dish: DishToAdd,
