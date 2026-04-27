@@ -1,4 +1,4 @@
-import { httpClient, ApiError } from '@shared/api/http';
+import { httpClient } from '@shared/api/http';
 import type { CartItem } from '../model/types';
 
 interface CartResponse {
@@ -8,22 +8,14 @@ interface CartResponse {
 
 export const cartApi = {
     async load(): Promise<{ items: CartItem[]; restaurantId: number }> {
-        const res = await httpClient.get('/cart');
-        if (!res.ok) {
-            throw new ApiError('cart.load failed', { status: res.status, url: '/cart' });
-        }
-        const data = (await res.json()) as CartResponse;
+        const data = await httpClient.getJson<CartResponse>('/cart');
         return { items: data.items ?? [], restaurantId: data.restaurant_id ?? 0 };
     },
 
-    async sync(restaurantId: number, items: CartItem[]): Promise<void> {
-        const payload = {
+    sync(restaurantId: number, items: CartItem[]): Promise<void> {
+        return httpClient.send('PUT', '/cart', {
             restaurant_id: restaurantId,
             items: items.map((i) => ({ dish_id: i.dish_id, quantity: i.quantity })),
-        };
-        const res = await httpClient.put('/cart', payload);
-        if (!res.ok) {
-            throw new ApiError('cart.sync failed', { status: res.status, url: '/cart' });
-        }
+        });
     },
 };

@@ -4,6 +4,8 @@ import type { CsrfStore } from './csrfStore';
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+export type QueryParams = Record<string, string | number | boolean | undefined | null>;
+
 export class HttpClient {
     constructor(
         private readonly baseUrl: string,
@@ -32,6 +34,61 @@ export class HttpClient {
 
     postForm(url: string, formData: FormData): Promise<Response> {
         return this.request('POST', url, formData, { isForm: true });
+    }
+
+    getJson<T>(path: string, query?: QueryParams): Promise<T> {
+        return this.requestJson<T>('GET', this.withQuery(path, query));
+    }
+
+    postJson<T>(path: string, body?: unknown): Promise<T> {
+        return this.requestJson<T>('POST', path, body);
+    }
+
+    putJson<T>(path: string, body?: unknown): Promise<T> {
+        return this.requestJson<T>('PUT', path, body);
+    }
+
+    patchJson<T>(path: string, body?: unknown): Promise<T> {
+        return this.requestJson<T>('PATCH', path, body);
+    }
+
+    deleteJson<T>(path: string): Promise<T> {
+        return this.requestJson<T>('DELETE', path);
+    }
+
+    async postFormJson<T>(path: string, formData: FormData): Promise<T> {
+        const res = await this.request('POST', path, formData, { isForm: true });
+        if (!res.ok) throw await this.toError('POST', path, res);
+        return (await res.json()) as T;
+    }
+
+    async send(method: HttpMethod, path: string, body?: unknown): Promise<void> {
+        const res = await this.request(method, path, body);
+        if (!res.ok) throw await this.toError(method, path, res);
+    }
+
+    private async requestJson<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
+        const res = await this.request(method, path, body);
+        if (!res.ok) throw await this.toError(method, path, res);
+        return (await res.json()) as T;
+    }
+
+    private withQuery(path: string, query?: QueryParams): string {
+        if (!query) return path;
+        const params = new URLSearchParams();
+        for (const [k, v] of Object.entries(query)) {
+            if (v !== undefined && v !== null) params.append(k, String(v));
+        }
+        const qs = params.toString();
+        return qs ? `${path}?${qs}` : path;
+    }
+
+    private async toError(method: HttpMethod, path: string, res: Response): Promise<ApiError> {
+        const message = await res
+            .json()
+            .then((b: { message?: string } | null) => b?.message)
+            .catch(() => undefined);
+        return new ApiError(message ?? `${method} ${path} failed`, { status: res.status, url: path });
     }
 
     async fetchCsrf(): Promise<void> {
