@@ -4,6 +4,6 @@ declare module "*.scss" {
 }
 
 interface Window {
-    router: import('./core/Router').Router;
+    router: import('./app/router').Router;
 }
 

@@ -31,5 +31,91 @@
         "@typescript-eslint/no-unused-vars": "warn",
         "@typescript-eslint/no-explicit-any": "error",
         "no-console": "off"
-    }
+    },
+    "overrides": [
+        {
+            "files": ["src/pages/**/*.{ts,js}"],
+            "excludedFiles": ["src/pages/index.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            { "group": ["@app", "@app/*"], "message": "pages/* must not import from app/. See docs/architecture/ARCHITECTURE.md." },
+                            { "group": ["@pages/*/!(index)*", "@pages/*/*"], "message": "Cross-page imports are forbidden. Move shared code to widgets/ or entities/." }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/widgets/**/*.{ts,js}"],
+            "excludedFiles": ["src/widgets/index.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            { "group": ["@app", "@app/*"], "message": "widgets/* must not import from app/." },
+                            { "group": ["@pages", "@pages/*"], "message": "widgets/* must not import from pages/. Pages compose widgets, not the other way around." },
+                            { "group": ["@widgets/*/*"], "message": "Cross-widget imports must go through the widget's index.ts (public API). Sibling widgets cannot import each other; lift shared code to features/ or entities/." }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/features/**/*.{ts,js}"],
+            "excludedFiles": ["src/features/index.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            { "group": ["@app", "@app/*"], "message": "features/* must not import from app/." },
+                            { "group": ["@pages", "@pages/*"], "message": "features/* must not import from pages/." },
+                            { "group": ["@widgets", "@widgets/*"], "message": "features/* must not import from widgets/. Widgets compose features, not the other way around." },
+                            { "group": ["@features/*/*"], "message": "Cross-feature imports must go through the feature's index.ts. Sibling features cannot import each other." }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/entities/**/*.{ts,js}"],
+            "excludedFiles": ["src/entities/index.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            { "group": ["@app", "@app/*"], "message": "entities/* must not import from app/." },
+                            { "group": ["@pages", "@pages/*"], "message": "entities/* must not import from pages/." },
+                            { "group": ["@widgets", "@widgets/*"], "message": "entities/* must not import from widgets/." },
+                            { "group": ["@features", "@features/*"], "message": "entities/* must not import from features/." },
+                            { "group": ["@entities/*/*"], "message": "Cross-entity imports must go through the entity's index.ts (public API)." }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": ["src/shared/**/*.{ts,js}"],
+            "excludedFiles": ["src/shared/index.ts"],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            { "group": ["@app", "@app/*"], "message": "shared/* must not import from app/." },
+                            { "group": ["@pages", "@pages/*"], "message": "shared/* must not import from pages/." },
+                            { "group": ["@widgets", "@widgets/*"], "message": "shared/* must not import from widgets/." },
+                            { "group": ["@features", "@features/*"], "message": "shared/* must not import from features/." },
+                            { "group": ["@entities", "@entities/*"], "message": "shared/* must not import from entities/. shared/ sits at the bottom of the dependency graph." }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
 }
