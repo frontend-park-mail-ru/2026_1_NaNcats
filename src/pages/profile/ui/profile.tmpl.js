@@ -74,8 +74,8 @@ export const profilePageTemplate = `
                 <h2 class="section-title">История заказов</h2>
                 <div class="orders-list">
                     {{? it.orders && it.orders.length > 0 }}
-                        {{~it.orders :order}}
-                        <div class="order-row">
+                        {{~it.orders :order:idx}}
+                        <div class="order-row js-order-row" data-order-index="{{!idx}}" role="button" tabindex="0">
                             <img class="order-row__img" src="{{!order.restaurant_image_url || ''}}" alt="order" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                             <div class="order-row__date">{{!order.created_at || ''}}</div>
                             <div class="order-row__info">
@@ -95,5 +95,6 @@ export const profilePageTemplate = `
 
     <div class="js-picker-slot"></div>
     <div class="js-wordle-slot"></div>
+    <div class="js-order-status-slot"></div>
 </div>
 `;

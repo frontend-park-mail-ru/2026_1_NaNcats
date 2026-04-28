@@ -12,6 +12,7 @@ import { AddressList } from '@features/profile/manage-addresses';
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { AddressPicker } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
+import { OrderStatusModal } from '@widgets/order-status';
 import { profilePageTemplate } from './profile.tmpl.js';
 
 interface ProfilePageProps {
@@ -21,6 +22,7 @@ interface ProfilePageProps {
 
 export class ProfilePage extends Component<ProfilePageProps> {
     private picker: AddressPicker | null = null;
+    private orderStatusModal: OrderStatusModal | null = null;
 
     constructor() {
         super(profilePageTemplate);
@@ -32,6 +34,7 @@ export class ProfilePage extends Component<ProfilePageProps> {
         cardList: '.js-card-list-slot',
         wordle: '.js-wordle-slot',
         picker: '.js-picker-slot',
+        orderStatus: '.js-order-status-slot',
     };
 
     static async load(): Promise<ProfilePageProps> {
@@ -77,6 +80,10 @@ export class ProfilePage extends Component<ProfilePageProps> {
         this.picker = new AddressPicker();
         this.mountChild('picker', this.picker, { hideInput: true, skipDetails: false });
 
+        this.orderStatusModal = new OrderStatusModal();
+        this.mountChild('orderStatus', this.orderStatusModal, OrderStatusModal.initialProps());
+
+        this.bindOrderRows();
         this.bindAvatar();
 
         const addBtn = this.root?.querySelector('.js-add-address');
@@ -148,5 +155,30 @@ export class ProfilePage extends Component<ProfilePageProps> {
 
     private async handleEditAddress(id: string): Promise<void> {
         await this.picker?.openMapModal(id);
+    }
+
+    private bindOrderRows(): void {
+        const list = this.root?.querySelector('.orders-list');
+        if (!list) return;
+
+        const openByEvent = (e: Event) => {
+            const row = (e.target as HTMLElement).closest<HTMLElement>('.js-order-row');
+            if (!row) return;
+            const raw = row.dataset.orderIndex;
+            if (raw === undefined) return;
+            const idx = Number(raw);
+            const order = this.props.orders[idx];
+            if (!order || !this.orderStatusModal) return;
+            this.orderStatusModal.open(order);
+        };
+
+        this.on(list, 'click', openByEvent);
+        this.on(list, 'keydown', (e) => {
+            const ke = e as KeyboardEvent;
+            if (ke.key === 'Enter' || ke.key === ' ') {
+                ke.preventDefault();
+                openByEvent(e);
+            }
+        });
     }
 }

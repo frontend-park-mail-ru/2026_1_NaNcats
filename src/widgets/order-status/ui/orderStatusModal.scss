@@ -1,0 +1,261 @@
+.order-status-modal {
+    position: relative;
+    width: 612px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    background: white;
+    border-radius: 24px;
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    font-family: 'Open Sans Condensed', 'Inter', sans-serif;
+    color: #0E1117;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    scrollbar-width: thin;
+
+    &__close {
+        position: absolute;
+        top: 19px;
+        right: 19px;
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        color: #616161;
+        font-size: 28px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+        transition: color 0.15s;
+
+        &:hover { color: #0E1117; }
+    }
+
+    &__header {
+        align-self: stretch;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 20px;
+    }
+
+    &__restaurant {
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        gap: 67px;
+    }
+
+    &__restaurant-img {
+        width: 90px;
+        height: 90px;
+        border-radius: 16px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    &__restaurant-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    &__restaurant-name {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 20px;
+    }
+
+    &__restaurant-rating {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 20px;
+    }
+
+    &__star {
+        color: #0E1117;
+        font-size: 20px;
+        line-height: 1;
+    }
+
+    &__progress {
+        width: 365px;
+        max-width: 100%;
+        padding: 10px;
+        background: white;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+
+        &_cancelled {
+            opacity: 0.6;
+            .order-status-modal__progress-text { color: #C04040; }
+        }
+    }
+
+    &__progress-text {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 28px;
+        text-align: center;
+    }
+
+    &__progress-track {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    &__progress-dot {
+        width: 3px;
+        height: 3px;
+        background: #0E1117;
+        border-radius: 50%;
+        flex-shrink: 0;
+
+        &_active { background: #F7958C; }
+    }
+
+    &__progress-step {
+        width: 34px;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    &__progress-icon {
+        width: 100%;
+        height: 100%;
+        background: #BEBEBE;
+        mask-repeat: no-repeat;
+        mask-position: center;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        -webkit-mask-size: contain;
+
+        &_created {
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 11l3 3 8-8'/%3E%3Cpath d='M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 11l3 3 8-8'/%3E%3Cpath d='M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9'/%3E%3C/svg%3E");
+        }
+
+        &_cooking {
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z'/%3E%3Cline x1='6' y1='17' x2='18' y2='17'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z'/%3E%3Cline x1='6' y1='17' x2='18' y2='17'/%3E%3C/svg%3E");
+        }
+
+        &_delivering {
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='1' y='6' width='15' height='12' rx='1'/%3E%3Cpath d='M16 9h4l3 3v5a1 1 0 0 1-1 1h-2'/%3E%3Ccircle cx='6.5' cy='18.5' r='2.5'/%3E%3Ccircle cx='18.5' cy='18.5' r='2.5'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='1' y='6' width='15' height='12' rx='1'/%3E%3Cpath d='M16 9h4l3 3v5a1 1 0 0 1-1 1h-2'/%3E%3Ccircle cx='6.5' cy='18.5' r='2.5'/%3E%3Ccircle cx='18.5' cy='18.5' r='2.5'/%3E%3C/svg%3E");
+        }
+
+        &_delivered {
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpolyline points='9 22 9 12 15 12 15 22'/%3E%3C/svg%3E");
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpolyline points='9 22 9 12 15 12 15 22'/%3E%3C/svg%3E");
+        }
+    }
+
+    &__progress-step_active &__progress-icon { background: #F7958C; }
+    &__progress-step_current &__progress-icon { background: #F7958C; }
+
+    &__divider {
+        align-self: stretch;
+        height: 1px;
+        background: #E2E2E2;
+    }
+
+    &__section-title {
+        align-self: stretch;
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 28px;
+    }
+
+    &__items {
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    &__item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+        border-bottom: 0.5px solid rgba(124, 124, 124, 0.5);
+        margin-left: 5px;
+
+        &:last-of-type { border-bottom: none; padding-bottom: 0; }
+    }
+
+    &__item-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 5px;
+    }
+
+    &__item-img {
+        width: 46px;
+        height: 37px;
+        border-radius: 8px;
+        object-fit: cover;
+    }
+
+    &__item-info {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    &__item-name {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.28px;
+        line-height: 15.4px;
+    }
+
+    &__item-meta {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 14.4px;
+    }
+
+    &__item-price {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 20px;
+        text-align: center;
+    }
+
+    &__fee-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    &__fee-label {
+        padding: 5px;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.28px;
+        line-height: 15.4px;
+    }
+
+    &__fee-value {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 20px;
+        text-align: center;
+    }
+}

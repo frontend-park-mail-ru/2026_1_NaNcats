@@ -1,2 +1,11 @@
 export { orderApi } from './api/orderApi';
-export type { Order, OrderCreatePayload, OrderCreateResponse } from './model/types';
+export { normalizeOrder } from './lib/normalizeOrder';
+export type {
+    Order,
+    OrderCreatePayload,
+    OrderCreateResponse,
+    OrderStatus,
+    OrderItem,
+    OrderRestaurant,
+    NormalizedOrder,
+} from './model/types';
