@@ -75,7 +75,7 @@ export const profilePageTemplate = `
                 <div class="orders-list">
                     {{? it.orders && it.orders.length > 0 }}
                         {{~it.orders :order:idx}}
-                        <div class="order-row js-order-row" data-order-index="{{!idx}}" role="button" tabindex="0">
+                        <div class="order-row js-order-row" data-order-index="{{!idx}}" data-order-id="{{!order.order_id}}" role="button" tabindex="0">
                             <img class="order-row__img" src="{{!order.restaurant_image_url || ''}}" alt="order" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                             <div class="order-row__date">{{!order.created_at || ''}}</div>
                             <div class="order-row__info">

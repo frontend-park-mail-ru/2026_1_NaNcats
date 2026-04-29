@@ -1,6 +1,8 @@
 export interface OrderCreatePayload {
     address_id: string;
     branch_id: number;
+    brand_id: number;  
+    pay_for_all: boolean;
     payment_method_id: string;
     delivery_cost: number;
     service_fee: number;
@@ -8,10 +10,29 @@ export interface OrderCreatePayload {
 }
 
 export interface OrderCreateResponse {
+    order_id: string;
     confirmation_url?: string;
 }
 
-export type OrderStatus = 'created' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
+export type OrderRawStatus =
+    | 'created'
+    | 'cart_locked'
+    | 'payment_ready'
+    | 'paid'
+    | 'in_progress'
+    | 'waiting'
+    | 'delivering'
+    | 'finished'
+    | 'cancelled'
+    | 'failed';
+
+export type OrderUiStatus =
+    | 'awaiting_payment'
+    | 'created'
+    | 'cooking'
+    | 'delivering'
+    | 'delivered'
+    | 'cancelled';
 
 export interface OrderItem {
     dish_id: number;
@@ -30,7 +51,7 @@ export interface OrderRestaurant {
 }
 
 export interface Order {
-    id: string;
+    order_id: string;
     status: string;
     total_cost?: number;
     created_at?: string;
@@ -43,12 +64,14 @@ export interface Order {
     service_fee?: number;
     delivery_cost?: number;
     eta_minutes?: number;
+    payment_url?: string;
     [extra: string]: unknown;
 }
 
 export interface NormalizedOrder {
-    id: string;
-    status: OrderStatus;
+    order_id: string;
+    status: OrderUiStatus;
+    raw_status: string;
     created_at: string;
     eta_minutes: number;
     restaurant: OrderRestaurant;
@@ -56,4 +79,13 @@ export interface NormalizedOrder {
     service_fee: number;
     delivery_cost: number;
     total_cost: number;
+    payment_url?: string;
+    error?: string;
+}
+
+export interface GatewayWsEvent {
+    order_id: string;
+    status: string;
+    payment_url?: string;
+    error?: string;
 }

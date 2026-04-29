@@ -5,6 +5,20 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
+interface RequestOptions {
+    isForm?: boolean;
+    isRetry?: boolean;
+    headers?: Record<string, string>;
+    idempotencyKey?: string;
+}
+
+function generateIdempotencyKey(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export class HttpClient {
     constructor(
         private readonly baseUrl: string,
@@ -27,8 +41,8 @@ export class HttpClient {
         return this.request('PATCH', url, body);
     }
 
-    delete(url: string): Promise<Response> {
-        return this.request('DELETE', url);
+    delete(url: string, body: unknown = null): Promise<Response> {
+        return this.request('DELETE', url, body);
     }
 
     postForm(url: string, formData: FormData): Promise<Response> {
@@ -39,20 +53,20 @@ export class HttpClient {
         return this.requestJson<T>('GET', this.withQuery(path, query));
     }
 
-    postJson<T>(path: string, body?: unknown): Promise<T> {
-        return this.requestJson<T>('POST', path, body);
+    postJson<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+        return this.requestJson<T>('POST', path, body, { idempotencyKey });
     }
 
-    putJson<T>(path: string, body?: unknown): Promise<T> {
-        return this.requestJson<T>('PUT', path, body);
+    patchJson<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+        return this.requestJson<T>('PATCH', path, body, { idempotencyKey });
     }
 
-    patchJson<T>(path: string, body?: unknown): Promise<T> {
-        return this.requestJson<T>('PATCH', path, body);
+    putJson<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+        return this.requestJson<T>('PUT', path, body, { idempotencyKey });
     }
 
-    deleteJson<T>(path: string): Promise<T> {
-        return this.requestJson<T>('DELETE', path);
+    deleteJson<T>(path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+        return this.requestJson<T>('DELETE', path, body, { idempotencyKey });
     }
 
     async postFormJson<T>(path: string, formData: FormData): Promise<T> {
@@ -66,8 +80,13 @@ export class HttpClient {
         if (!res.ok) throw await this.toError(method, path, res);
     }
 
-    private async requestJson<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
-        const res = await this.request(method, path, body);
+    private async requestJson<T>(
+        method: HttpMethod,
+        path: string,
+        body?: unknown,
+        opts: RequestOptions = {}
+    ): Promise<T> {
+        const res = await this.request(method, path, body, opts);
         if (!res.ok) throw await this.toError(method, path, res);
         return (await res.json()) as T;
     }
@@ -107,9 +126,9 @@ export class HttpClient {
         method: HttpMethod,
         url: string,
         body: unknown = null,
-        opts: { isForm?: boolean; isRetry?: boolean } = {},
+        opts: RequestOptions = {},
     ): Promise<Response> {
-        const headers: Record<string, string> = {};
+        const headers: Record<string, string> = { ...opts.headers };
         if (!opts.isForm) {
             headers['Content-Type'] = 'application/json';
         }
@@ -117,6 +136,10 @@ export class HttpClient {
         const token = this.csrf.getToken();
         if (method !== 'GET' && token) {
             headers['X-CSRF-Token'] = token;
+        }
+
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            headers['Idempotency-Key'] = opts.idempotencyKey || generateIdempotencyKey();
         }
 
         const init: RequestInit = {

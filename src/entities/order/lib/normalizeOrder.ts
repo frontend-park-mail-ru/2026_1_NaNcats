@@ -1,15 +1,20 @@
 import { toMicros } from '@entities/cart';
-import type { NormalizedOrder, Order, OrderItem, OrderStatus } from '../model/types';
+import type { NormalizedOrder, Order, OrderItem, OrderUiStatus } from '../model/types';
 
-const VALID_STATUSES: ReadonlySet<OrderStatus> = new Set([
-    'created',
-    'cooking',
-    'delivering',
-    'delivered',
-    'cancelled',
-]);
+const STATUS_MAP: Record<string, OrderUiStatus> = {
+    created: 'created',
+    cart_locked: 'awaiting_payment',
+    payment_ready: 'awaiting_payment',
+    paid: 'created',
+    in_progress: 'cooking',
+    waiting: 'cooking',
+    delivering: 'delivering',
+    finished: 'delivered',
+    cancelled: 'cancelled',
+    failed: 'cancelled',
+};
 
-const STATUS_FALLBACK_CYCLE: OrderStatus[] = ['created', 'cooking', 'delivering', 'delivered'];
+const STATUS_FALLBACK_CYCLE: OrderUiStatus[] = ['created', 'cooking', 'delivering', 'delivered'];
 
 const MOCK_ITEM_POOL: OrderItem[] = [
     { dish_id: 1001, name: 'Чизбургер', quantity: 1, price: toMicros(110) },
@@ -27,15 +32,15 @@ function hashId(id: string): number {
     return Math.abs(h);
 }
 
-function normalizeStatus(raw: string | undefined, id: string): OrderStatus {
-    if (raw && VALID_STATUSES.has(raw as OrderStatus)) return raw as OrderStatus;
-    return STATUS_FALLBACK_CYCLE[hashId(id) % STATUS_FALLBACK_CYCLE.length];
+function mapStatus(raw: string | undefined, seed: string): OrderUiStatus {
+    if (raw && raw in STATUS_MAP) return STATUS_MAP[raw];
+    return STATUS_FALLBACK_CYCLE[hashId(seed) % STATUS_FALLBACK_CYCLE.length];
 }
 
-function pickMockItems(id: string): OrderItem[] {
-    const seed = hashId(id);
-    const count = (seed % 3) + 1;
-    const start = seed % MOCK_ITEM_POOL.length;
+function pickMockItems(seed: string): OrderItem[] {
+    const h = hashId(seed);
+    const count = (h % 3) + 1;
+    const start = h % MOCK_ITEM_POOL.length;
     const out: OrderItem[] = [];
     for (let i = 0; i < count; i++) {
         out.push({ ...MOCK_ITEM_POOL[(start + i) % MOCK_ITEM_POOL.length] });
@@ -44,8 +49,8 @@ function pickMockItems(id: string): OrderItem[] {
 }
 
 export function normalizeOrder(raw: Order): NormalizedOrder {
-    const seed = String(raw.id ?? raw.created_at ?? raw.restaurant_name ?? raw.total_cost ?? Math.random());
-    const status = normalizeStatus(raw.status, seed);
+    const seed = String(raw.order_id ?? raw.created_at ?? raw.restaurant_name ?? raw.total_cost ?? Math.random());
+    const status = mapStatus(raw.status, seed);
     const items = raw.items && raw.items.length > 0 ? raw.items : pickMockItems(seed);
     const itemsTotal = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
     const service_fee = raw.service_fee ?? toMicros(99);
@@ -53,13 +58,14 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
     const total_cost = raw.total_cost ?? itemsTotal + service_fee + delivery_cost;
 
     return {
-        id: raw.id ?? seed,
+        order_id: raw.order_id ?? seed,
         status,
-        created_at: raw.created_at ?? new Date().toISOString(),
+        raw_status: raw.status ?? '',
+        created_at: raw.created_at ?? '',
         eta_minutes: raw.eta_minutes ?? 25,
         restaurant: {
             id: raw.restaurant_id ?? 0,
-            name: raw.restaurant_name ?? 'Pizza Epic Family',
+            name: raw.restaurant_name ?? 'Заказ',
             image_url: raw.restaurant_image_url,
             rating: raw.restaurant_rating ?? 4.5,
             reviews_count: raw.restaurant_reviews_count ?? 1000,
@@ -68,5 +74,6 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
         service_fee,
         delivery_cost,
         total_cost,
+        payment_url: raw.payment_url,
     };
 }

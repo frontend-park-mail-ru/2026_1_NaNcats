@@ -149,5 +149,6 @@ export const checkoutPageTemplate = `
     </div>
 
     <div class="js-picker-slot"></div>
+    <div class="js-order-status-slot"></div>
 </div>
 `;

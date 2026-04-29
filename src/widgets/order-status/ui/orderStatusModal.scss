@@ -167,6 +167,30 @@
     &__progress-step_active &__progress-icon { background: #F7958C; }
     &__progress-step_current &__progress-icon { background: #F7958C; }
 
+    &__pay-btn {
+        margin-top: 4px;
+        padding: 10px 24px;
+        border: none;
+        border-radius: 14px;
+        background: var(--accent-orange, #FDA522);
+        color: white;
+        font-family: inherit;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: filter 0.15s, transform 0.05s;
+
+        &:hover { filter: brightness(0.95); }
+        &:active { transform: scale(0.97); }
+    }
+
+    &__error {
+        color: #C04040;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+    }
+
     &__divider {
         align-self: stretch;
         height: 1px;

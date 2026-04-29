@@ -34,6 +34,12 @@ export const orderStatusModalTemplate = `
                     </div>
                 {{~}}
             </div>
+            {{? it.showPaymentButton }}
+                <button type="button" class="order-status-modal__pay-btn js-pay-order">Оплатить</button>
+            {{?}}
+            {{? it.errorText }}
+                <div class="order-status-modal__error">{{!it.errorText}}</div>
+            {{?}}
         </div>
 
         <div class="order-status-modal__divider"></div>

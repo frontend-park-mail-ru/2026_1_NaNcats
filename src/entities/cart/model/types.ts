@@ -16,6 +16,7 @@ export interface DishToAdd {
 export type CartStatus = 'idle' | 'loading' | 'syncing' | 'error';
 
 export interface CartState {
+    id: string;
     items: CartItem[];
     restaurantId: number;
     status: CartStatus;

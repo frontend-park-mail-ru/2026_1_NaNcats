@@ -169,7 +169,8 @@ export class ProfilePage extends Component<ProfilePageProps> {
             const idx = Number(raw);
             const order = this.props.orders[idx];
             if (!order || !this.orderStatusModal) return;
-            this.orderStatusModal.open(order);
+            const isTerminal = order.status === 'finished' || order.status === 'cancelled' || order.status === 'failed';
+            this.orderStatusModal.open(order, { subscribe: !isTerminal });
         };
 
         this.on(list, 'click', openByEvent);

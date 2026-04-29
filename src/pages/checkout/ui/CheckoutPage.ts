@@ -6,8 +6,9 @@ import { userStore } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
 import { cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
-import { orderApi } from '@entities/order';
+import { orderApi, type Order, type OrderItem } from '@entities/order';
 import { AddressPicker } from '@widgets/address-picker';
+import { OrderStatusModal } from '@widgets/order-status';
 import { checkoutPageTemplate } from './checkout.tmpl.js';
 
 const DELIVERY_FEE_RUB = 699;
@@ -55,6 +56,7 @@ const buildProps = (
 
 export class CheckoutPage extends Component<CheckoutPageProps> {
     private picker: AddressPicker | null = null;
+    private orderStatusModal: OrderStatusModal | null = null;
 
     constructor() {
         super(checkoutPageTemplate);
@@ -62,6 +64,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
 
     protected slots = {
         picker: '.js-picker-slot',
+        orderStatus: '.js-order-status-slot',
     };
 
     static async load(): Promise<CheckoutPageProps> {
@@ -110,6 +113,9 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                 );
             },
         });
+
+        this.orderStatusModal = new OrderStatusModal();
+        this.mountChild('orderStatus', this.orderStatusModal, OrderStatusModal.initialProps());
 
         this.bindModals();
         this.bindSelections();
@@ -212,15 +218,20 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         btn.disabled = true;
         btn.innerText = 'Оформляем...';
 
+        const idempotencyKey = crypto.randomUUID();
+
         try {
             const result = await orderApi.create({
                 address_id: this.props.selectedAddress.id,
                 branch_id: this.props.restaurantId,
+                brand_id: this.props.restaurantId,
+                pay_for_all: true,
                 payment_method_id: this.props.selectedCard?.id ?? '',
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 total_cost: toMicros(grand),
-            });
+            }, idempotencyKey);
+            
             await cartStore.clear();
             if (result.confirmation_url) {
                 window.location.href = result.confirmation_url;
@@ -233,5 +244,30 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
             btn.disabled = false;
             btn.innerText = 'Оплатить';
         }
+    }
+
+    private buildPlaceholderOrder(orderId: string, grandRub: number, paymentUrl?: string): Order {
+        const items: OrderItem[] = this.props.items.map((i) => ({
+            dish_id: i.dish_id,
+            name: i.name,
+            quantity: i.quantity,
+            price: i.price,
+            image_url: i.image_url,
+        }));
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const yyyy = now.getFullYear();
+        return {
+            order_id: orderId,
+            status: paymentUrl ? 'payment_ready' : 'created',
+            total_cost: toMicros(grandRub),
+            created_at: `${dd}.${mm}.${yyyy}`,
+            restaurant_id: this.props.restaurantId,
+            items,
+            service_fee: toMicros(SERVICE_FEE_RUB),
+            delivery_cost: toMicros(DELIVERY_FEE_RUB),
+            payment_url: paymentUrl,
+        };
     }
 }
