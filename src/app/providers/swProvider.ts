@@ -1,4 +1,5 @@
 export const initServiceWorker = (): void => {
+    if (window.location.hostname === 'localhost') return;
     if (!('serviceWorker' in navigator)) return;
     window.addEventListener('load', () => {
         navigator.serviceWorker

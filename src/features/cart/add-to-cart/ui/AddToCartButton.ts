@@ -31,8 +31,19 @@ export class AddToCartButton extends Component<AddToCartButtonProps> {
             this.props.onUnauthenticated?.();
             return;
         }
-        const confirmer: CartConfirmer = this.props.confirm
-            ?? (() => Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?'));
-        await addToCart(this.props.dish, this.props.restaurantId, confirmer);
+
+        const confirmer: CartConfirmer =
+            this.props.confirm ??
+            (() =>
+                Popup.confirm(
+                    'В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?',
+                ));
+
+        try {
+            await addToCart(this.props.dish, this.props.restaurantId, confirmer);
+        } catch (e) {
+            console.error('AddToCartButton.handle', e);
+            await Popup.alert('Не удалось добавить товар в корзину. Попробуйте ещё раз.');
+        }
     }
 }

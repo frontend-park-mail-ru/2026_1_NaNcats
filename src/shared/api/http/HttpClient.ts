@@ -119,6 +119,10 @@ export class HttpClient {
             headers['X-CSRF-Token'] = token;
         }
 
+        if (method !== 'GET') {
+            headers['Idempotency-Key'] = crypto.randomUUID();
+        }
+
         const init: RequestInit = {
             method,
             headers,
