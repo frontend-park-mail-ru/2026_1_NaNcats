@@ -112,7 +112,8 @@
   top: 110%;
   right: 0;
   background: var(--white);
-  min-width: 160px;
+  min-width: 110px;
+  justify-items: center;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   padding: 8px 0;
@@ -767,6 +768,11 @@
 
 /* ---------- TABLET / SMALL LAPTOP ---------- */
 @media (max-width: 1200px) {
+  .button_header-login,
+  .button_header-reg {
+    width: 80px;
+    font-size: 11px;
+  }
   .search-bar {
     width: min(100%, 560px);
     height: 40px;
@@ -1037,7 +1043,6 @@
       font-size: 28px;
     }
   }
-
 
   .res-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
