@@ -1,7 +1,8 @@
 import './home.scss';
 import { Component } from '@shared/lib/component';
 import { ROUTES } from '@shared/config/routes';
-import { restaurantApi, type Restaurant } from '@entities/restaurant';
+import { getQueryParam } from '@shared/lib/url/searchParams';
+import { restaurantApi, type Restaurant, type Category } from '@entities/restaurant';
 import { userStore } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cartStore } from '@entities/cart';
@@ -13,6 +14,9 @@ import { homePageTemplate } from './home.tmpl.js';
 
 interface HomePageProps {
     restaurants: Restaurant[];
+    categories: Category[];
+    activeCategory: string;
+    searchQuery: string;
 }
 
 const PAGE_SIZE = 20;
@@ -24,6 +28,8 @@ export class HomePage extends Component<HomePageProps> {
     private hasMore = true;
     private isFetching = false;
     private pageEl: HTMLElement | null = null;
+    private activeCategory = '';
+    private searchQuery = '';
 
     constructor() {
         super(homePageTemplate);
@@ -52,14 +58,24 @@ export class HomePage extends Component<HomePageProps> {
 
         await Promise.all(tasks);
 
-        let restaurants: Restaurant[] = [];
-        try {
-            restaurants = await restaurantApi.listBrands(PAGE_SIZE, 0);
-        } catch (e) {
-            console.warn('home: listBrands failed', e);
-        }
+        const initialQuery = getQueryParam('q')?.trim() ?? '';
 
-        return { restaurants };
+        let restaurants: Restaurant[] = [];
+        let categories: Category[] = [];
+
+        await Promise.all([
+            (initialQuery
+                ? restaurantApi.search(initialQuery, PAGE_SIZE)
+                : restaurantApi.listBrands(PAGE_SIZE, 0)
+            )
+                .then((r) => { restaurants = r; })
+                .catch((e) => console.warn('home: initial brands fetch failed', e)),
+            restaurantApi.listCategories()
+                .then((c) => { categories = c; })
+                .catch((e) => console.warn('home: listCategories failed', e)),
+        ]);
+
+        return { restaurants, categories, activeCategory: '', searchQuery: initialQuery };
     }
 
     protected onMount(): void {
@@ -67,6 +83,8 @@ export class HomePage extends Component<HomePageProps> {
 
         this.offset = this.props.restaurants.length;
         this.hasMore = this.props.restaurants.length === PAGE_SIZE;
+        this.activeCategory = this.props.activeCategory ?? '';
+        this.searchQuery = this.props.searchQuery ?? '';
 
         const user = userStore.getState().user;
         const streakWeeks = (user?.streak_weeks ?? 6) as number;
@@ -74,9 +92,11 @@ export class HomePage extends Component<HomePageProps> {
 
         this.mountChild('header', new Header(), {
             user,
+            searchQuery: this.searchQuery,
             onLogin: () => window.router.go(ROUTES.login),
             onRegister: () => window.router.go(ROUTES.register),
             onLoggedOut: () => window.router.go(ROUTES.home),
+            onSearchSubmit: (q: string) => void this.applySearch(q),
             onMountAddressSlot: (slot) => {
                 const picker = new AddressPicker();
                 picker.mount(slot, { currentAddress });
@@ -100,11 +120,36 @@ export class HomePage extends Component<HomePageProps> {
             this.on(scrollContainer, 'scroll', () => void this.handleScroll(scrollContainer as HTMLElement));
         }
 
+        this.setupCategories();
+        this.setupMobilePanels();
+    }
+
+    private setupCategories(): void {
+        const categoriesList = this.root?.querySelector('.js-categories-list');
+        if (!categoriesList) return;
+
+        this.on(categoriesList, 'click', (e) => {
+            const item = (e.target as HTMLElement).closest('[data-category-id]') as HTMLElement | null;
+            if (!item) return;
+            void this.selectCategory(item.dataset.categoryId ?? '');
+            if (window.innerWidth <= MOBILE_BREAKPOINT) this.closePanels();
+        });
+
+        this.on(categoriesList, 'keydown', (e) => {
+            const ke = e as KeyboardEvent;
+            if (ke.key !== 'Enter' && ke.key !== ' ') return;
+            const item = (e.target as HTMLElement).closest('[data-category-id]') as HTMLElement | null;
+            if (!item) return;
+            ke.preventDefault();
+            void this.selectCategory(item.dataset.categoryId ?? '');
+        });
+    }
+
+private setupMobilePanels(): void {
         const openCategoriesBtns = this.root?.querySelectorAll('.js-open-categories') ?? [];
         const openCartSheetBtn = this.root?.querySelector('.js-open-cart-sheet');
         const overlay = this.root?.querySelector('.js-mobile-overlay');
         const closeBtns = this.root?.querySelectorAll('.js-close-panels') ?? [];
-        const categoriesDrawer = this.root?.querySelector('.js-categories-drawer');
 
         openCategoriesBtns.forEach((btn) => {
             this.on(btn, 'click', () => this.openCategoriesDrawer());
@@ -122,33 +167,110 @@ export class HomePage extends Component<HomePageProps> {
             this.on(btn, 'click', () => this.closePanels());
         });
 
-        if (categoriesDrawer) {
-            this.on(categoriesDrawer, 'click', (e) => {
-                const item = (e.target as HTMLElement).closest('.category-item');
-                if (item && window.innerWidth <= MOBILE_BREAKPOINT) {
-                    this.closePanels();
-                }
-            });
-        }
-
         this.on(document, 'keydown', (e) => {
-            if (e.key === 'Escape') {
-                this.closePanels();
-            }
+            if ((e as KeyboardEvent).key === 'Escape') this.closePanels();
         });
 
         this.on(window, 'resize', () => {
             const width = window.innerWidth;
-
             if (width > TABLET_BREAKPOINT) {
                 this.closePanels();
                 return;
             }
-
             if (width > MOBILE_BREAKPOINT) {
                 this.pageEl?.classList.remove('home-page_drawer-categories');
             }
         });
+    }
+
+    private async applySearch(query: string): Promise<void> {
+        this.searchQuery = query;
+        const label = this.root?.querySelector('.js-search-label') as HTMLElement | null;
+        const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
+
+        this.offset = 0;
+        this.hasMore = false;
+
+        if (!query) {
+            if (label) label.style.display = 'none';
+            if (title) title.textContent = this.activeCategory
+                ? (this.props.categories.find((c) => c.id === this.activeCategory)?.name ?? this.activeCategory)
+                : 'Рестораны';
+            const fresh = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
+            this.offset = fresh.length;
+            this.hasMore = fresh.length === PAGE_SIZE;
+            this.replaceGrid(fresh);
+            return;
+        }
+
+        if (label) {
+            label.style.display = 'block';
+            label.textContent = `Найдено по запросу «${query}»`;
+        }
+        if (title) title.textContent = 'Поиск';
+
+        const results = await restaurantApi.search(query).catch(() => [] as Restaurant[]);
+        this.replaceGrid(results);
+    }
+
+    private async selectCategory(id: string): Promise<void> {
+        // Empty id = "Все рестораны" reset, or click on already-active category to deselect
+        if (id === '' || this.activeCategory === id) {
+            this.activeCategory = '';
+            this.updateActiveCategoryUI('');
+            const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
+            if (title) title.textContent = 'Рестораны';
+            const fresh = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
+            this.offset = fresh.length;
+            this.hasMore = fresh.length === PAGE_SIZE;
+            this.replaceGrid(fresh);
+            return;
+        }
+
+        this.activeCategory = id;
+        this.updateActiveCategoryUI(id);
+
+        const catName = this.props.categories.find((c) => c.id === id)?.name ?? id;
+        const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
+        if (title) title.textContent = catName;
+
+        const results = await restaurantApi.listBrandsByCategory(id, PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
+        this.offset = results.length;
+        this.hasMore = results.length === PAGE_SIZE;
+        this.replaceGrid(results);
+    }
+
+    private updateActiveCategoryUI(activeId: string): void {
+        const items = this.root?.querySelectorAll('[data-category-id]') ?? [];
+        items.forEach((el) => {
+            const id = (el as HTMLElement).dataset.categoryId ?? '';
+            // The reset row (id === '') is highlighted when no category is active
+            const shouldBeActive = activeId === '' ? id === '' : id === activeId;
+            el.classList.toggle('category-item_active', shouldBeActive);
+        });
+    }
+
+    private replaceGrid(items: Restaurant[]): void {
+        const grid = this.root?.querySelector('.js-res-grid');
+        const empty = this.root?.querySelector('.js-res-empty') as HTMLElement | null;
+
+        if (!grid) return;
+
+        if (empty) empty.style.display = items.length === 0 ? 'flex' : 'none';
+
+        grid.innerHTML = items
+            .map(
+                (r) => `
+                <div class="res-card" data-id="${r.id}">
+                    <img class="res-card__rect" src="${r.logo_url}" alt="${r.name}"
+                        onerror="this.src='https://placehold.co/400x225/png?text=${encodeURIComponent(r.name)}'">
+                    <div class="res-card__info">
+                        <span class="res-card__name">${r.name}</span>
+                        <span class="res-card__desc">${r.description ?? 'Вкусная еда'}</span>
+                    </div>
+                </div>`,
+            )
+            .join('');
     }
 
     private openCategoriesDrawer(): void {
@@ -170,7 +292,7 @@ export class HomePage extends Component<HomePageProps> {
     }
 
     private async handleScroll(container: HTMLElement): Promise<void> {
-        if (this.isFetching || !this.hasMore) return;
+        if (this.isFetching || !this.hasMore || this.searchQuery || this.activeCategory) return;
 
         const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
         if (distanceFromBottom > 200) return;
@@ -200,7 +322,7 @@ export class HomePage extends Component<HomePageProps> {
                     onerror="this.src='https://placehold.co/400x225/png?text=${encodeURIComponent(r.name)}'">
                 <div class="res-card__info">
                     <span class="res-card__name">${r.name}</span>
-                    <span class="res-card__desc">Пицца, суши, роллы</span>
+                    <span class="res-card__desc">${r.description ?? 'Вкусная еда'}</span>
                 </div>
             </div>`,
             )

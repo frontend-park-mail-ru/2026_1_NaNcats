@@ -6,7 +6,7 @@ import { userStore } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
 import { cartApi, cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
-import { orderApi } from '@entities/order';
+import { orderApi, type Order, type OrderCreatePayload } from '@entities/order';
 import { AddressPicker } from '@widgets/address-picker';
 import { OrderStatusModal } from '@widgets/order-status';
 import { checkoutPageTemplate } from './checkout.tmpl.js';
@@ -242,16 +242,45 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
             const result = await orderApi.create({
                 address_id: this.props.selectedAddress.id,
                 branch_id: currentCart.restaurantId,
+                brand_id: currentCart.restaurantId,
                 payment_method_id: this.props.selectedCard?.id ?? '',
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 total_cost: toMicros(grand),
-            });
+                pay_for_all: true
+            }, idempotencyKey);
+
+            const orderSnapshot: Order = {
+                order_id: result.order_id,
+                status: 'created',
+                total_cost: toMicros(grand),
+                created_at: new Date().toLocaleDateString('ru-RU'),
+                restaurant_id: currentCart.restaurantId,
+                restaurant_name: 'Заказ',
+                items: assignedItems.map((i) => ({
+                    dish_id: i.dish_id,
+                    name: i.name,
+                    quantity: i.quantity,
+                    price: i.price,
+                    image_url: i.image_url,
+                })),
+                service_fee: toMicros(SERVICE_FEE_RUB),
+                delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                payment_url: result.confirmation_url,
+            };
 
             await cartStore.clear();
 
             if (result.confirmation_url) {
                 window.location.href = result.confirmation_url;
+                return;
+            }
+
+            if (this.orderStatusModal) {
+                this.orderStatusModal.open(orderSnapshot, {
+                    subscribe: true,
+                    onClose: () => window.router.go(ROUTES.home),
+                });
             } else {
                 window.router.go(ROUTES.profile);
             }

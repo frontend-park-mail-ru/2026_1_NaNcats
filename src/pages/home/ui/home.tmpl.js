@@ -37,28 +37,15 @@ export const homePageTemplate = `
 
                 <h2 class="sidebar-title sidebar-title_desktop">Категории</h2>
 
-                <div class="categories-list">
-                    {{
-                        const categories = [
-                            {n: 'Популярное', i: '🔥'}, {n: 'Пицца', i: '🍕'}, {n: 'Суши', i: '🍣'},
-                            {n: 'Бургеры', i: '🍔'}, {n: 'Десерты', i: '🍰'}, {n: 'Аптеки', i: '💊'},
-                            {n: 'Цветы', i: '💐'}, {n: 'Завтраки', i: '🍳'}, {n: 'Здоровье', i: '🥦'},
-                            {n: 'Кофе', i: '☕'}, {n: 'Стейки', i: '🥩'}, {n: 'Паста', i: '🍝'},
-                            {n: 'Азиатская кухня', i: '🥢'}, {n: 'Морепродукты', i: '🦞'},
-                            {n: 'Бизнес-ланч', i: '🍱'}, {n: 'Веганское', i: '🌱'}, {n: 'Доставка 24/7', i: '⏰'},
-                            {n: 'Блины', i: '🥞'}, {n: 'Вок', i: '🥡'}, {n: 'Китайская кухня', i: '🥠'},
-                            {n: 'Грузинская кухня', i: '🥙'}, {n: 'Украинская кухня', i: '🍲'}, {n: 'Домашняя кухня', i: '🏠'},
-                            {n: 'Фастфуд', i: '🍟'}, {n: 'Хлеб и выпечка', i: '🥖'}, {n: 'Торты на заказ', i: '🎂'},
-                            {n: 'Мороженое', i: '🍦'}, {n: 'Полезные перекусы', i: '🥜'}, {n: 'Смузи', i: '🥤'},
-                            {n: 'Чай', i: '🍵'}, {n: 'Детское меню', i: '🧸'}, {n: 'Вечеринка', i: '🎉'},
-                            {n: 'Кейтеринг', i: '🍽️'}, {n: 'Алкоголь', i: '🍷'}, {n: 'Пиво', i: '🍺'},
-                            {n: 'Коктейли', i: '🍹'}, {n: 'Супы', i: '🥣'}, {n: 'Салаты', i: '🥗'}
-                        ];
-                    }}
-                    {{~categories :cat}}
-                        <div class="category-item">
-                            <span class="category-item__icon">{{!cat.i}}</span>
-                            <span class="category-item__name">{{!cat.n}}</span>
+                <div class="categories-list js-categories-list">
+                    <div class="category-item {{!it.activeCategory ? '' : 'category-item_active'}}" data-category-id="" tabindex="0" role="button">
+                        <span class="category-item__icon">🍽️</span>
+                        <span class="category-item__name">Все рестораны</span>
+                    </div>
+                    {{~it.categories :cat}}
+                        <div class="category-item" data-category-id="{{!cat.id}}" tabindex="0" role="button">
+                            <span class="category-item__icon">{{!cat.emoji}}</span>
+                            <span class="category-item__name">{{!cat.name}}</span>
                         </div>
                     {{~}}
                 </div>
@@ -68,8 +55,13 @@ export const homePageTemplate = `
         <main class="center-column">
             <div class="sheet">
                 <div class="sheet__header">
-                    <h1 class="sheet__title">Рестораны</h1>
+                    <h1 class="sheet__title js-page-title">{{!it.activeCategory || (it.searchQuery ? 'Поиск' : 'Рестораны')}}</h1>
                 </div>
+
+                <div class="search-results-label js-search-label" style="display:{{!it.searchQuery ? 'block' : 'none'}}">
+                    Найдено по запросу «{{!it.searchQuery}}»
+                </div>
+
                 <div class="res-grid js-res-grid">
                     {{~it.restaurants :res}}
                         <div class="res-card" data-id="{{!res.id}}">
@@ -81,10 +73,15 @@ export const homePageTemplate = `
                             >
                             <div class="res-card__info">
                                 <span class="res-card__name">{{!res.name}}</span>
-                                <span class="res-card__desc">Пицца, суши, роллы</span>
+                                <span class="res-card__desc">{{!res.description || 'Вкусная еда'}}</span>
                             </div>
                         </div>
                     {{~}}
+                </div>
+
+                <div class="res-empty js-res-empty" style="display:{{!it.restaurants && it.restaurants.length === 0 ? 'flex' : 'none'}}">
+                    <p class="res-empty__text">Ничего не найдено 😔</p>
+                    <p class="res-empty__hint">Попробуйте изменить запрос или выбрать другую категорию</p>
                 </div>
             </div>
         </main>

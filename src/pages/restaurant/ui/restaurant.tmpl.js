@@ -45,19 +45,12 @@ export const restaurantPageTemplate = `
                 </div>
 
                 <p class="label-text label-text_desktop">Меню</p>
-                <div class="categories-list">
-                    <div class="category-item"><span>—</span><span>Выбор пользователей</span></div>
-                    <div class="category-item"><span>—</span><span>Акции</span></div>
-                    <div class="category-item"><span>—</span><span>Комбо</span></div>
-                    <div class="category-item"><span>—</span><span>Пицца Метровая</span></div>
-                    <div class="category-item"><span>—</span><span>Пицца круглая (35 см)</span></div>
-                    <div class="category-item"><span>—</span><span>Пасты</span></div>
-                    <div class="category-item"><span>—</span><span>Закуски</span></div>
-                    <div class="category-item"><span>—</span><span>Соусы</span></div>
-                    <div class="category-item"><span>—</span><span>Салаты</span></div>
-                    <div class="category-item"><span>—</span><span>Бургеры</span></div>
-                    <div class="category-item"><span>—</span><span>Десерты</span></div>
-                    <div class="category-item"><span>—</span><span>Роллы</span></div>
+                <div class="categories-list js-restaurant-categories">
+                    {{~it.sections :sec :idx}}
+                        <div class="category-item js-restaurant-cat" data-section-idx="{{!idx}}" tabindex="0" role="button">
+                            <span>—</span><span>{{!sec.name}}</span>
+                        </div>
+                    {{~}}
                 </div>
             </div>
         </aside>
@@ -77,34 +70,60 @@ export const restaurantPageTemplate = `
                     />
                 </div>
 
-                <h2 class="restaurant-section-title">Выбор пользователей</h2>
+                <div class="restaurant-search">
+                    <div class="restaurant-search__box">
+                        <svg class="restaurant-search__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8"/>
+                            <path d="M16.5 16.5L21 21" stroke="#7D7D7D" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                        <input
+                            type="text"
+                            class="restaurant-search__input js-restaurant-search-input"
+                            placeholder="Поиск по меню ресторана"
+                            autocomplete="off"
+                        />
+                        <button type="button" class="restaurant-search__clear js-restaurant-search-clear" style="display:none">×</button>
+                    </div>
+                </div>
 
-                <div class="res-grid js-dish-grid">
-                    {{~it.dishes :dish}}
-                        <div class="dish-card">
-                            <img
-                                class="dish-card__img"
-                                src="{{!dish.image_url}}"
-                                alt="{{!dish.name}}"
-                                onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
-                            />
-                            <div class="dish-card__prices">
-                                <div class="dish-card__price">{{!dish.price_rub.toFixed(2)}} ₽</div>
-                            </div>
-                            <div class="dish-card__title">{{!dish.name}}</div>
-                            <div class="dish-card__desc">
-                                {{!dish.description || 'Описание появится позже'}}
-                            </div>
-                            <button
-                                class="button js-add-to-cart dish-card__add-btn"
-                                type="button"
-                                data-id="{{!dish.id}}"
-                                data-name="{{!dish.name}}"
-                                data-price="{{!dish.price}}"
-                                data-image="{{!dish.image_url}}"
-                            >
-                                В корзину
-                            </button>
+                <button type="button" class="reviews-btn js-reviews-btn">
+                    <svg class="reviews-btn__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="#FFC1C1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Отзывы
+                </button>
+
+                <div class="js-dish-content">
+                    {{~it.sections :sec :idx}}
+                        <h2 class="restaurant-section-title" id="dish-section-{{!idx}}">{{!sec.name}}</h2>
+                        <div class="res-grid">
+                            {{~sec.dishes :dish}}
+                                <div class="dish-card">
+                                    <img
+                                        class="dish-card__img"
+                                        src="{{!dish.image_url}}"
+                                        alt="{{!dish.name}}"
+                                        onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
+                                    />
+                                    <div class="dish-card__prices">
+                                        <div class="dish-card__price">{{!dish.price_rub.toFixed(2)}} ₽</div>
+                                    </div>
+                                    <div class="dish-card__title">{{!dish.name}}</div>
+                                    <div class="dish-card__desc">
+                                        {{!dish.description || 'Описание появится позже'}}
+                                    </div>
+                                    <button
+                                        class="button js-add-to-cart dish-card__add-btn"
+                                        type="button"
+                                        data-id="{{!dish.id}}"
+                                        data-name="{{!dish.name}}"
+                                        data-price="{{!dish.price}}"
+                                        data-image="{{!dish.image_url}}"
+                                    >
+                                        В корзину
+                                    </button>
+                                </div>
+                            {{~}}
                         </div>
                     {{~}}
                 </div>

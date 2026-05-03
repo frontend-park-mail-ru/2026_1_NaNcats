@@ -184,6 +184,26 @@
         &:active { transform: scale(0.97); }
     }
 
+    &__cancel-btn {
+        margin-top: 8px;
+        padding: 8px 18px;
+        border: 1px solid #e0e0e0;
+        border-radius: 14px;
+        background: transparent;
+        color: #777;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+        &:hover {
+            background: #fff5f5;
+            color: #C04040;
+            border-color: #f3c4c4;
+        }
+    }
+
     &__error {
         color: #C04040;
         font-size: 14px;

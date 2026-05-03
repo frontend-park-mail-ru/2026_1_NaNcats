@@ -80,7 +80,10 @@ export const profilePageTemplate = `
                             <div class="order-row__date">{{!order.created_at || ''}}</div>
                             <div class="order-row__info">
                                 <div class="order-row__name">{{!order.restaurant_name || 'Заказ'}}</div>
-                                <div class="order-row__meta">Статус: {{!order.status}}</div>
+                                <div class="order-row__status js-order-status order-row__status_{{!order._badge.className}}">
+                                    <span class="order-row__status-icon">{{!order._badge.icon}}</span>
+                                    <span class="order-row__status-label">{{!order._badge.label}}</span>
+                                </div>
                             </div>
                             <div class="order-row__price">{{!((order.total_cost || 0) / 1000000).toFixed(2)}}₽</div>
                         </div>

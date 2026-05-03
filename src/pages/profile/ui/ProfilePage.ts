@@ -5,7 +5,7 @@ import { Popup } from '@shared/ui/popup';
 import { userStore, type User } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cardStore } from '@entities/card';
-import { orderApi, type Order } from '@entities/order';
+import { orderApi, connectOrderTracker, statusBadge, type Order, type OrderTracker, type StatusBadge } from '@entities/order';
 import { uploadAvatar, deleteAvatar } from '@features/profile/upload-avatar';
 import { EditProfileForm } from '@features/profile/edit-profile';
 import { AddressList } from '@features/profile/manage-addresses';
@@ -15,14 +15,24 @@ import { Wordle } from '@widgets/wordle';
 import { OrderStatusModal } from '@widgets/order-status';
 import { profilePageTemplate } from './profile.tmpl.js';
 
+interface OrderRowView extends Order {
+    _badge: StatusBadge;
+}
+
 interface ProfilePageProps {
     user: User;
-    orders: Order[];
+    orders: OrderRowView[];
 }
+
+const TERMINAL_STATUSES = new Set(['finished', 'cancelled', 'failed']);
+
+const decorate = (orders: Order[]): OrderRowView[] =>
+    orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
 export class ProfilePage extends Component<ProfilePageProps> {
     private picker: AddressPicker | null = null;
     private orderStatusModal: OrderStatusModal | null = null;
+    private orderTrackers: Map<string, OrderTracker> = new Map();
 
     constructor() {
         super(profilePageTemplate);
@@ -54,7 +64,7 @@ export class ProfilePage extends Component<ProfilePageProps> {
             orderApi.list(),
         ]);
         const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
-        return { user, orders };
+        return { user, orders: decorate(orders) };
     }
 
     protected onMount(): void {
@@ -85,6 +95,7 @@ export class ProfilePage extends Component<ProfilePageProps> {
 
         this.bindOrderRows();
         this.bindAvatar();
+        this.subscribeActiveOrders();
 
         const addBtn = this.root?.querySelector('.js-add-address');
         if (addBtn) {
@@ -155,6 +166,59 @@ export class ProfilePage extends Component<ProfilePageProps> {
 
     private async handleEditAddress(id: string): Promise<void> {
         await this.picker?.openMapModal(id);
+    }
+
+    protected onDestroy(): void {
+        for (const t of this.orderTrackers.values()) t.close();
+        this.orderTrackers.clear();
+    }
+
+    private subscribeActiveOrders(): void {
+        for (const order of this.props.orders) {
+            if (!order.order_id || TERMINAL_STATUSES.has(order.status)) continue;
+            if (this.orderTrackers.has(order.order_id)) continue;
+
+            const tracker = connectOrderTracker(order.order_id, {
+                onEvent: (event) => {
+                    this.applyStatusToRow(event.order_id, event.status);
+                    if (TERMINAL_STATUSES.has(event.status)) {
+                        const t = this.orderTrackers.get(event.order_id);
+                        if (t) {
+                            t.close();
+                            this.orderTrackers.delete(event.order_id);
+                        }
+                    }
+                },
+            });
+            this.orderTrackers.set(order.order_id, tracker);
+        }
+    }
+
+    private applyStatusToRow(orderId: string, rawStatus: string): void {
+        const idx = this.props.orders.findIndex((o) => o.order_id === orderId);
+        if (idx >= 0) {
+            this.props.orders[idx].status = rawStatus;
+            this.props.orders[idx]._badge = statusBadge(rawStatus);
+        }
+
+        const row = this.root?.querySelector(`.js-order-row[data-order-id="${CSS.escape(orderId)}"]`);
+        if (!row) return;
+        const badgeEl = row.querySelector('.js-order-status') as HTMLElement | null;
+        if (!badgeEl) return;
+
+        const badge = statusBadge(rawStatus);
+        badgeEl.classList.remove(
+            'order-row__status_progress',
+            'order-row__status_success',
+            'order-row__status_warning',
+            'order-row__status_danger',
+        );
+        badgeEl.classList.add(`order-row__status_${badge.className}`);
+
+        const iconEl = badgeEl.querySelector('.order-row__status-icon');
+        const labelEl = badgeEl.querySelector('.order-row__status-label');
+        if (iconEl) iconEl.textContent = badge.icon;
+        if (labelEl) labelEl.textContent = badge.label;
     }
 
     private bindOrderRows(): void {

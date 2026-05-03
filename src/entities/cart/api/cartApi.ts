@@ -30,7 +30,7 @@ export const cartApi = {
         const data = await httpClient.getJson<CartResponse>('/cart');
 
         return {
-            cartId: data.cart_id ?? null,
+            cartId: data.cart_id ? data.cart_id : null,
             items: data.items ?? [],
             restaurantId: data.restaurant_id ?? 0,
             mode: data.mode ?? 'solo',

@@ -1,6 +1,17 @@
 import { Store } from '@shared/lib/store';
+import { ApiError } from '@shared/api/http';
 import { cartApi } from '../api/cartApi';
 import type { CartConfirmer, CartSnapshot, CartState, DishToAdd } from './types';
+
+const isMultipleRestaurantsError = (e: unknown): boolean => {
+    if (!(e instanceof ApiError)) return false;
+    return e.status === 409 && e.message === 'MULTIPLE_RESTAURANTS';
+};
+
+const isCartLockedError = (e: unknown): boolean => {
+    if (!(e instanceof ApiError)) return false;
+    return e.status === 409 && e.message === 'CART_LOCKED';
+};
 
 class CartStore extends Store<CartState> {
     constructor() {
@@ -51,24 +62,61 @@ class CartStore extends Store<CartState> {
                 snapshot = await this.refresh();
             }
 
-            const existing = snapshot.items.find((i) => i.dish_id === dish.id);
+            await this.addOrIncrement(snapshot, dish, restaurantId, confirmer);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.addDish', e);
+            this.setState({ status: 'error', error: e instanceof Error ? e.message : 'add failed' });
+            throw e;
+        }
+    }
 
+    private async addOrIncrement(
+        snapshot: CartSnapshot,
+        dish: DishToAdd,
+        restaurantId: number,
+        confirmer?: CartConfirmer,
+    ): Promise<void> {
+        const existing = snapshot.items.find((i) => i.dish_id === dish.id);
+
+        try {
             if (existing) {
                 const currentCartId = snapshot.cartId;
                 if (!currentCartId) {
                     throw new Error('cartStore.addDish: cart_id is missing for quantity update');
                 }
-
                 await cartApi.updateQuantity(currentCartId, dish.id, existing.quantity + 1);
             } else {
                 await cartApi.addItem(snapshot.cartId, dish.id, 1);
             }
-
-            await this.refresh();
         } catch (e) {
-            console.error('cartStore.addDish', e);
-            this.setState({ status: 'error', error: 'add failed' });
+            if (isCartLockedError(e)) {
+                const fresh = await this.refresh();
+                if (fresh.cartId) {
+                    await cartApi.clear(fresh.cartId);
+                    await this.refresh();
+                }
+                await cartApi.addItem(null, dish.id, 1);
+                return;
+            }
+
+            if (!isMultipleRestaurantsError(e)) throw e;
+
+            const ok = confirmer ? await confirmer() : false;
+            if (!ok) {
+                this.setState({ status: 'idle' });
+                return;
+            }
+
+            const fresh = await this.refresh();
+            if (fresh.cartId) {
+                await cartApi.clear(fresh.cartId);
+                await this.refresh();
+            }
+            await cartApi.addItem(null, dish.id, 1);
         }
+
+        void restaurantId;
     }
 
     async changeQuantity(dishId: number, delta: number): Promise<void> {

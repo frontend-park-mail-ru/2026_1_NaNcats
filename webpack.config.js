@@ -100,6 +100,10 @@ module.exports = (env, argv) => {
           changeOrigin: true,
           secure: false,
           ws: true,
+          onError(err, req, res) {
+            if (err && (err.code === 'EPIPE' || err.code === 'ECONNRESET')) return;
+            console.warn('[proxy] error:', err && err.message);
+          },
         },
       ],
     },

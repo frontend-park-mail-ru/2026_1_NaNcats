@@ -3,6 +3,7 @@ import { Component } from '@shared/lib/component';
 import {
     connectOrderTracker,
     normalizeOrder,
+    orderApi,
     type GatewayWsEvent,
     type NormalizedOrder,
     type Order,
@@ -10,6 +11,9 @@ import {
     type OrderUiStatus,
 } from '@entities/order';
 import { orderStatusModalTemplate } from './orderStatusModal.tmpl.js';
+
+const PAYMENT_POLL_INTERVAL_MS = 4000;
+const TERMINAL_PAYMENT_STATUSES = new Set(['succeeded', 'canceled']);
 
 interface ProgressStep {
     key: OrderUiStatus;
@@ -29,8 +33,11 @@ interface OrderStatusModalProps {
     steps: ProgressStep[];
     formatted: FormattedFields;
     showPaymentButton: boolean;
+    showCancelButton: boolean;
     errorText: string;
 }
+
+const CANCELLABLE_STATUSES = new Set<OrderUiStatus>(['awaiting_payment', 'created']);
 
 const STATUS_FLOW: OrderUiStatus[] = ['created', 'cooking', 'delivering', 'delivered'];
 
@@ -60,7 +67,6 @@ function buildSteps(status: OrderUiStatus): ProgressStep[] {
 
 function formatDate(value: string): string {
     if (!value) return '';
-    // backend sends "DD.MM.YYYY" already formatted
     const ddmmyyyy = /^(\d{2})\.(\d{2})\.\d{4}$/.exec(value);
     if (ddmmyyyy) return `${ddmmyyyy[1]}.${ddmmyyyy[2]}`;
     const d = new Date(value);
@@ -86,6 +92,7 @@ function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
             steps: [],
             formatted: { dateLabel: '', totalLabel: '', reviewsLabel: '', statusText: '' },
             showPaymentButton: false,
+            showCancelButton: false,
             errorText: '',
         };
     }
@@ -99,6 +106,7 @@ function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
             statusText: STATUS_TEXT[order.status](order.eta_minutes),
         },
         showPaymentButton: order.status === 'awaiting_payment' && Boolean(order.payment_url),
+        showCancelButton: CANCELLABLE_STATUSES.has(order.status),
         errorText: order.error ?? '',
     };
 }
@@ -106,6 +114,9 @@ function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
 export class OrderStatusModal extends Component<OrderStatusModalProps> {
     private overlay: HTMLElement | null = null;
     private tracker: OrderTracker | null = null;
+    private keepTrackerAcrossRerender = false;
+    private onCloseCallback: (() => void) | null = null;
+    private paymentPollTimer: ReturnType<typeof setInterval> | null = null;
 
     constructor() {
         super(orderStatusModalTemplate);
@@ -136,29 +147,57 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
             });
         }
 
+        const cancelBtn = this.root?.querySelector('.js-cancel-order');
+        if (cancelBtn) {
+            this.on(cancelBtn, 'click', () => void this.handleCancel());
+        }
+
         if (this.props.order) {
             this.overlay?.classList.add('modal-overlay_active');
         }
     }
 
-    protected onDestroy(): void {
-        this.disconnectTracker();
+    private async handleCancel(): Promise<void> {
+        const orderId = this.props.order?.order_id;
+        if (!orderId) return;
+        if (!window.confirm('Отменить заказ? Это действие нельзя отменить.')) return;
+
+        try {
+            await orderApi.cancel(orderId);
+            this.applyEvent({ order_id: orderId, status: 'cancelled' });
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Не удалось отменить заказ';
+            window.alert(msg);
+        }
     }
 
-    open(rawOrder: Order, options: { subscribe?: boolean } = {}): void {
+    protected onDestroy(): void {
+        if (this.keepTrackerAcrossRerender) return;
+        this.disconnectTracker();
+        this.stopPaymentPoll();
+    }
+
+    open(rawOrder: Order, options: { subscribe?: boolean; onClose?: () => void } = {}): void {
         const order = normalizeOrder(rawOrder);
         this.disconnectTracker();
+        this.stopPaymentPoll();
+        this.onCloseCallback = options.onClose ?? null;
         this.update(buildProps(order));
         this.overlay?.classList.add('modal-overlay_active');
 
         if (options.subscribe && !isTerminalRawStatus(order.raw_status)) {
             this.subscribeToOrder(order.order_id);
+            this.startPaymentPoll(order.order_id);
         }
     }
 
     close(): void {
         this.disconnectTracker();
+        this.stopPaymentPoll();
         this.overlay?.classList.remove('modal-overlay_active');
+        const cb = this.onCloseCallback;
+        this.onCloseCallback = null;
+        if (cb) cb();
     }
 
     private subscribeToOrder(orderId: string): void {
@@ -171,6 +210,27 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         if (this.tracker) {
             this.tracker.close();
             this.tracker = null;
+        }
+    }
+
+    private startPaymentPoll(orderId: string): void {
+        this.stopPaymentPoll();
+        this.paymentPollTimer = setInterval(async () => {
+            try {
+                const resp = await orderApi.checkPayment(orderId);
+                if (TERMINAL_PAYMENT_STATUSES.has(resp.payment_status)) {
+                    this.stopPaymentPoll();
+                }
+            } catch {
+                // Молчим — это polling, ошибки сети нормальны.
+            }
+        }, PAYMENT_POLL_INTERVAL_MS);
+    }
+
+    private stopPaymentPoll(): void {
+        if (this.paymentPollTimer !== null) {
+            clearInterval(this.paymentPollTimer);
+            this.paymentPollTimer = null;
         }
     }
 
@@ -196,7 +256,17 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         };
         const next = normalizeOrder(merged);
         next.error = event.error;
-        this.update(buildProps(next));
+
+        this.keepTrackerAcrossRerender = true;
+        try {
+            this.update(buildProps(next));
+        } finally {
+            this.keepTrackerAcrossRerender = false;
+        }
+
+        if (isTerminalRawStatus(next.raw_status) || next.raw_status === 'paid') {
+            this.stopPaymentPoll();
+        }
     }
 }
 
