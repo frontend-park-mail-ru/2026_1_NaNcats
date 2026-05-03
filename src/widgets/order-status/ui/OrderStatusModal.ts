@@ -34,8 +34,11 @@ interface OrderStatusModalProps {
     formatted: FormattedFields;
     showPaymentButton: boolean;
     showCancelButton: boolean;
+    showProcessing: boolean; // спиннер пока ждём ответа YooKassa
     errorText: string;
 }
+
+const PAYMENT_TIMEOUT_MS = 60_000;
 
 const CANCELLABLE_STATUSES = new Set<OrderUiStatus>(['awaiting_payment', 'created']);
 
@@ -85,7 +88,7 @@ function formatReviews(count: number): string {
     return String(count);
 }
 
-function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
+function buildProps(order: NormalizedOrder | null, opts: { processing?: boolean } = {}): OrderStatusModalProps {
     if (!order) {
         return {
             order: null,
@@ -93,9 +96,11 @@ function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
             formatted: { dateLabel: '', totalLabel: '', reviewsLabel: '', statusText: '' },
             showPaymentButton: false,
             showCancelButton: false,
+            showProcessing: false,
             errorText: '',
         };
     }
+    const processing = Boolean(opts.processing);
     return {
         order,
         steps: buildSteps(order.status),
@@ -105,8 +110,9 @@ function buildProps(order: NormalizedOrder | null): OrderStatusModalProps {
             reviewsLabel: formatReviews(order.restaurant.reviews_count ?? 0),
             statusText: STATUS_TEXT[order.status](order.eta_minutes),
         },
-        showPaymentButton: order.status === 'awaiting_payment' && Boolean(order.payment_url),
-        showCancelButton: CANCELLABLE_STATUSES.has(order.status),
+        showPaymentButton: !processing && order.status === 'awaiting_payment' && Boolean(order.payment_url),
+        showCancelButton: !processing && CANCELLABLE_STATUSES.has(order.status),
+        showProcessing: processing,
         errorText: order.error ?? '',
     };
 }
@@ -117,6 +123,8 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
     private keepTrackerAcrossRerender = false;
     private onCloseCallback: (() => void) | null = null;
     private paymentPollTimer: ReturnType<typeof setInterval> | null = null;
+    private paymentTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+    private isProcessingPayment = false;
 
     constructor() {
         super(orderStatusModalTemplate);
@@ -142,8 +150,10 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         const payBtn = this.root?.querySelector('.js-pay-order');
         if (payBtn) {
             this.on(payBtn, 'click', () => {
-                const url = this.props.order?.payment_url;
-                if (url) window.location.href = url;
+                const order = this.props.order;
+                if (!order?.payment_url) return;
+                this.beginPaymentProcessing();
+                window.open(order.payment_url, '_blank', 'noopener');
             });
         }
 
@@ -154,6 +164,42 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
 
         if (this.props.order) {
             this.overlay?.classList.add('modal-overlay_active');
+        }
+    }
+
+    private beginPaymentProcessing(): void {
+        if (this.isProcessingPayment) return;
+        this.isProcessingPayment = true;
+
+        const order = this.props.order;
+        if (order) this.rerender(buildProps(order, { processing: true }));
+
+        if (this.paymentTimeoutTimer !== null) clearTimeout(this.paymentTimeoutTimer);
+        this.paymentTimeoutTimer = setTimeout(() => {
+            this.paymentTimeoutTimer = null;
+            if (!this.isProcessingPayment) return;
+            this.isProcessingPayment = false;
+            const cur = this.props.order;
+            if (!cur) return;
+            const next = { ...cur, error: 'Не удалось подтвердить оплату. Проверьте интернет/VPN и попробуйте ещё раз.' };
+            this.rerender(buildProps(next, { processing: false }));
+        }, PAYMENT_TIMEOUT_MS);
+    }
+
+    private endPaymentProcessing(): void {
+        this.isProcessingPayment = false;
+        if (this.paymentTimeoutTimer !== null) {
+            clearTimeout(this.paymentTimeoutTimer);
+            this.paymentTimeoutTimer = null;
+        }
+    }
+
+    private rerender(props: OrderStatusModalProps): void {
+        this.keepTrackerAcrossRerender = true;
+        try {
+            this.update(props);
+        } finally {
+            this.keepTrackerAcrossRerender = false;
         }
     }
 
@@ -181,6 +227,7 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         const order = normalizeOrder(rawOrder);
         this.disconnectTracker();
         this.stopPaymentPoll();
+        this.endPaymentProcessing();
         this.onCloseCallback = options.onClose ?? null;
         this.update(buildProps(order));
         this.overlay?.classList.add('modal-overlay_active');
@@ -194,6 +241,7 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
     close(): void {
         this.disconnectTracker();
         this.stopPaymentPoll();
+        this.endPaymentProcessing();
         this.overlay?.classList.remove('modal-overlay_active');
         const cb = this.onCloseCallback;
         this.onCloseCallback = null;
@@ -222,7 +270,7 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
                     this.stopPaymentPoll();
                 }
             } catch {
-                // Молчим — это polling, ошибки сети нормальны.
+                // ignore
             }
         }, PAYMENT_POLL_INTERVAL_MS);
     }
@@ -257,12 +305,17 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         const next = normalizeOrder(merged);
         next.error = event.error;
 
-        this.keepTrackerAcrossRerender = true;
-        try {
-            this.update(buildProps(next));
-        } finally {
-            this.keepTrackerAcrossRerender = false;
+        const paymentSettled = next.raw_status === 'paid'
+            || next.raw_status === 'in_progress'
+            || next.raw_status === 'waiting'
+            || next.raw_status === 'delivering'
+            || isTerminalRawStatus(next.raw_status);
+
+        if (paymentSettled) {
+            this.endPaymentProcessing();
         }
+
+        this.rerender(buildProps(next, { processing: this.isProcessingPayment }));
 
         if (isTerminalRawStatus(next.raw_status) || next.raw_status === 'paid') {
             this.stopPaymentPoll();

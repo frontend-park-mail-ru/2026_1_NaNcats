@@ -103,7 +103,12 @@ export class HomePage extends Component<HomePageProps> {
             },
         });
 
-        this.mountChild('streak', new Streak(), Streak.buildProps(streakWeeks, 6));
+        if (user) {
+            this.mountChild('streak', new Streak(), Streak.buildProps(streakWeeks, 6));
+        } else {
+            const streakSlot = this.root?.querySelector('.js-streak-slot') as HTMLElement | null;
+            if (streakSlot) streakSlot.style.display = 'none';
+        }
         this.mountChild('cart', new CartWidget(), CartWidget.buildProps(cartStore.getState().items));
 
         const grid = this.root?.querySelector('.js-res-grid');
@@ -214,7 +219,6 @@ private setupMobilePanels(): void {
     }
 
     private async selectCategory(id: string): Promise<void> {
-        // Empty id = "Все рестораны" reset, or click on already-active category to deselect
         if (id === '' || this.activeCategory === id) {
             this.activeCategory = '';
             this.updateActiveCategoryUI('');
@@ -244,7 +248,6 @@ private setupMobilePanels(): void {
         const items = this.root?.querySelectorAll('[data-category-id]') ?? [];
         items.forEach((el) => {
             const id = (el as HTMLElement).dataset.categoryId ?? '';
-            // The reset row (id === '') is highlighted when no category is active
             const shouldBeActive = activeId === '' ? id === '' : id === activeId;
             el.classList.toggle('category-item_active', shouldBeActive);
         });

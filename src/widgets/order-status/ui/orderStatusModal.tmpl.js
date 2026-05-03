@@ -37,6 +37,12 @@ export const orderStatusModalTemplate = `
             {{? it.showPaymentButton }}
                 <button type="button" class="order-status-modal__pay-btn js-pay-order">Оплатить</button>
             {{?}}
+            {{? it.showProcessing }}
+                <div class="order-status-modal__processing">
+                    <span class="order-status-modal__spinner"></span>
+                    <span>Обрабатываем оплату…</span>
+                </div>
+            {{?}}
             {{? it.showCancelButton }}
                 <button type="button" class="order-status-modal__cancel-btn js-cancel-order">Отменить заказ</button>
             {{?}}

@@ -22,6 +22,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
     private selectedCoords: Coordinates = DEFAULT_COORDS;
     private debounceTimer: ReturnType<typeof setTimeout> | null = null;
     private editingAddressId: string | null = null;
+    private pendingAddressText = '';
 
     constructor() {
         super(addressPickerTemplate);
@@ -86,6 +87,21 @@ export class AddressPicker extends Component<AddressPickerProps> {
         this.on(input, 'input', handle);
 
         if (openMapBtn) this.on(openMapBtn, 'click', () => this.openMapModal());
+
+        const container = this.root?.querySelector('.js-address-container') as HTMLElement | null;
+        if (container) {
+            this.on(container, 'click', (e) => {
+                const inputHidden = window.getComputedStyle(input).display === 'none';
+                if (!inputHidden) return;
+                if (!this.isAuthenticated()) {
+                    window.router.go(ROUTES.login);
+                    return;
+                }
+                const t = e.target as HTMLElement;
+                if (t.closest('.js-open-map-btn')) return;
+                void this.openMapModal();
+            });
+        }
     }
 
     private bindMapModal(): void {
@@ -101,9 +117,30 @@ export class AddressPicker extends Component<AddressPickerProps> {
                 if (query.length <= 2) return;
                 if (this.debounceTimer) clearTimeout(this.debounceTimer);
                 this.debounceTimer = setTimeout(async () => {
-                    const results = await yandexMaps.fetchSuggestions(query);
+                    const [results, coords] = await Promise.all([
+                        yandexMaps.fetchSuggestions(query),
+                        yandexMaps.geocode(query),
+                    ]);
                     this.renderModalSuggestions(results, modalInput);
+                    if (coords) {
+                        this.map?.setCenter(coords, 16);
+                        this.selectedCoords = coords;
+                    }
                 }, SUGGEST_DEBOUNCE_MS);
+            });
+
+            this.on(modalInput, 'keydown', (e) => {
+                if ((e as KeyboardEvent).key !== 'Enter') return;
+                e.preventDefault();
+                void (async () => {
+                    const query = modalInput.value.trim();
+                    if (!query) return;
+                    const coords = await yandexMaps.geocode(query);
+                    if (coords) {
+                        this.map?.setCenter(coords, 16);
+                        this.selectedCoords = coords;
+                    }
+                })();
             });
         }
 
@@ -127,7 +164,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
                 e.preventDefault();
                 const formData = new FormData(detailsForm);
                 const displayInput = this.root?.querySelector('.js-display-address') as HTMLInputElement | null;
-                const text = displayInput?.value ?? '';
+                const text = this.pendingAddressText || displayInput?.value || '';
 
                 const details = {
                     apartment: (formData.get('apartment') as string) || undefined,
@@ -165,24 +202,36 @@ export class AddressPicker extends Component<AddressPickerProps> {
 
     async openMapModal(addressId?: string): Promise<void> {
         this.editingAddressId = addressId ?? null;
-        const modal = this.root?.querySelector('.js-map-modal');
+        const modal = this.root?.querySelector('.js-map-modal') as HTMLElement | null;
         if (!modal) return;
         modal.classList.add('modal-overlay_active');
 
+        const modalInput = this.root?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
+        if (addressId) {
+            const target = addressStore.getState().saved.find((a) => a.id === addressId);
+            if (target?.location) {
+                this.selectedCoords = [target.location.latitude, target.location.longitude];
+                if (modalInput) modalInput.value = target.location.address_text ?? '';
+            }
+        }
+
         await yandexMaps.ready();
-        if (this.map) return;
 
         const container = this.root?.querySelector('.js-yandex-map') as HTMLElement | null;
         if (!container) return;
-        this.map = yandexMaps.createMap(container, this.selectedCoords, 16);
-        this.map.onActionEnd(async (center) => {
-            this.selectedCoords = center;
-            const address = await yandexMaps.reverseGeocode(center);
-            if (address) {
-                const modalInput = this.root?.querySelector('.js-modal-address-input') as HTMLInputElement | null;
-                if (modalInput) modalInput.value = address;
-            }
-        });
+
+        if (this.map) {
+            this.map.setCenter(this.selectedCoords, 16);
+            this.map.fitToViewport();
+        } else {
+            this.map = yandexMaps.createMap(container, this.selectedCoords, 16);
+            this.map.onActionEnd(async (center) => {
+                this.selectedCoords = center;
+                const address = await yandexMaps.reverseGeocode(center);
+                if (address && modalInput) modalInput.value = address;
+            });
+            requestAnimationFrame(() => this.map?.fitToViewport());
+        }
     }
 
     private closeMapModal(): void {
@@ -190,13 +239,14 @@ export class AddressPicker extends Component<AddressPickerProps> {
     }
 
     private openDetailsModal(text: string, coords: Coordinates): void {
-        const modal = this.root?.querySelector('.js-details-modal');
+        const modal = this.root?.querySelector('.js-details-modal') as HTMLElement | null;
         const display = this.root?.querySelector('.js-display-address') as HTMLInputElement | null;
         const form = this.root?.querySelector('.js-details-form') as HTMLFormElement | null;
         if (!modal || !display || !form) return;
 
         form.reset();
         display.value = text;
+        this.pendingAddressText = text;
         this.selectedCoords = coords;
         modal.classList.add('modal-overlay_active');
     }
@@ -214,6 +264,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
             console.error('AddressPicker finalize failed', e);
         }
         this.editingAddressId = null;
+        this.pendingAddressText = '';
         this.props.onSelect?.(text, coords);
     }
 
@@ -251,18 +302,25 @@ export class AddressPicker extends Component<AddressPickerProps> {
         container.classList.add('address-modal__suggestions_active');
         container.innerHTML = list.map((addr) => `<div class="modal-suggestion-item">${addr}</div>`).join('');
 
-        container.onclick = async (e: MouseEvent) => {
-            const item = (e.target as HTMLElement).closest<HTMLElement>('.modal-suggestion-item');
-            if (!item) return;
-            const addr = item.innerText;
-            modalInput.value = addr;
-            container.classList.remove('address-modal__suggestions_active');
-
-            const coords = await yandexMaps.geocode(addr);
-            if (coords) {
-                this.map?.setCenter(coords, 16);
-                this.selectedCoords = coords;
-            }
-        };
+        if (!container.dataset.tapBound) {
+            container.dataset.tapBound = '1';
+            const pickHandler = (e: Event) => {
+                const item = (e.target as HTMLElement).closest<HTMLElement>('.modal-suggestion-item');
+                if (!item) return;
+                e.preventDefault();
+                const addr = item.innerText;
+                modalInput.value = addr;
+                container.classList.remove('address-modal__suggestions_active');
+                void (async () => {
+                    const coords = await yandexMaps.geocode(addr);
+                    if (coords) {
+                        this.map?.setCenter(coords, 16);
+                        this.selectedCoords = coords;
+                    }
+                })();
+            };
+            container.addEventListener('pointerdown', pickHandler);
+            container.addEventListener('click', pickHandler);
+        }
     }
 }

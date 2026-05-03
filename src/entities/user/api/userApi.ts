@@ -25,8 +25,8 @@ export const userApi = {
         return (await res.json()) as User;
     },
 
-    updateProfile(patch: { name: string; email: string }): Promise<User> {
-        return httpClient.patchJson<User>('/profile', patch);
+    async updateProfile(patch: { name: string; email: string }): Promise<void> {
+        await httpClient.patchJson<{ message: string }>('/profile', patch);
     },
 
     uploadAvatar(file: File): Promise<User> {

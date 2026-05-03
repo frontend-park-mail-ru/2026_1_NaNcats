@@ -57,7 +57,7 @@ export const profilePageTemplate = `
             <div class="profile-card profile-card_main">
                 <div class="section-header">
                     <h2 class="section-title">Адреса доставки</h2>
-                    <div class="orange-dot orange-dot_large js-add-address"></div>
+                    <button type="button" class="orange-dot orange-dot_large js-add-address" aria-label="Добавить адрес"></button>
                 </div>
                 <div class="js-address-list-slot"></div>
             </div>
@@ -65,7 +65,7 @@ export const profilePageTemplate = `
             <div class="profile-card profile-card_main">
                 <div class="section-header">
                     <h2 class="section-title">Карты и оплата</h2>
-                    <div class="orange-dot orange-dot_large js-add-card"></div>
+                    <button type="button" class="orange-dot orange-dot_large js-add-card" aria-label="Привязать карту"></button>
                 </div>
                 <div class="js-card-list-slot"></div>
             </div>

@@ -19,6 +19,22 @@ body, html {
   flex-direction: column;
 }
 
+/* На мобилке отдаём скролл самому документу — иначе страницы где
+   нет внутреннего scroll-контейнера (профиль, login, register и т.п.)
+   обрезаются по высоте окна и не листаются. */
+@media (max-width: 900px) {
+  body, html {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+
+  .page-wrapper {
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
 .secondary-link {
   color: #D78306;
   text-decoration: underline;

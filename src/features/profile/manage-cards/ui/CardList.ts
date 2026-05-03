@@ -23,10 +23,15 @@ export class CardList extends Component<CardListProps> {
 
         this.on(list, 'click', (e) => {
             const target = e.target as HTMLElement;
-            const id = target.getAttribute('data-id');
-            if (!id) return;
-            if (target.classList.contains('delete-card-btn')) void this.handleDelete(id);
-            else if (target.classList.contains('set-default-card-btn')) void setDefaultCard(id);
+            const deleteBtn = target.closest('.js-delete-card') as HTMLElement | null;
+            if (deleteBtn?.dataset.id) {
+                void this.handleDelete(deleteBtn.dataset.id);
+                return;
+            }
+            const cardEl = target.closest('.payment-card') as HTMLElement | null;
+            if (!cardEl?.dataset.id) return;
+            if (cardEl.classList.contains('payment-card_active')) return;
+            void setDefaultCard(cardEl.dataset.id);
         });
     }
 
@@ -35,15 +40,70 @@ export class CardList extends Component<CardListProps> {
             list.innerHTML = '<div class="empty-text">Нет привязанных карт</div>';
             return;
         }
-        list.innerHTML = cards.map((c) => `
-            <div class="card-row">
-                <span class="card-row__label">**** ${c.last4}${c.is_default ? ' (по умолчанию)' : ''}</span>
-                <div class="card-row__actions">
-                    ${c.is_default ? '' : `<button class="button button_link set-default-card-btn" data-id="${c.id}">Сделать основной</button>`}
-                    <button class="button button_link delete-card-btn" data-id="${c.id}">Отвязать</button>
-                </div>
-            </div>
-        `).join('');
+
+        const onlyOne = cards.length === 1;
+
+        const issuerThemes: Record<string, string> = {
+            sber:        'payment-card_sber',
+            sberbank:    'payment-card_sber',
+            tinkoff:     'payment-card_tinkoff',
+            'т-банк':    'payment-card_tinkoff',
+            'tbank':     'payment-card_tinkoff',
+            alfa:        'payment-card_alfa',
+            'альфа':     'payment-card_alfa',
+            vtb:         'payment-card_vtb',
+            'втб':       'payment-card_vtb',
+            yandex:      'payment-card_yandex',
+            'яндекс':    'payment-card_yandex',
+            gazprombank: 'payment-card_gazprom',
+            'газпром':   'payment-card_gazprom',
+            raiffeisen:  'payment-card_raiffeisen',
+            'райффайзен':'payment-card_raiffeisen',
+            ozon:        'payment-card_ozon',
+        };
+
+        const cardTypeLabel = (type?: string): { label: string; cls: string } => {
+            const t = (type ?? '').toLowerCase();
+            if (t.includes('visa')) return { label: 'VISA', cls: 'payment-card__system_visa' };
+            if (t.includes('master')) return { label: 'Mastercard', cls: 'payment-card__system_mc' };
+            if (t.includes('mir') || t.includes('мир')) return { label: 'МИР', cls: 'payment-card__system_mir' };
+            if (t.includes('maestro')) return { label: 'Maestro', cls: 'payment-card__system_maestro' };
+            if (t.includes('unionpay')) return { label: 'UnionPay', cls: 'payment-card__system_unionpay' };
+            return { label: t.toUpperCase() || 'CARD', cls: '' };
+        };
+
+        const themeFor = (issuer?: string): string => {
+            const key = (issuer ?? '').toLowerCase().trim();
+            for (const [needle, cls] of Object.entries(issuerThemes)) {
+                if (key.includes(needle)) return cls;
+            }
+            return '';
+        };
+
+        list.innerHTML = cards
+            .map((c) => {
+                const active = onlyOne || c.is_default;
+                const brand = (c.issuer_name || 'Карта');
+                const themeCls = themeFor(c.issuer_name);
+                const sys = cardTypeLabel(c.card_type);
+                return `
+                <div class="payment-card ${themeCls} ${active ? 'payment-card_active' : ''}"
+                     data-id="${c.id}"
+                     role="button"
+                     tabindex="0"
+                     title="${active ? 'Активная карта' : 'Сделать активной'}">
+                    <div class="payment-card__top">
+                        <div class="payment-card__chip"></div>
+                        <button type="button" class="payment-card__remove js-delete-card" data-id="${c.id}" aria-label="Отвязать карту">×</button>
+                    </div>
+                    <div class="payment-card__brand">${brand}</div>
+                    <div class="payment-card__bottom">
+                        <span class="payment-card__number">•• ${c.last4}</span>
+                        <span class="payment-card__system ${sys.cls}">${sys.label}</span>
+                    </div>
+                </div>`;
+            })
+            .join('');
     }
 
     private async handleDelete(id: string): Promise<void> {

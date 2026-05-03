@@ -4,10 +4,15 @@ declare namespace ymaps {
     function ready(callback: () => void): void;
     function geocode(request: string | [number, number]): Promise<YandexGeocodeResult>;
     class Map {
-        constructor(element: HTMLElement, state: { center: [number, number]; zoom: number; controls: string[] });
+        constructor(
+            element: HTMLElement,
+            state: { center: [number, number]; zoom: number; controls: string[]; behaviors?: string[] },
+            options?: { suppressMapOpenBlock?: boolean; yandexMapDisablePoiInteractivity?: boolean },
+        );
         events: { add(eventName: string, callback: () => void): void };
         getCenter(): [number, number];
         setCenter(center: [number, number], zoom: number): void;
+        container: { fitToViewport(): void };
         destroy(): void;
     }
 }
@@ -30,6 +35,7 @@ export interface MapInstance {
     getCenter(): [number, number];
     destroy(): void;
     onActionEnd(cb: (center: [number, number]) => void): void;
+    fitToViewport(): void;
 }
 
 export const yandexMaps = {
@@ -38,12 +44,22 @@ export const yandexMaps = {
     },
 
     createMap(container: HTMLElement, center: [number, number], zoom = 16): MapInstance {
-        const m = new ymaps.Map(container, { center, zoom, controls: [] });
+        const m = new ymaps.Map(
+            container,
+            {
+                center,
+                zoom,
+                controls: [],
+                behaviors: ['drag', 'multiTouch', 'dblClickZoom', 'rightMouseButtonMagnifier'],
+            },
+            { suppressMapOpenBlock: true },
+        );
         return {
             setCenter: (c, z) => m.setCenter(c, z),
             getCenter: () => m.getCenter(),
             destroy: () => m.destroy(),
             onActionEnd: (cb) => m.events.add('actionend', () => cb(m.getCenter())),
+            fitToViewport: () => m.container.fitToViewport(),
         };
     },
 

@@ -20,9 +20,13 @@ class UserStore extends Store<UserState> {
     }
 
     async update(patch: { name: string; email: string }): Promise<User> {
-        const updated = await userApi.updateProfile(patch);
+        await userApi.updateProfile(patch);
         const existing = this.getState().user;
-        const merged: User = existing ? { ...existing, ...updated } : updated;
+        if (!existing) {
+            await this.loadCurrent();
+            return this.getState().user as User;
+        }
+        const merged: User = { ...existing, ...patch };
         this.setState({ user: merged });
         return merged;
     }
