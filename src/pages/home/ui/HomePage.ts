@@ -16,11 +16,14 @@ interface HomePageProps {
 }
 
 const PAGE_SIZE = 20;
+const TABLET_BREAKPOINT = 1200;
+const MOBILE_BREAKPOINT = 900;
 
 export class HomePage extends Component<HomePageProps> {
     private offset = 0;
     private hasMore = true;
     private isFetching = false;
+    private pageEl: HTMLElement | null = null;
 
     constructor() {
         super(homePageTemplate);
@@ -38,9 +41,15 @@ export class HomePage extends Component<HomePageProps> {
         } catch (e) {
             console.warn('home: loadCurrent failed', e);
         }
+
         const isAuth = userStore.getState().user !== null;
-        const tasks: Promise<unknown>[] = [cartStore.load()];
-        if (isAuth) tasks.push(addressStore.loadSaved());
+
+        const tasks: Promise<unknown>[] = [];
+        if (isAuth) {
+            tasks.push(cartStore.load());
+            tasks.push(addressStore.loadSaved());
+        }
+
         await Promise.all(tasks);
 
         let restaurants: Restaurant[] = [];
@@ -49,10 +58,13 @@ export class HomePage extends Component<HomePageProps> {
         } catch (e) {
             console.warn('home: listBrands failed', e);
         }
+
         return { restaurants };
     }
 
     protected onMount(): void {
+        this.pageEl = this.root?.querySelector('.js-home-page') as HTMLElement | null;
+
         this.offset = this.props.restaurants.length;
         this.hasMore = this.props.restaurants.length === PAGE_SIZE;
 
@@ -87,10 +99,79 @@ export class HomePage extends Component<HomePageProps> {
         if (scrollContainer) {
             this.on(scrollContainer, 'scroll', () => void this.handleScroll(scrollContainer as HTMLElement));
         }
+
+        const openCategoriesBtns = this.root?.querySelectorAll('.js-open-categories') ?? [];
+        const openCartSheetBtn = this.root?.querySelector('.js-open-cart-sheet');
+        const overlay = this.root?.querySelector('.js-mobile-overlay');
+        const closeBtns = this.root?.querySelectorAll('.js-close-panels') ?? [];
+        const categoriesDrawer = this.root?.querySelector('.js-categories-drawer');
+
+        openCategoriesBtns.forEach((btn) => {
+            this.on(btn, 'click', () => this.openCategoriesDrawer());
+        });
+
+        if (openCartSheetBtn) {
+            this.on(openCartSheetBtn, 'click', () => this.openCartSheet());
+        }
+
+        if (overlay) {
+            this.on(overlay, 'click', () => this.closePanels());
+        }
+
+        closeBtns.forEach((btn) => {
+            this.on(btn, 'click', () => this.closePanels());
+        });
+
+        if (categoriesDrawer) {
+            this.on(categoriesDrawer, 'click', (e) => {
+                const item = (e.target as HTMLElement).closest('.category-item');
+                if (item && window.innerWidth <= MOBILE_BREAKPOINT) {
+                    this.closePanels();
+                }
+            });
+        }
+
+        this.on(document, 'keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.closePanels();
+            }
+        });
+
+        this.on(window, 'resize', () => {
+            const width = window.innerWidth;
+
+            if (width > TABLET_BREAKPOINT) {
+                this.closePanels();
+                return;
+            }
+
+            if (width > MOBILE_BREAKPOINT) {
+                this.pageEl?.classList.remove('home-page_drawer-categories');
+            }
+        });
+    }
+
+    private openCategoriesDrawer(): void {
+        if (!this.pageEl) return;
+        this.pageEl.classList.add('home-page_drawer-categories');
+        this.pageEl.classList.remove('home-page_sheet-cart');
+    }
+
+    private openCartSheet(): void {
+        if (!this.pageEl) return;
+        this.pageEl.classList.add('home-page_sheet-cart');
+        this.pageEl.classList.remove('home-page_drawer-categories');
+    }
+
+    private closePanels(): void {
+        if (!this.pageEl) return;
+        this.pageEl.classList.remove('home-page_drawer-categories');
+        this.pageEl.classList.remove('home-page_sheet-cart');
     }
 
     private async handleScroll(container: HTMLElement): Promise<void> {
         if (this.isFetching || !this.hasMore) return;
+
         const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
         if (distanceFromBottom > 200) return;
 
@@ -110,6 +191,7 @@ export class HomePage extends Component<HomePageProps> {
     private appendCards(items: Restaurant[]): void {
         const grid = this.root?.querySelector('.js-res-grid');
         if (!grid) return;
+
         const html = items
             .map(
                 (r) => `
@@ -123,6 +205,7 @@ export class HomePage extends Component<HomePageProps> {
             </div>`,
             )
             .join('');
+
         grid.insertAdjacentHTML('beforeend', html);
     }
 }

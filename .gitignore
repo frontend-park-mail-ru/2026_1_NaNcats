@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 .DS_Store
 
 *.pem
+localhost.crt
+localhost.csr
+localhost.key

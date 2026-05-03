@@ -138,8 +138,8 @@ export class HttpClient {
             headers['X-CSRF-Token'] = token;
         }
 
-        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-            headers['Idempotency-Key'] = opts.idempotencyKey || generateIdempotencyKey();
+        if (method !== 'GET') {
+            headers['Idempotency-Key'] = crypto.randomUUID();
         }
 
         const init: RequestInit = {

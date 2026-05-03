@@ -109,7 +109,7 @@ export class ProfilePage extends Component<ProfilePageProps> {
             userStore,
             (s) => s.user,
             (next) => {
-                if (next && next.avatar_url !== this.props.user.avatar_url) {
+                if (next && next !== this.props.user) {
                     this.update({ user: next, orders: this.props.orders });
                 }
             },

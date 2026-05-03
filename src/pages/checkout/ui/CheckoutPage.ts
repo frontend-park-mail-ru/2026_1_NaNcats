@@ -5,8 +5,8 @@ import { ApiError } from '@shared/api/http';
 import { userStore } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
-import { cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
-import { orderApi, type Order, type OrderItem } from '@entities/order';
+import { cartApi, cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
+import { orderApi } from '@entities/order';
 import { AddressPicker } from '@widgets/address-picker';
 import { OrderStatusModal } from '@widgets/order-status';
 import { checkoutPageTemplate } from './checkout.tmpl.js';
@@ -40,6 +40,7 @@ const buildProps = (
 ): CheckoutPageProps => {
     const cartTotal = itemsTotalRub(items);
     const grand = cartTotal > 0 ? cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB : 0;
+
     return {
         items,
         restaurantId,
@@ -73,24 +74,29 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         } catch (e) {
             console.warn('checkout: loadCurrent failed', e);
         }
+
         if (!userStore.getState().user) {
             window.router.go(ROUTES.login);
             return Promise.reject(new Error('not authenticated'));
         }
+
         await Promise.allSettled([
             addressStore.loadSaved(),
             cardStore.load(),
             cartStore.load(),
         ]);
+
         const cart = cartStore.getState();
         if (!cart.items.length) {
             window.router.go(ROUTES.home);
             return Promise.reject(new Error('cart empty'));
         }
+
         const addresses = addressStore.getState().saved;
         const cards = cardStore.getState().cards;
         const selectedAddress = addresses[0] ?? null;
         const selectedCard = cards.find((c) => c.is_default) ?? null;
+
         return buildProps(cart.items, cart.restaurantId, addresses, cards, selectedAddress, selectedCard);
     }
 
@@ -125,6 +131,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
     private bindModals(): void {
         const r = this.root;
         if (!r) return;
+
         const cartModal = r.querySelector('.js-cart-modal');
         const addressModal = r.querySelector('.js-address-modal');
         const paymentModal = r.querySelector('.js-payment-modal');
@@ -157,10 +164,12 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
     private bindSelections(): void {
         const r = this.root;
         if (!r) return;
+
         r.querySelectorAll('.js-select-address').forEach((el) => {
             this.on(el, 'click', () => {
                 const id = (el as HTMLElement).dataset.id;
                 const next = this.props.addresses.find((a) => a.id === id) ?? null;
+
                 this.update(
                     buildProps(
                         this.props.items,
@@ -178,6 +187,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
             this.on(el, 'click', () => {
                 const id = (el as HTMLElement).dataset.id;
                 const next = id ? this.props.cards.find((c) => c.id === id) ?? null : null;
+
                 this.update(
                     buildProps(
                         this.props.items,
@@ -206,13 +216,21 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
             if (errEl) errEl.innerText = 'Пожалуйста, выберите адрес доставки';
             return;
         }
+
         if (!this.props.restaurantId) {
             if (errEl) errEl.innerText = 'Ошибка корзины. Попробуйте перезагрузить страницу.';
             return;
         }
 
-        const cartTotal = itemsTotalRub(this.props.items);
+        const assignedItems = await this.ensureAssignedItems(errEl);
+        if (!assignedItems) {
+            return;
+        }
+
+        const currentCart = cartStore.getState();
+        const cartTotal = itemsTotalRub(assignedItems);
         if (cartTotal <= 0) return;
+
         const grand = cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB;
 
         btn.disabled = true;
@@ -223,16 +241,15 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         try {
             const result = await orderApi.create({
                 address_id: this.props.selectedAddress.id,
-                branch_id: this.props.restaurantId,
-                brand_id: this.props.restaurantId,
-                pay_for_all: true,
+                branch_id: currentCart.restaurantId,
                 payment_method_id: this.props.selectedCard?.id ?? '',
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 total_cost: toMicros(grand),
-            }, idempotencyKey);
-            
+            });
+
             await cartStore.clear();
+
             if (result.confirmation_url) {
                 window.location.href = result.confirmation_url;
             } else {
@@ -246,28 +263,58 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         }
     }
 
-    private buildPlaceholderOrder(orderId: string, grandRub: number, paymentUrl?: string): Order {
-        const items: OrderItem[] = this.props.items.map((i) => ({
-            dish_id: i.dish_id,
-            name: i.name,
-            quantity: i.quantity,
-            price: i.price,
-            image_url: i.image_url,
-        }));
-        const now = new Date();
-        const dd = String(now.getDate()).padStart(2, '0');
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const yyyy = now.getFullYear();
-        return {
-            order_id: orderId,
-            status: paymentUrl ? 'payment_ready' : 'created',
-            total_cost: toMicros(grandRub),
-            created_at: `${dd}.${mm}.${yyyy}`,
-            restaurant_id: this.props.restaurantId,
-            items,
-            service_fee: toMicros(SERVICE_FEE_RUB),
-            delivery_cost: toMicros(DELIVERY_FEE_RUB),
-            payment_url: paymentUrl,
-        };
+    private async ensureAssignedItems(errEl: HTMLElement | null): Promise<CartItem[] | null> {
+        const cart = cartStore.getState();
+        const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
+
+        if (!unassignedItems.length) {
+            return cart.items;
+        }
+
+        if (cart.mode === 'solo' && cart.cartId && cart.adminId !== null) {
+            try {
+                await Promise.all(
+                    unassignedItems.map((item) =>
+                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as number),
+                    ),
+                );
+
+                await cartStore.load();
+
+                const freshCart = cartStore.getState();
+                this.update(
+                    buildProps(
+                        freshCart.items,
+                        freshCart.restaurantId,
+                        this.props.addresses,
+                        this.props.cards,
+                        this.props.selectedAddress,
+                        this.props.selectedCard,
+                    ),
+                );
+
+                if (freshCart.items.some((item) => item.owner_user_id == null)) {
+                    if (errEl) {
+                        errEl.innerText = 'В корзине остались позиции без владельца. Проверьте корзину.';
+                    }
+                    return null;
+                }
+
+                return freshCart.items;
+            } catch (e) {
+                console.error('checkout: auto-assign failed', e);
+                if (errEl) {
+                    errEl.innerText = 'Не удалось подготовить корзину к оплате. Попробуйте ещё раз.';
+                }
+                return null;
+            }
+        }
+
+        if (errEl) {
+            errEl.innerText =
+                'В корзине есть позиции без плательщика. Назначьте владельца товарам перед оплатой.';
+        }
+
+        return null;
     }
 }

@@ -2,9 +2,20 @@ export const cartWidgetTemplate = `
 <div class="cart-wrapper">
     <div class="cart-header-top">
         <span class="cart-title">Корзина</span>
-        {{? it.items.length > 0 }}
-            <span class="js-clear-slot"></span>
-        {{?}}
+
+        <div class="cart-header-actions">
+            {{? it.items.length > 0 }}
+                <span class="js-clear-slot"></span>
+            {{?}}
+
+            <button
+                type="button"
+                class="cart-close-btn js-close-panels"
+                aria-label="Закрыть корзину"
+            >
+                ×
+            </button>
+        </div>
     </div>
 
     {{? it.items.length === 0 }}

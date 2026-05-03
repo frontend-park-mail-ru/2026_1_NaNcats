@@ -4,6 +4,7 @@ export interface CartItem {
     price: number;
     quantity: number;
     image_url: string;
+    owner_user_id?: number | null;
 }
 
 export interface DishToAdd {
@@ -13,12 +14,25 @@ export interface DishToAdd {
     image_url: string;
 }
 
-export type CartStatus = 'idle' | 'loading' | 'syncing' | 'error';
+export interface CartMember {
+    user_id: number;
+    joined_at: string;
+}
 
-export interface CartState {
-    id: string;
+export interface CartSnapshot {
+    cartId: string | null;
     items: CartItem[];
     restaurantId: number;
+    mode: string;
+    roomStatus: string;
+    adminId: number | null;
+    members: CartMember[];
+    totalCost: number;
+}
+
+export type CartStatus = 'idle' | 'loading' | 'syncing' | 'error';
+
+export interface CartState extends CartSnapshot {
     status: CartStatus;
     error?: string;
 }
