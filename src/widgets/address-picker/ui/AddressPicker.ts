@@ -23,6 +23,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
     private debounceTimer: ReturnType<typeof setTimeout> | null = null;
     private editingAddressId: string | null = null;
     private pendingAddressText = '';
+    private suppressNextActionEnd = false;
 
     constructor() {
         super(addressPickerTemplate);
@@ -123,8 +124,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
                     ]);
                     this.renderModalSuggestions(results, modalInput);
                     if (coords) {
-                        this.map?.setCenter(coords, 16);
-                        this.selectedCoords = coords;
+                        this.moveMapProgrammatically(coords);
                     }
                 }, SUGGEST_DEBOUNCE_MS);
             });
@@ -137,8 +137,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
                     if (!query) return;
                     const coords = await yandexMaps.geocode(query);
                     if (coords) {
-                        this.map?.setCenter(coords, 16);
-                        this.selectedCoords = coords;
+                        this.moveMapProgrammatically(coords);
                     }
                 })();
             });
@@ -221,17 +220,29 @@ export class AddressPicker extends Component<AddressPickerProps> {
         if (!container) return;
 
         if (this.map) {
-            this.map.setCenter(this.selectedCoords, 16);
+            this.moveMapProgrammatically(this.selectedCoords);
             this.map.fitToViewport();
         } else {
+            this.suppressNextActionEnd = true;
             this.map = yandexMaps.createMap(container, this.selectedCoords, 16);
             this.map.onActionEnd(async (center) => {
                 this.selectedCoords = center;
+                if (this.suppressNextActionEnd) {
+                    this.suppressNextActionEnd = false;
+                    return;
+                }
                 const address = await yandexMaps.reverseGeocode(center);
                 if (address && modalInput) modalInput.value = address;
             });
             requestAnimationFrame(() => this.map?.fitToViewport());
         }
+    }
+
+    private moveMapProgrammatically(coords: Coordinates): void {
+        this.selectedCoords = coords;
+        if (!this.map) return;
+        this.suppressNextActionEnd = true;
+        this.map.setCenter(coords, 16);
     }
 
     private closeMapModal(): void {
@@ -314,8 +325,7 @@ export class AddressPicker extends Component<AddressPickerProps> {
                 void (async () => {
                     const coords = await yandexMaps.geocode(addr);
                     if (coords) {
-                        this.map?.setCenter(coords, 16);
-                        this.selectedCoords = coords;
+                        this.moveMapProgrammatically(coords);
                     }
                 })();
             };
