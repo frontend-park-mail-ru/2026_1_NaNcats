@@ -1,0 +1,110 @@
+export const profilePageTemplate = `
+<div class="profile-page">
+    <header class="profile-header">
+        <div class="profile-header__container">
+            <a class="profile-header__back router-link" href="/" style="text-decoration: none;">
+                <div class="back-icon-arrow"></div>
+                <span>Назад</span>
+            </a>
+
+            <div class="logo-container">
+                <svg width="76" height="30" viewBox="0 0 92 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 6.25041 14.7383 L 6.66741 11.7649 C 7.04586 9.06656 8.28854 6.56348 10.2092 4.63077 C 11.5525 3.27909 13.2073 2.13454 15.1088 2.26004 C 19.2718 2.53482 24.2532 5.34815 24.7504 7.07684 M 6.25041 14.7383 C 16.0334 23.582 20.7504 20.5456 22.7504 19.5768 M 6.25041 14.7383 L 6.58686 19.1297 C 6.69558 20.5487 6.95546 21.9521 7.36209 23.316 L 8.25041 26.2956 L 9.77341 30.9509 C 10.63 33.5691 11.1292 36.4164 10.0789 38.9631 C 8.37705 43.0896 4.95506 45.5385 2.25049 44.9831 M 73.2931 2.57684 V 7.98829 V 17.332 V 21.6445 V 22.1999 C 73.2931 23.2019 72.7992 24.1394 71.9727 24.706 C 71.4669 25.0527 70.8685 25.2383 70.2552 25.2383 C 69.1065 25.2383 67.4343 25.2383 66.6962 25.2383 C 66.5174 25.2383 66.2894 25.2149 66.0358 25.1767 C 64.2479 24.907 62.7505 23.4526 62.7505 21.6445 C 62.7505 20.457 62.6962 18.957 62.7505 17.332 C 62.7522 17.2811 62.7563 17.2298 62.7626 17.1781 C 63.1157 14.2894 66.7861 13.0255 69.6962 13.0195 C 70.6885 13.0175 73.2931 13.7383 73.2931 15.8945 M 24.7504 32.7643 C 24.2504 32.0456 21.2465 31.2383 20.7504 31.2383 C 15.7504 31.2383 15.7504 37.5768 15.7504 37.5768 L 15.9944 40.0953 C 16.1584 41.7884 16.9958 43.4031 18.3901 44.3774 C 19.5381 45.1797 20.9909 45.078 22.3597 44.7818 L 24.7504 44.2643 M 46.9151 31.3268 C 46.7214 31.8737 46.6463 32.4864 46.6271 33.0318 C 46.5905 34.0703 46.7057 35.1106 46.7057 36.1497 V 37.5768 V 39.1237 V 40.6706 C 46.7057 40.6706 46.6419 41.927 46.799 42.9863 C 46.9313 43.8794 47.7005 44.4131 48.5573 44.6979 L 48.6691 44.7351 C 49.1632 44.8994 49.6805 44.9831 50.2012 44.9831 C 51.8835 44.9831 53.2728 43.7968 54.815 43.1246 C 55.5966 42.7838 56.008 42.8846 56.008 40.6706 M 56.008 40.6706 C 56.008 37.0619 56.008 31.3268 56.008 31.3268 M 56.008 40.6706 L 57.9151 45.2383 M 69.7504 36.0768 C 69.8331 35.981 69.8938 35.8573 69.9368 35.7149 C 70.4492 34.0185 69.8919 31.579 68.1419 31.2999 C 67.871 31.2567 67.5723 31.2383 67.2505 31.2383 H 65.2505 H 63.0595 C 62.5637 31.2383 62.1104 31.5184 61.8887 31.9619 C 61.7978 32.1437 61.7505 32.3441 61.7505 32.5473 V 33.2383 C 61.7505 33.8086 61.9869 34.7768 62.4321 35.9949 C 62.8731 37.2018 63.1941 38.4546 63.2505 39.7383 V 42.7383 V 45.2383 M 80.231 2.57684 C 80.231 3.57684 80.231 15.0719 80.231 17.5768 C 80.231 20.5456 80.231 25.2383 80.231 28.9206 C 80.231 32.5675 78.7504 34.4779 77.7504 36.3581 C 76.9851 37.7971 76.5126 38.7205 76.333 39.9712 C 76.2148 40.7941 76.4763 41.6149 76.9041 42.3277 C 77.4512 43.2397 78.2983 43.9331 79.3003 44.2895 L 80.6634 44.7743 C 81.0543 44.9133 81.4535 45.0289 81.864 45.0889 C 84.2971 45.4442 87.4094 45.1613 89.2505 43.5456 M 75.2505 28.9206 H 82.0915 H 87.6729 M 32.3945 24.8581 C 30.9866 23.9334 29.9759 22.5151 29.5616 20.8824 L 29.4761 20.5456 C 29.0045 19.1517 29.0329 17.6372 29.5563 16.2619 L 29.8409 15.5143 L 29.8638 15.4544 C 30.5378 13.6835 32.0108 12.3366 33.8347 11.8233 L 33.9831 11.7815 C 35.309 11.4083 36.726 11.5385 37.9617 12.1472 C 39.5122 12.9109 40.6214 14.3499 40.9653 16.0437 L 41.0493 16.4576 C 41.1161 16.7866 41.1571 17.1203 41.1718 17.4556 L 41.2504 19.2383 L 41.2358 19.6371 C 41.1804 21.1438 40.5513 22.5725 39.4772 23.6306 C 39.1343 23.9685 38.7513 24.2632 38.3368 24.5082 L 38.1134 24.6402 C 36.366 25.6731 34.2155 25.755 32.3945 24.8581 Z M 48.8945 24.8581 C 47.4866 23.9334 46.4759 22.5151 46.0616 20.8824 L 45.9761 20.5456 C 45.5045 19.1517 45.5329 17.6372 46.0563 16.2619 L 46.3409 15.5143 L 46.3637 15.4544 C 47.0378 13.6835 48.5108 12.3366 50.3347 11.8233 L 50.4831 11.7815 C 51.809 11.4083 53.226 11.5385 54.4617 12.1472 C 56.0122 12.9109 57.1214 14.3499 57.4653 16.0437 L 57.5493 16.4576 C 57.6161 16.7866 57.6571 17.1203 57.6718 17.4556 L 57.7504 19.2383 L 57.7358 19.6371 C 57.6804 21.1438 57.0513 22.5725 55.9772 23.6306 C 55.6343 23.9685 55.2513 24.2632 54.8368 24.5082 L 54.6134 24.6402 C 52.866 25.6731 50.7155 25.755 48.8945 24.8581 Z M 32.3945 44.2643 C 30.9866 43.3397 29.9759 41.9213 29.5616 40.2887 L 29.4761 39.9518 C 29.0045 38.558 29.0329 37.0434 29.5563 35.6682 L 29.8409 34.9206 L 29.8638 34.8606 C 30.5378 33.0898 32.0108 31.7429 33.8347 31.2295 L 33.9831 31.1877 C 35.309 30.8145 36.726 30.9448 37.9617 31.5534 C 39.5122 32.3172 40.6214 33.7561 40.9653 35.45 L 41.0493 35.8639 C 41.1161 36.1929 41.1571 36.5265 41.1718 36.8619 L 41.2504 38.6445 L 41.2358 39.0433 C 41.1804 40.5501 40.5514 41.9787 39.4772 43.0369 C 39.1343 43.3748 38.7513 43.6695 38.3368 43.9144 L 38.1134 44.0465 C 36.366 45.0794 34.2155 45.1613 32.3945 44.2643 Z" stroke="#FFC1C1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+
+            <div class="profile-header__right">
+                <img class="logo-avatar" src="{{!it.user.avatar_url}}" alt="mini-avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+            </div>
+        </div>
+    </header>
+
+    <div class="profile-content">
+        <aside class="profile-sidebar">
+
+            <div class="profile-user-header">
+                <div class="profile-avatar__wrapper">
+                    <img id="profile-avatar-img" class="profile-avatar__img" src="{{!it.user.avatar_url}}" alt="avatar" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'">
+                    <div class="profile-avatar__overlay js-upload-avatar">📷</div>
+                    {{? it.user.avatar_url && it.user.avatar_url !== 'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp' }}
+                        <div class="profile-avatar__delete-hover js-delete-avatar">Удалить</div>
+                    {{?}}
+                    <input type="file" class="js-avatar-input" accept="image/png, image/jpeg, image/webp" hidden>
+                </div>
+                <div class="profile-name-card">
+                    <div class="profile-user-info">
+                        <span class="profile-input profile-input_name">{{!it.user.name}}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-card profile-card_details">
+                <div class="js-edit-form-slot"></div>
+            </div>
+
+            <div class="profile-card profile-card_row">
+                <div class="card-side-label">
+                    <span>Стрик</span>
+                    <div class="orange-dot orange-dot_small"></div>
+                </div>
+                <div class="card-side-content card-value-text">{{!it.user.streak_weeks || 0}} нед. — так держать! 🔥</div>
+            </div>
+
+            <div class="profile-card profile-card_row">
+                <div class="card-side-label">Пять букв</div>
+                <div class="card-side-content card-subtext js-wordle-info">
+                    Вы ещё не отгадали сегодняшнее слово в игре «5 букв»,
+                    <span class="link-orange js-open-wordle">попробуйте</span>!
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="profile-main">
+            <div class="profile-card profile-card_main">
+                <div class="section-header">
+                    <h2 class="section-title">Адреса доставки</h2>
+                    <button type="button" class="orange-dot orange-dot_large js-add-address" aria-label="Добавить адрес"></button>
+                </div>
+                <div class="js-address-list-slot"></div>
+            </div>
+
+            <div class="profile-card profile-card_main">
+                <div class="section-header">
+                    <h2 class="section-title">Карты и оплата</h2>
+                    <button type="button" class="orange-dot orange-dot_large js-add-card" aria-label="Привязать карту"></button>
+                </div>
+                <div class="js-card-list-slot"></div>
+            </div>
+
+            <div class="profile-card profile-card_main profile-card_orders">
+                <h2 class="section-title">История заказов</h2>
+                <div class="orders-list">
+                    {{? it.orders && it.orders.length > 0 }}
+                        {{~it.orders :order:idx}}
+                        <div class="order-row js-order-row" data-order-index="{{!idx}}" data-order-id="{{!order.order_id}}" role="button" tabindex="0">
+                            <img class="order-row__img" src="{{!order.restaurant_image_url || ''}}" alt="order" onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
+                            <div class="order-row__date">{{!order.created_at || ''}}</div>
+                            <div class="order-row__info">
+                                <div class="order-row__name">{{!order.restaurant_name || 'Заказ'}}</div>
+                                <div class="order-row__status js-order-status order-row__status_{{!order._badge.className}}">
+                                    <span class="order-row__status-icon">{{!order._badge.icon}}</span>
+                                    <span class="order-row__status-label">{{!order._badge.label}}</span>
+                                </div>
+                            </div>
+                            <div class="order-row__price">{{!((order.total_cost || 0) / 1000000).toFixed(2)}}₽</div>
+                        </div>
+                        {{~}}
+                    {{??}}
+                        <div class="empty-text">История заказов пуста</div>
+                    {{?}}
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="js-picker-slot"></div>
+    <div class="js-wordle-slot"></div>
+    <div class="js-order-status-slot"></div>
+</div>
+`;

@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
     mode: isProduction ? 'production' : 'development',
     
     entry: {
-      app: './src/app.ts',
+      app: './src/app/index.ts',
       sw: './src/sw.ts' 
     },
 
@@ -33,7 +33,15 @@ module.exports = (env, argv) => {
     },
 
     resolve: {
-      extensions: ['.ts', '.js', '.json'], 
+      extensions: ['.ts', '.js', '.json'],
+      alias: {
+        '@app': path.resolve(__dirname, 'src/app'),
+        '@pages': path.resolve(__dirname, 'src/pages'),
+        '@widgets': path.resolve(__dirname, 'src/widgets'),
+        '@features': path.resolve(__dirname, 'src/features'),
+        '@entities': path.resolve(__dirname, 'src/entities'),
+        '@shared': path.resolve(__dirname, 'src/shared'),
+      },
     },
 
     module: {
@@ -91,6 +99,11 @@ module.exports = (env, argv) => {
           target: 'http://localhost:8080',
           changeOrigin: true,
           secure: false,
+          ws: true,
+          onError(err, req, res) {
+            if (err && (err.code === 'EPIPE' || err.code === 'ECONNRESET')) return;
+            console.warn('[proxy] error:', err && err.message);
+          },
         },
       ],
     },

@@ -1,23 +1,22 @@
 {
+    "tags": {
+        "allowUnknownTags": true
+    },
     "source": {
         "include": ["src"],
-        "includePattern": ".+\\.(j|t)s$",
+        "includePattern": "\\.(jsx|js|ts|tsx)$",
         "excludePattern": "(^|\\/|\\\\)_"
     },
-    "plugins": [
-        "node_modules/jsdoc-babel"
-    ],
-    "babel": {
-        "extensions": ["ts", "js"],
-        "presets": ["@babel/preset-env", "@babel/preset-typescript"]
-    },
-    "templates": {
-        "cleverLinks": false,
-        "monospaceLinks": false
-    },
+    "plugins": ["node_modules/better-docs/typescript", "jsdoc-plugins/dropDuplicateClassDoclets"],
     "opts": {
         "destination": "./out/",
         "recurse": true,
-        "readme": "README.md"
+        "readme": "README.md",
+        "template": "node_modules/better-docs"
+    },
+    "templates": {
+        "better-docs": {
+            "name": "2026_1_NaNcats"
+        }
     }
 }
