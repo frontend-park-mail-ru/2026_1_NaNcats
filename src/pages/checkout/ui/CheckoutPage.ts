@@ -12,7 +12,7 @@ import { AddressPicker } from '@widgets/address-picker';
 import { OrderStatusModal } from '@widgets/order-status';
 import { checkoutPageTemplate } from './checkout.tmpl.js';
 
-const DELIVERY_FEE_RUB = 699;
+const DELIVERY_FEE_RUB = 360;
 const SERVICE_FEE_RUB = 99;
 
 interface CheckoutPageProps {
