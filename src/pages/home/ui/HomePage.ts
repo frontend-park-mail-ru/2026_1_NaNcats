@@ -189,58 +189,76 @@ private setupMobilePanels(): void {
     }
 
     private async applySearch(query: string): Promise<void> {
-        this.searchQuery = query;
-        const label = this.root?.querySelector('.js-search-label') as HTMLElement | null;
-        const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
-
-        this.offset = 0;
-        this.hasMore = false;
-
-        if (!query) {
-            if (label) label.style.display = 'none';
-            if (title) title.textContent = this.activeCategory
-                ? (this.props.categories.find((c) => c.id === this.activeCategory)?.name ?? this.activeCategory)
-                : 'Рестораны';
-            const fresh = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
-            this.offset = fresh.length;
-            this.hasMore = fresh.length === PAGE_SIZE;
-            this.replaceGrid(fresh);
-            return;
-        }
-
-        if (label) {
-            label.style.display = 'block';
-            label.textContent = `Найдено по запросу «${query}»`;
-        }
-        if (title) title.textContent = 'Поиск';
-
-        const results = await restaurantApi.search(query).catch(() => [] as Restaurant[]);
-        this.replaceGrid(results);
+        this.searchQuery = query.trim();
+        await this.refreshGrid();
     }
 
     private async selectCategory(id: string): Promise<void> {
+        // Повторный клик по активной категории сбрасывает фильтр.
         if (id === '' || this.activeCategory === id) {
             this.activeCategory = '';
-            this.updateActiveCategoryUI('');
-            const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
-            if (title) title.textContent = 'Рестораны';
-            const fresh = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
-            this.offset = fresh.length;
-            this.hasMore = fresh.length === PAGE_SIZE;
-            this.replaceGrid(fresh);
-            return;
+        } else {
+            this.activeCategory = id;
+        }
+        this.updateActiveCategoryUI(this.activeCategory);
+        await this.refreshGrid();
+    }
+
+    private async refreshGrid(): Promise<void> {
+        const q = this.searchQuery;
+        const cat = this.activeCategory;
+
+        this.offset = 0;
+        // Пагинация по скроллу включается только в "чистом" режиме (без фильтров).
+        // Иначе offset смешается с клиентским filter и поведение поедет.
+        this.hasMore = false;
+
+        const label = this.root?.querySelector('.js-search-label') as HTMLElement | null;
+        const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
+
+        if (label) {
+            if (q) {
+                label.style.display = 'block';
+                label.textContent = `Найдено по запросу «${q}»`;
+            } else {
+                label.style.display = 'none';
+            }
         }
 
-        this.activeCategory = id;
-        this.updateActiveCategoryUI(id);
+        if (title) {
+            if (cat) {
+                title.textContent = this.props.categories.find((c) => c.id === cat)?.name ?? cat;
+            } else if (q) {
+                title.textContent = 'Поиск';
+            } else {
+                title.textContent = 'Рестораны';
+            }
+        }
 
-        const catName = this.props.categories.find((c) => c.id === id)?.name ?? id;
-        const title = this.root?.querySelector('.js-page-title') as HTMLElement | null;
-        if (title) title.textContent = catName;
+        let results: Restaurant[] = [];
 
-        const results = await restaurantApi.listBrandsByCategory(id, PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
-        this.offset = results.length;
-        this.hasMore = results.length === PAGE_SIZE;
+        if (!q && !cat) {
+            results = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
+            this.offset = results.length;
+            this.hasMore = results.length === PAGE_SIZE;
+        } else if (q && !cat) {
+            results = await restaurantApi.search(q, PAGE_SIZE).catch(() => [] as Restaurant[]);
+        } else if (!q && cat) {
+            results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch(() => [] as Restaurant[]);
+        } else {
+            // Бэк не умеет search+category одним запросом — берём по категории
+            // с большим лимитом и фильтруем клиентом по подстроке в названии/описании.
+            const COMBINED_LIMIT = 100;
+            const inCat = await restaurantApi.listBrandsByCategory(cat, COMBINED_LIMIT, 0)
+                .catch(() => [] as Restaurant[]);
+            const needle = q.toLowerCase();
+            results = inCat.filter((r) => {
+                const name = (r.name ?? '').toLowerCase();
+                const desc = (r.description ?? '').toLowerCase();
+                return name.includes(needle) || desc.includes(needle);
+            });
+        }
+
         this.replaceGrid(results);
     }
 
