@@ -5,7 +5,14 @@ import { Popup } from '@shared/ui/popup';
 import { userStore, type User } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cardStore } from '@entities/card';
-import { orderApi, connectOrderTracker, statusBadge, type Order, type OrderTracker, type StatusBadge } from '@entities/order';
+import {
+    orderApi,
+    connectOrderTracker,
+    statusBadge,
+    type Order,
+    type OrderTracker,
+    type StatusBadge,
+} from '@entities/order';
 import { uploadAvatar, deleteAvatar } from '@features/profile/upload-avatar';
 import { EditProfileForm } from '@features/profile/edit-profile';
 import { AddressList } from '@features/profile/manage-addresses';
@@ -26,8 +33,7 @@ interface ProfilePageProps {
 
 const TERMINAL_STATUSES = new Set(['finished', 'cancelled', 'failed']);
 
-const decorate = (orders: Order[]): OrderRowView[] =>
-    orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
+const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
 export class ProfilePage extends Component<ProfilePageProps> {
     private picker: AddressPicker | null = null;
@@ -58,11 +64,7 @@ export class ProfilePage extends Component<ProfilePageProps> {
             window.router.go(ROUTES.login);
             return Promise.reject(new Error('not authenticated'));
         }
-        const [, , ordersRes] = await Promise.allSettled([
-            addressStore.loadSaved(),
-            cardStore.load(),
-            orderApi.list(),
-        ]);
+        const [, , ordersRes] = await Promise.allSettled([addressStore.loadSaved(), cardStore.load(), orderApi.list()]);
         const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
         return { user, orders: decorate(orders) };
     }

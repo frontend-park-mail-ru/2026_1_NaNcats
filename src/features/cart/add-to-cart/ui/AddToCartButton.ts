@@ -35,9 +35,7 @@ export class AddToCartButton extends Component<AddToCartButtonProps> {
         const confirmer: CartConfirmer =
             this.props.confirm ??
             (() =>
-                Popup.confirm(
-                    'В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?',
-                ));
+                Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить корзину и добавить это блюдо?'));
 
         try {
             await addToCart(this.props.dish, this.props.restaurantId, confirmer);

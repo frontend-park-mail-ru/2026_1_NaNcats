@@ -66,11 +66,7 @@ export abstract class Component<Props extends object = object> {
         this.domListeners.push({ target, type, fn });
     }
 
-    protected useStore<S extends object, T>(
-        store: Store<S>,
-        selector: (s: S) => T,
-        listener: Listener<T>,
-    ): void {
+    protected useStore<S extends object, T>(store: Store<S>, selector: (s: S) => T, listener: Listener<T>): void {
         const unsub = store.select(selector, listener);
         this.subscriptions.push(unsub);
     }
@@ -80,11 +76,7 @@ export abstract class Component<Props extends object = object> {
         this.subscriptions.push(unsub);
     }
 
-    protected mountChild<P extends object>(
-        slotName: string,
-        child: Component<P>,
-        props: P,
-    ): void {
+    protected mountChild<P extends object>(slotName: string, child: Component<P>, props: P): void {
         const el = this.resolvedSlots.get(slotName);
         if (!el) {
             throw new Error(

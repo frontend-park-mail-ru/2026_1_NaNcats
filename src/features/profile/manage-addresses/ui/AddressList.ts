@@ -18,7 +18,11 @@ export class AddressList extends Component<AddressListProps> {
         const list = this.root?.querySelector('#profile-address-list') as HTMLElement | null;
         if (!list) return;
 
-        this.useStore(addressStore, (s) => s.saved, (addresses) => this.render(list, addresses));
+        this.useStore(
+            addressStore,
+            (s) => s.saved,
+            (addresses) => this.render(list, addresses),
+        );
         this.render(list, addressStore.getState().saved);
 
         this.on(list, 'click', (e) => {
@@ -36,12 +40,13 @@ export class AddressList extends Component<AddressListProps> {
             list.innerHTML = '<div class="empty-text">У вас пока нет сохраненных адресов</div>';
             return;
         }
-        list.innerHTML = addresses.map((addr) => {
-            const text = addr.location.address_text;
-            const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
-            const ent = addr.entrance ? `, под. ${addr.entrance}` : '';
-            const fl = addr.floor ? `, эт. ${addr.floor}` : '';
-            return `
+        list.innerHTML = addresses
+            .map((addr) => {
+                const text = addr.location.address_text;
+                const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
+                const ent = addr.entrance ? `, под. ${addr.entrance}` : '';
+                const fl = addr.floor ? `, эт. ${addr.floor}` : '';
+                return `
             <div class="address-row" data-id="${addr.id}">
                 <span class="address-row__text">${text}${ap}${ent}${fl}</span>
                 <div class="address-row__actions">
@@ -49,7 +54,8 @@ export class AddressList extends Component<AddressListProps> {
                     <div class="delete-icon-orange delete-addr-btn" data-id="${addr.id}"></div>
                 </div>
             </div>`;
-        }).join('');
+            })
+            .join('');
     }
 
     private async handleDelete(id: string): Promise<void> {

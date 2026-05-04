@@ -84,7 +84,7 @@ export class HttpClient {
         method: HttpMethod,
         path: string,
         body?: unknown,
-        opts: RequestOptions = {}
+        opts: RequestOptions = {},
     ): Promise<T> {
         const res = await this.request(method, path, body, opts);
         if (!res.ok) throw await this.toError(method, path, res);

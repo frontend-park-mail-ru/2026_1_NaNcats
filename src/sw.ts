@@ -6,11 +6,8 @@ const CACHE_NAME = 'foodcourt-cache-v1';
 sw.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll([
-                '/',
-                '/index.html'
-            ]);
-        })
+            return cache.addAll(['/', '/index.html']);
+        }),
     );
     sw.skipWaiting();
 });
@@ -23,9 +20,9 @@ sw.addEventListener('activate', (event) => {
                     if (name !== CACHE_NAME) {
                         return caches.delete(name);
                     }
-                })
+                }),
             );
-        })
+        }),
     );
     sw.clients.claim();
 });
@@ -43,7 +40,7 @@ sw.addEventListener('fetch', (event) => {
                     caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
                     return response;
                 })
-                .catch(() => caches.match(event.request) as Promise<Response>)
+                .catch(() => caches.match(event.request) as Promise<Response>),
         );
         return;
     }
@@ -71,6 +68,6 @@ sw.addEventListener('fetch', (event) => {
                     }
                     return new Response('Offline', { status: 503 });
                 });
-        })
+        }),
     );
 });

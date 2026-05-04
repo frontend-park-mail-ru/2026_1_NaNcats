@@ -34,8 +34,28 @@ const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
     { name: 'Салаты', keywords: ['салат', 'цезарь'] },
     { name: 'Супы', keywords: ['суп', 'борщ', 'солянка', 'крем-суп', 'рамен', 'фо', 'харчо'] },
     { name: 'Закуски', keywords: ['закус', 'снэк', 'крылыш', 'наггет', 'картош', 'фри'] },
-    { name: 'Десерты', keywords: ['десерт', 'торт', 'мороженое', 'пирожн', 'чизкейк', 'тирамису', 'круассан', 'пончик'] },
-    { name: 'Напитки', keywords: ['напит', 'кофе', 'латте', 'капучино', 'эспрессо', 'чай', 'сок', 'вода', 'кола', 'лимонад', 'смузи', 'милкшейк', 'коктейль'] },
+    {
+        name: 'Десерты',
+        keywords: ['десерт', 'торт', 'мороженое', 'пирожн', 'чизкейк', 'тирамису', 'круассан', 'пончик'],
+    },
+    {
+        name: 'Напитки',
+        keywords: [
+            'напит',
+            'кофе',
+            'латте',
+            'капучино',
+            'эспрессо',
+            'чай',
+            'сок',
+            'вода',
+            'кола',
+            'лимонад',
+            'смузи',
+            'милкшейк',
+            'коктейль',
+        ],
+    },
 ];
 
 const categorize = (dish: DishView): string => {
@@ -113,10 +133,8 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
             restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
         ]);
 
-        const restaurant =
-            brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
-        const dishes =
-            dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
+        const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
+        const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
 
         return { restaurant, dishes, sections: buildSections(dishes) };
     }
@@ -142,11 +160,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
             onLoggedOut: () => window.router.go(ROUTES.home),
         });
 
-        this.mountChild(
-            'cart',
-            new CartWidget(),
-            CartWidget.buildProps(cartStore.getState().items),
-        );
+        this.mountChild('cart', new CartWidget(), CartWidget.buildProps(cartStore.getState().items));
 
         const dishContent = this.root?.querySelector('.js-dish-content');
         if (dishContent) {
@@ -169,9 +183,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
 
         const scrollContainer = this.root?.querySelector('.center-column');
         if (scrollContainer) {
-            this.on(scrollContainer, 'scroll', () =>
-                void this.handleScroll(scrollContainer as HTMLElement),
-            );
+            this.on(scrollContainer, 'scroll', () => void this.handleScroll(scrollContainer as HTMLElement));
         }
 
         this.setupRestaurantSearch();
@@ -241,9 +253,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
     private async scrollToDishById(dishId: string): Promise<void> {
         const MAX_PAGES = 20;
         for (let i = 0; i < MAX_PAGES; i++) {
-            const card = this.root?.querySelector(
-                `.dish-card[data-dish-id="${dishId}"]`,
-            ) as HTMLElement | null;
+            const card = this.root?.querySelector(`.dish-card[data-dish-id="${dishId}"]`) as HTMLElement | null;
             if (card) {
                 this.highlightAndScroll(card);
                 return;
@@ -263,11 +273,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         if (this.isFetching || !this.hasMore || !this.restaurantId) return;
         this.isFetching = true;
         try {
-            const next = await restaurantApi.listDishes(
-                this.restaurantId,
-                PAGE_SIZE,
-                this.offset,
-            );
+            const next = await restaurantApi.listDishes(this.restaurantId, PAGE_SIZE, this.offset);
             this.appendDishes(next.map(toView));
             this.offset += next.length;
             if (next.length < PAGE_SIZE) this.hasMore = false;
@@ -340,9 +346,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
 
         try {
             await addToCart(dish, this.restaurantId, () =>
-                Popup.confirm(
-                    'В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?',
-                ),
+                Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?'),
             );
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
@@ -504,8 +508,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
     }
 
     private buildReviewsModal(reviews: Review[]): string {
-        const stars = (n: number) =>
-            '★'.repeat(n) + '☆'.repeat(5 - n);
+        const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
         const list = reviews.length
             ? reviews

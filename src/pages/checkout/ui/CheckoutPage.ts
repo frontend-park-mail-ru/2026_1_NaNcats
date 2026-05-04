@@ -87,11 +87,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
             return Promise.reject(new Error('not authenticated'));
         }
 
-        await Promise.allSettled([
-            addressStore.loadSaved(),
-            cardStore.load(),
-            cartStore.load(),
-        ]);
+        await Promise.allSettled([addressStore.loadSaved(), cardStore.load(), cartStore.load()]);
 
         const cart = cartStore.getState();
         if (!cart.items.length) {
@@ -216,7 +212,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         r.querySelectorAll('.js-select-card').forEach((el) => {
             this.on(el, 'click', () => {
                 const id = (el as HTMLElement).dataset.id;
-                const next = id ? this.props.cards.find((c) => c.id === id) ?? null : null;
+                const next = id ? (this.props.cards.find((c) => c.id === id) ?? null) : null;
 
                 this.update(
                     buildProps(
@@ -271,16 +267,19 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         const idempotencyKey = crypto.randomUUID();
 
         try {
-            const result = await orderApi.create({
-                address_id: this.props.selectedAddress.id,
-                branch_id: currentCart.restaurantId,
-                brand_id: currentCart.restaurantId,
-                payment_method_id: this.props.selectedCard?.id ?? '',
-                delivery_cost: toMicros(DELIVERY_FEE_RUB),
-                service_fee: toMicros(SERVICE_FEE_RUB),
-                total_cost: toMicros(grand),
-                pay_for_all: true
-            }, idempotencyKey);
+            const result = await orderApi.create(
+                {
+                    address_id: this.props.selectedAddress.id,
+                    branch_id: currentCart.restaurantId,
+                    brand_id: currentCart.restaurantId,
+                    payment_method_id: this.props.selectedCard?.id ?? '',
+                    delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                    service_fee: toMicros(SERVICE_FEE_RUB),
+                    total_cost: toMicros(grand),
+                    pay_for_all: true,
+                },
+                idempotencyKey,
+            );
 
             const orderSnapshot: Order = {
                 order_id: result.order_id,
@@ -375,8 +374,7 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         }
 
         if (errEl) {
-            errEl.innerText =
-                'В корзине есть позиции без плательщика. Назначьте владельца товарам перед оплатой.';
+            errEl.innerText = 'В корзине есть позиции без плательщика. Назначьте владельца товарам перед оплатой.';
         }
 
         return null;

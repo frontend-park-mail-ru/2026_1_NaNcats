@@ -1,7 +1,7 @@
 export interface OrderCreatePayload {
     address_id: string;
     branch_id: number;
-    brand_id: number;  
+    brand_id: number;
     pay_for_all: boolean;
     payment_method_id: string;
     delivery_cost: number;
@@ -26,13 +26,7 @@ export type OrderRawStatus =
     | 'cancelled'
     | 'failed';
 
-export type OrderUiStatus =
-    | 'awaiting_payment'
-    | 'created'
-    | 'cooking'
-    | 'delivering'
-    | 'delivered'
-    | 'cancelled';
+export type OrderUiStatus = 'awaiting_payment' | 'created' | 'cooking' | 'delivering' | 'delivered' | 'cancelled';
 
 export interface OrderItem {
     dish_id: number;

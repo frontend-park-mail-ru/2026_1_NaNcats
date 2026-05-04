@@ -266,7 +266,11 @@ export class AddressPicker extends Component<AddressPickerProps> {
         this.root?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
     }
 
-    private async finalize(text: string, coords: Coordinates, details?: Record<string, string | undefined>): Promise<void> {
+    private async finalize(
+        text: string,
+        coords: Coordinates,
+        details?: Record<string, string | undefined>,
+    ): Promise<void> {
         const inlineInput = this.root?.querySelector('.js-address-input') as HTMLInputElement | null;
         if (inlineInput) inlineInput.value = text;
         try {

@@ -159,8 +159,13 @@
   }
 
   @keyframes dish-card-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.45); }
-    50%      { box-shadow: 0 0 0 10px rgba(255, 107, 107, 0); }
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.45);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+    }
   }
 
   .label-text {
@@ -594,7 +599,9 @@
   font-weight: 500;
   cursor: pointer;
   margin-bottom: 20px;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 
   &:hover {
     background: #f7e7e5;
@@ -826,7 +833,9 @@
     font-size: 28px;
     color: #d0d0d0;
     cursor: pointer;
-    transition: color 0.15s ease, transform 0.1s ease;
+    transition:
+      color 0.15s ease,
+      transform 0.1s ease;
     user-select: none;
 
     &:hover,

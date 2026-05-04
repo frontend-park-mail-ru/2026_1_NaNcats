@@ -2,14 +2,7 @@ import './wordle.scss';
 import { Component } from '@shared/lib/component';
 import { Popup } from '@shared/ui/popup';
 import { wordleTemplate } from './wordle.tmpl.js';
-import {
-    scoreGuess,
-    createEmptyGrid,
-    isValidLetter,
-    WORD_LENGTH,
-    MAX_ROWS,
-    type TileColor,
-} from '../lib/wordleEngine';
+import { scoreGuess, createEmptyGrid, isValidLetter, WORD_LENGTH, MAX_ROWS, type TileColor } from '../lib/wordleEngine';
 
 const KEYBOARD_LAYOUT: string[][] = [
     ['Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З', 'Х', 'Ъ'],

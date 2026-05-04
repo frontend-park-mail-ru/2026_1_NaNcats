@@ -64,14 +64,16 @@ export class HomePage extends Component<HomePageProps> {
         let categories: Category[] = [];
 
         await Promise.all([
-            (initialQuery
-                ? restaurantApi.search(initialQuery, PAGE_SIZE)
-                : restaurantApi.listBrands(PAGE_SIZE, 0)
-            )
-                .then((r) => { restaurants = r; })
+            (initialQuery ? restaurantApi.search(initialQuery, PAGE_SIZE) : restaurantApi.listBrands(PAGE_SIZE, 0))
+                .then((r) => {
+                    restaurants = r;
+                })
                 .catch((e) => console.warn('home: initial brands fetch failed', e)),
-            restaurantApi.listCategories()
-                .then((c) => { categories = c; })
+            restaurantApi
+                .listCategories()
+                .then((c) => {
+                    categories = c;
+                })
                 .catch((e) => console.warn('home: listCategories failed', e)),
         ]);
 
@@ -150,7 +152,7 @@ export class HomePage extends Component<HomePageProps> {
         });
     }
 
-private setupMobilePanels(): void {
+    private setupMobilePanels(): void {
         const openCategoriesBtns = this.root?.querySelectorAll('.js-open-categories') ?? [];
         const openCartSheetBtn = this.root?.querySelector('.js-open-cart-sheet');
         const overlay = this.root?.querySelector('.js-mobile-overlay');
@@ -249,7 +251,8 @@ private setupMobilePanels(): void {
             // Бэк не умеет search+category одним запросом — берём по категории
             // с большим лимитом и фильтруем клиентом по подстроке в названии/описании.
             const COMBINED_LIMIT = 100;
-            const inCat = await restaurantApi.listBrandsByCategory(cat, COMBINED_LIMIT, 0)
+            const inCat = await restaurantApi
+                .listBrandsByCategory(cat, COMBINED_LIMIT, 0)
                 .catch(() => [] as Restaurant[]);
             const needle = q.toLowerCase();
             results = inCat.filter((r) => {

@@ -1,8 +1,17 @@
 import { httpClient } from '@shared/api/http';
 import type {
-    BrandsResponse, DishesResponse, CategoriesResponse, ReviewsResponse,
-    Dish, Restaurant, Category, Review, SearchResult,
-    SearchAllResponse, SearchAllResult, DishSearchHit
+    BrandsResponse,
+    DishesResponse,
+    CategoriesResponse,
+    ReviewsResponse,
+    Dish,
+    Restaurant,
+    Category,
+    Review,
+    SearchResult,
+    SearchAllResponse,
+    SearchAllResult,
+    DishSearchHit,
 } from '../model/types';
 
 export const restaurantApi = {
@@ -16,10 +25,10 @@ export const restaurantApi = {
     },
 
     async listDishes(brandId: string | number, limit: number, offset: number): Promise<Dish[]> {
-        const data = await httpClient.getJson<DishesResponse>(
-            `/restaurants/brands/${brandId}/dishes`,
-            { limit, offset },
-        );
+        const data = await httpClient.getJson<DishesResponse>(`/restaurants/brands/${brandId}/dishes`, {
+            limit,
+            offset,
+        });
         return data.dishes ?? [];
     },
 
@@ -41,18 +50,12 @@ export const restaurantApi = {
     },
 
     async search(query: string, limit = 20): Promise<Restaurant[]> {
-        const data = await httpClient.getJson<BrandsResponse>(
-            '/restaurants/search',
-            { q: query, limit },
-        );
+        const data = await httpClient.getJson<BrandsResponse>('/restaurants/search', { q: query, limit });
         return data.restaurants ?? [];
     },
 
     async searchAll(query: string, limit = 10): Promise<SearchAllResult> {
-        const data = await httpClient.getJson<SearchAllResponse>(
-            '/restaurants/search',
-            { q: query, limit },
-        );
+        const data = await httpClient.getJson<SearchAllResponse>('/restaurants/search', { q: query, limit });
         return {
             restaurants: data.restaurants ?? [],
             dishes: data.dishes ?? [],
@@ -72,7 +75,10 @@ export const restaurantApi = {
         return data.reviews ?? [];
     },
 
-    async createReview(restaurantId: string | number, payload: { author_name: string; rating: number; comment: string }): Promise<Review> {
+    async createReview(
+        restaurantId: string | number,
+        payload: { author_name: string; rating: number; comment: string },
+    ): Promise<Review> {
         return httpClient.postJson<Review>(`/reviews/restaurants/${restaurantId}`, payload);
     },
 };

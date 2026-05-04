@@ -18,7 +18,11 @@ export class CardList extends Component<CardListProps> {
         const list = this.root?.querySelector('#profile-cards-list') as HTMLElement | null;
         if (!list) return;
 
-        this.useStore(cardStore, (s) => s.cards, (cards) => this.render(list, cards));
+        this.useStore(
+            cardStore,
+            (s) => s.cards,
+            (cards) => this.render(list, cards),
+        );
         this.render(list, cardStore.getState().cards);
 
         this.on(list, 'click', (e) => {
@@ -44,22 +48,22 @@ export class CardList extends Component<CardListProps> {
         const onlyOne = cards.length === 1;
 
         const issuerThemes: Record<string, string> = {
-            sber:        'payment-card_sber',
-            sberbank:    'payment-card_sber',
-            tinkoff:     'payment-card_tinkoff',
-            'т-банк':    'payment-card_tinkoff',
-            'tbank':     'payment-card_tinkoff',
-            alfa:        'payment-card_alfa',
-            'альфа':     'payment-card_alfa',
-            vtb:         'payment-card_vtb',
-            'втб':       'payment-card_vtb',
-            yandex:      'payment-card_yandex',
-            'яндекс':    'payment-card_yandex',
+            sber: 'payment-card_sber',
+            sberbank: 'payment-card_sber',
+            tinkoff: 'payment-card_tinkoff',
+            'т-банк': 'payment-card_tinkoff',
+            tbank: 'payment-card_tinkoff',
+            alfa: 'payment-card_alfa',
+            альфа: 'payment-card_alfa',
+            vtb: 'payment-card_vtb',
+            втб: 'payment-card_vtb',
+            yandex: 'payment-card_yandex',
+            яндекс: 'payment-card_yandex',
             gazprombank: 'payment-card_gazprom',
-            'газпром':   'payment-card_gazprom',
-            raiffeisen:  'payment-card_raiffeisen',
-            'райффайзен':'payment-card_raiffeisen',
-            ozon:        'payment-card_ozon',
+            газпром: 'payment-card_gazprom',
+            raiffeisen: 'payment-card_raiffeisen',
+            райффайзен: 'payment-card_raiffeisen',
+            ozon: 'payment-card_ozon',
         };
 
         const cardTypeLabel = (type?: string): { label: string; cls: string } => {
@@ -83,7 +87,7 @@ export class CardList extends Component<CardListProps> {
         list.innerHTML = cards
             .map((c) => {
                 const active = onlyOne || c.is_default;
-                const brand = (c.issuer_name || 'Карта');
+                const brand = c.issuer_name || 'Карта';
                 const themeCls = themeFor(c.issuer_name);
                 const sys = cardTypeLabel(c.card_type);
                 return `

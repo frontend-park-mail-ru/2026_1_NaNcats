@@ -92,9 +92,13 @@ export class Header extends Component<HeaderProps> {
             }
         }
 
-        this.useStore(userStore, (s) => s.user, (next) => {
-            if (next !== this.props.user) this.update({ user: next });
-        });
+        this.useStore(
+            userStore,
+            (s) => s.user,
+            (next) => {
+                if (next !== this.props.user) this.update({ user: next });
+            },
+        );
     }
 
     private setupHeaderSearch(): void {
@@ -205,8 +209,9 @@ export class Header extends Component<HeaderProps> {
                     const restaurantId = (el as HTMLElement).dataset.restaurantId;
                     const dishId = (el as HTMLElement).dataset.dishId;
                     if (restaurantId) {
-                        const url = `${ROUTES.restaurant}?id=${encodeURIComponent(restaurantId)}`
-                            + (dishId ? `&dish=${encodeURIComponent(dishId)}` : '');
+                        const url =
+                            `${ROUTES.restaurant}?id=${encodeURIComponent(restaurantId)}` +
+                            (dishId ? `&dish=${encodeURIComponent(dishId)}` : '');
                         window.router.go(url);
                     }
                     return;

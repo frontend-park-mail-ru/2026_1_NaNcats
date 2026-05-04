@@ -15,9 +15,8 @@ export class Store<S extends object> {
     }
 
     setState(updater: Updater<S>): void {
-        const next = typeof updater === 'function'
-            ? (updater as (prev: S) => S)(this.state)
-            : { ...this.state, ...updater };
+        const next =
+            typeof updater === 'function' ? (updater as (prev: S) => S)(this.state) : { ...this.state, ...updater };
 
         if (next === this.state) return;
         this.state = next;

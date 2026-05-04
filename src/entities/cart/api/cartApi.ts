@@ -82,10 +82,7 @@ export const cartApi = {
     },
 
     generateInvite(cartId: string): Promise<InviteResponse> {
-        return httpClient.postJson<InviteResponse>(
-            `/cart/invite?cart_id=${encodeURIComponent(cartId)}`,
-            {},
-        );
+        return httpClient.postJson<InviteResponse>(`/cart/invite?cart_id=${encodeURIComponent(cartId)}`, {});
     },
 
     joinCart(token: string): Promise<JoinCartResponse> {
@@ -111,5 +108,5 @@ export const cartApi = {
 
     remove(cartId: string, dishId: number): Promise<void> {
         return httpClient.deleteJson('/cart/items', { cart_id: cartId, dish_id: dishId });
-    }
+    },
 };

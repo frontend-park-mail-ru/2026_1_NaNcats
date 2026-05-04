@@ -181,7 +181,10 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
             this.isProcessingPayment = false;
             const cur = this.props.order;
             if (!cur) return;
-            const next = { ...cur, error: 'Не удалось подтвердить оплату. Проверьте интернет/VPN и попробуйте ещё раз.' };
+            const next = {
+                ...cur,
+                error: 'Не удалось подтвердить оплату. Проверьте интернет/VPN и попробуйте ещё раз.',
+            };
             this.rerender(buildProps(next, { processing: false }));
         }, PAYMENT_TIMEOUT_MS);
     }
@@ -305,11 +308,12 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         const next = normalizeOrder(merged);
         next.error = event.error;
 
-        const paymentSettled = next.raw_status === 'paid'
-            || next.raw_status === 'in_progress'
-            || next.raw_status === 'waiting'
-            || next.raw_status === 'delivering'
-            || isTerminalRawStatus(next.raw_status);
+        const paymentSettled =
+            next.raw_status === 'paid' ||
+            next.raw_status === 'in_progress' ||
+            next.raw_status === 'waiting' ||
+            next.raw_status === 'delivering' ||
+            isTerminalRawStatus(next.raw_status);
 
         if (paymentSettled) {
             this.endPaymentProcessing();

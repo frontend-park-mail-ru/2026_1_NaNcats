@@ -17,8 +17,7 @@ interface CartWidgetProps {
 const toView = (items: CartItem[]): CartItemView[] =>
     items.map((i) => ({ ...i, priceRub: fromMicros(i.price).toFixed(0) }));
 
-const totalMicros = (items: CartItem[]): number =>
-    items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+const totalMicros = (items: CartItem[]): number => items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
 export class CartWidget extends Component<CartWidgetProps> {
     constructor() {
@@ -52,8 +51,12 @@ export class CartWidget extends Component<CartWidgetProps> {
         const checkout = this.root?.querySelector('.js-checkout-btn');
         if (checkout) this.on(checkout, 'click', () => window.router.go(ROUTES.checkout));
 
-        this.useStore(cartStore, (s) => s.items, (items) => {
-            this.update(CartWidget.buildProps(items));
-        });
+        this.useStore(
+            cartStore,
+            (s) => s.items,
+            (items) => {
+                this.update(CartWidget.buildProps(items));
+            },
+        );
     }
 }

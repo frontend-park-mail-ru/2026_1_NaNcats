@@ -27,8 +27,12 @@ export class ClearCartButton extends Component<ClearCartButtonProps> {
             }
         });
 
-        this.useStore(cartStore, (s) => s.status, (status) => {
-            btn.disabled = status === 'syncing';
-        });
+        this.useStore(
+            cartStore,
+            (s) => s.status,
+            (status) => {
+                btn.disabled = status === 'syncing';
+            },
+        );
     }
 }

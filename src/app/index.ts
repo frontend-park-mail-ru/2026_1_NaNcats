@@ -45,7 +45,6 @@ router
         return { component: new NotFoundPage(), props: {} };
     });
 
-
 const init = async (): Promise<void> => {
     await initCsrf();
     initServiceWorker();
