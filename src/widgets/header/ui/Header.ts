@@ -5,23 +5,45 @@ import { ROUTES } from '@shared/config/routes';
 import { LogoutButton } from '@features/auth/logout';
 import { headerTemplate } from './header.tmpl.js';
 
+/**
+ * Режим отображения шапки: обычный (с адресом и поиском) либо упрощённый с
+ * кнопкой возврата назад.
+ */
 export type HeaderMode = 'default' | 'back';
 
+/**
+ * Входные данные виджета {@link Header}.
+ */
 export interface HeaderProps {
+    /** Текущий пользователь или null, если не авторизован. */
     user: User | null;
+    /** Режим отображения шапки. */
     mode?: HeaderMode;
+    /** Текущий поисковый запрос (для предзаполнения инпута). */
     searchQuery?: string;
+    /** Скрыть блок поиска. */
     hideSearch?: boolean;
+    /** Колбэк нажатия кнопки входа. */
     onLogin?: () => void;
+    /** Колбэк нажатия кнопки регистрации. */
     onRegister?: () => void;
+    /** Колбэк успешного выхода из аккаунта. */
     onLoggedOut?: () => void;
+    /** Колбэк нажатия кнопки возврата (актуально для mode === 'back'). */
     onBack?: () => void;
+    /** Колбэк, получающий DOM-узел слота адреса для монтирования внешнего виджета. */
     onMountAddressSlot?: (slot: HTMLElement) => void;
+    /** Колбэк отправки поискового запроса (по Enter или по очистке). */
     onSearchSubmit?: (query: string) => void;
 }
 
 const SEARCH_DEBOUNCE_MS = 350;
 
+/**
+ * Шапка приложения: логотип, адрес, поиск, кнопки входа/регистрации либо меню
+ * пользователя. Подписывается на userStore и автоматически перерисовывается
+ * при смене текущего пользователя.
+ */
 export class Header extends Component<HeaderProps> {
     private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -33,6 +55,11 @@ export class Header extends Component<HeaderProps> {
         userDropdown: '.js-user-dropdown',
     };
 
+    /**
+     * Привязывает обработчики кнопок (назад, вход, регистрация, мобильное
+     * меню), монтирует слот адреса и кнопку выхода для авторизованных,
+     * настраивает поиск и подписывается на userStore.
+     */
     protected onMount(): void {
         if (this.props.mode === 'back') {
             const backBtn = this.root?.querySelector('.js-back-btn');
@@ -101,6 +128,11 @@ export class Header extends Component<HeaderProps> {
         );
     }
 
+    /**
+     * Настраивает поле поиска: дебаунс ввода с показом подсказок, подтверждение
+     * по Enter, скрытие подсказок по Escape и по клику вне области, кнопка
+     * очистки.
+     */
     private setupHeaderSearch(): void {
         const input = this.root?.querySelector('.js-header-search-input') as HTMLInputElement | null;
         const clear = this.root?.querySelector('.js-header-search-clear') as HTMLElement | null;
@@ -170,6 +202,13 @@ export class Header extends Component<HeaderProps> {
         });
     }
 
+    /**
+     * Рендерит выпадающие подсказки поиска: рестораны и блюда с переходом по
+     * клику. Если результатов нет, выпадающий блок скрывается.
+     *
+     * @param results Результаты поиска по ресторанам и блюдам.
+     * @param suggest Контейнер выпадающих подсказок (может быть null).
+     */
     private renderSuggest(results: SearchAllResult, suggest: HTMLElement | null): void {
         if (!suggest) return;
 
@@ -222,6 +261,9 @@ export class Header extends Component<HeaderProps> {
         });
     }
 
+    /**
+     * Скрывает мобильное меню для неавторизованных пользователей.
+     */
     private closeMobileGuestMenu(): void {
         const mobileControls = this.root?.querySelector('.js-mobile-guest-controls');
         mobileControls?.classList.remove('mobile-auth-guest-controls_open');

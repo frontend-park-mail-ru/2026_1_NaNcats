@@ -12,10 +12,17 @@ import { CartWidget } from '@widgets/cart-widget';
 import { AddressPicker } from '@widgets/address-picker';
 import { homePageTemplate } from './home.tmpl.js';
 
+/**
+ * Пропсы главной страницы.
+ */
 interface HomePageProps {
+    /** Список ресторанов первой страницы выдачи. */
     restaurants: Restaurant[];
+    /** Список доступных категорий для фильтра. */
     categories: Category[];
+    /** Идентификатор активной категории или пустая строка, если фильтр снят. */
     activeCategory: string;
+    /** Текущий поисковый запрос (уже отформатированный без пробелов по краям). */
     searchQuery: string;
 }
 
@@ -23,6 +30,14 @@ const PAGE_SIZE = 20;
 const TABLET_BREAKPOINT = 1200;
 const MOBILE_BREAKPOINT = 900;
 
+/**
+ * Главная страница со списком ресторанов.
+ *
+ * Монтирует шапку, виджет страйка (для авторизованных) и виджет корзины.
+ * Поддерживает поиск по запросу из адресной строки, фильтрацию по категории
+ * и подгрузку следующих страниц по скроллу. Для узких экранов открывает
+ * мобильные панели категорий и корзины.
+ */
 export class HomePage extends Component<HomePageProps> {
     private offset = 0;
     private hasMore = true;
@@ -41,6 +56,16 @@ export class HomePage extends Component<HomePageProps> {
         cart: '.js-cart-slot',
     };
 
+    /**
+     * Подготавливает данные страницы.
+     *
+     * Подгружает текущего пользователя (без падения при ошибке), для
+     * авторизованного дополнительно загружает корзину и сохранённые адреса.
+     * Параллельно запрашивает первую страницу ресторанов (с учётом
+     * исходного поискового запроса из адресной строки) и список категорий.
+     *
+     * @returns Промис с пропсами главной страницы.
+     */
     static async load(): Promise<HomePageProps> {
         try {
             await userStore.loadCurrent();
@@ -80,6 +105,11 @@ export class HomePage extends Component<HomePageProps> {
         return { restaurants, categories, activeCategory: '', searchQuery: initialQuery };
     }
 
+    /**
+     * Монтирует дочерние виджеты, навешивает обработчики переходов по
+     * карточкам ресторанов, скролла подгрузки и инициализирует категории
+     * и мобильные панели.
+     */
     protected onMount(): void {
         this.pageEl = this.root?.querySelector('.js-home-page') as HTMLElement | null;
 
@@ -131,6 +161,10 @@ export class HomePage extends Component<HomePageProps> {
         this.setupMobilePanels();
     }
 
+    /**
+     * Навешивает обработчики выбора категории по клику и клавиатуре
+     * (Enter/Space) на список категорий.
+     */
     private setupCategories(): void {
         const categoriesList = this.root?.querySelector('.js-categories-list');
         if (!categoriesList) return;
@@ -152,6 +186,11 @@ export class HomePage extends Component<HomePageProps> {
         });
     }
 
+    /**
+     * Подключает управление мобильными панелями: открытие шторки категорий
+     * и листа корзины, закрытие по оверлею, кнопкам, Escape и при росте
+     * ширины окна выше брейкпоинтов.
+     */
     private setupMobilePanels(): void {
         const openCategoriesBtns = this.root?.querySelectorAll('.js-open-categories') ?? [];
         const openCartSheetBtn = this.root?.querySelector('.js-open-cart-sheet');
@@ -190,11 +229,23 @@ export class HomePage extends Component<HomePageProps> {
         });
     }
 
+    /**
+     * Применяет новый поисковый запрос и перезапрашивает сетку ресторанов.
+     *
+     * @param query Новый поисковый запрос.
+     */
     private async applySearch(query: string): Promise<void> {
         this.searchQuery = query.trim();
         await this.refreshGrid();
     }
 
+    /**
+     * Переключает активную категорию и перезапрашивает сетку.
+     *
+     * Повторный клик по уже активной категории сбрасывает фильтр.
+     *
+     * @param id Идентификатор категории либо пустая строка для сброса.
+     */
     private async selectCategory(id: string): Promise<void> {
         // Повторный клик по активной категории сбрасывает фильтр.
         if (id === '' || this.activeCategory === id) {
@@ -206,6 +257,17 @@ export class HomePage extends Component<HomePageProps> {
         await this.refreshGrid();
     }
 
+    /**
+     * Перезапрашивает сетку ресторанов с учётом текущих поискового запроса
+     * и категории.
+     *
+     * Также обновляет заголовок страницы и подпись с числом найденных
+     * элементов. Пагинация по скроллу включается только в режиме без
+     * фильтров: при поиске или выбранной категории offset не используется,
+     * чтобы не смешивать серверные и клиентские срезы. При комбинации
+     * запроса и категории список берётся по категории большим лимитом и
+     * фильтруется на клиенте.
+     */
     private async refreshGrid(): Promise<void> {
         const q = this.searchQuery;
         const cat = this.activeCategory;
@@ -265,6 +327,12 @@ export class HomePage extends Component<HomePageProps> {
         this.replaceGrid(results);
     }
 
+    /**
+     * Подсвечивает активную категорию в списке и снимает подсветку с
+     * остальных.
+     *
+     * @param activeId Идентификатор активной категории либо пустая строка.
+     */
     private updateActiveCategoryUI(activeId: string): void {
         const items = this.root?.querySelectorAll('[data-category-id]') ?? [];
         items.forEach((el) => {
@@ -274,6 +342,12 @@ export class HomePage extends Component<HomePageProps> {
         });
     }
 
+    /**
+     * Заменяет содержимое сетки ресторанов разметкой переданного списка и
+     * управляет показом блока пустого состояния.
+     *
+     * @param items Список ресторанов для отображения.
+     */
     private replaceGrid(items: Restaurant[]): void {
         const grid = this.root?.querySelector('.js-res-grid');
         const empty = this.root?.querySelector('.js-res-empty') as HTMLElement | null;
@@ -297,24 +371,42 @@ export class HomePage extends Component<HomePageProps> {
             .join('');
     }
 
+    /**
+     * Открывает мобильную шторку категорий и закрывает лист корзины.
+     */
     private openCategoriesDrawer(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.add('home-page_drawer-categories');
         this.pageEl.classList.remove('home-page_sheet-cart');
     }
 
+    /**
+     * Открывает мобильный лист корзины и закрывает шторку категорий.
+     */
     private openCartSheet(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.add('home-page_sheet-cart');
         this.pageEl.classList.remove('home-page_drawer-categories');
     }
 
+    /**
+     * Закрывает обе мобильные панели (категории и корзину).
+     */
     private closePanels(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.remove('home-page_drawer-categories');
         this.pageEl.classList.remove('home-page_sheet-cart');
     }
 
+    /**
+     * Обрабатывает скролл контейнера и подгружает следующую страницу
+     * ресторанов при приближении к концу списка.
+     *
+     * Не работает при активном фильтре (поиск или категория) и пока идёт
+     * предыдущий запрос либо больше нет данных.
+     *
+     * @param container Прокручиваемый контейнер с карточками ресторанов.
+     */
     private async handleScroll(container: HTMLElement): Promise<void> {
         if (this.isFetching || !this.hasMore || this.searchQuery || this.activeCategory) return;
 
@@ -334,6 +426,11 @@ export class HomePage extends Component<HomePageProps> {
         }
     }
 
+    /**
+     * Добавляет карточки ресторанов в конец сетки.
+     *
+     * @param items Список ресторанов для добавления.
+     */
     private appendCards(items: Restaurant[]): void {
         const grid = this.root?.querySelector('.js-res-grid');
         if (!grid) return;

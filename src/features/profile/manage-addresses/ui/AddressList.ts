@@ -3,17 +3,31 @@ import { Popup } from '@shared/ui/popup';
 import { addressStore, type Address } from '@entities/address';
 import { removeAddress } from '../model/manageAddresses';
 
+/**
+ * Параметры списка сохранённых адресов.
+ */
 export interface AddressListProps {
+    /** Колбэк, вызываемый при клике по кнопке редактирования адреса; получает идентификатор адреса. */
     onEdit?: (id: string) => void;
 }
 
 const TEMPLATE = `<div class="address-list" id="profile-address-list"></div>`;
 
+/**
+ * Список сохранённых адресов пользователя в профиле.
+ *
+ * Подписан на хранилище адресов и перерисовывается при изменениях. Делегирует
+ * клики по кнопкам редактирования и удаления к соответствующим обработчикам.
+ */
 export class AddressList extends Component<AddressListProps> {
     constructor() {
         super(TEMPLATE);
     }
 
+    /**
+     * Подписывается на хранилище и привязывает делегированный обработчик
+     * кликов по строкам адресов.
+     */
     protected onMount(): void {
         const list = this.root?.querySelector('#profile-address-list') as HTMLElement | null;
         if (!list) return;
@@ -35,6 +49,13 @@ export class AddressList extends Component<AddressListProps> {
         });
     }
 
+    /**
+     * Перерисовывает содержимое списка адресов или плашку про пустое
+     * состояние.
+     *
+     * @param list Корневой элемент списка, в который пишется HTML.
+     * @param addresses Сохранённые адреса для отображения.
+     */
     private render(list: HTMLElement, addresses: Address[]): void {
         if (addresses.length === 0) {
             list.innerHTML = '<div class="empty-text">У вас пока нет сохраненных адресов</div>';
@@ -58,6 +79,11 @@ export class AddressList extends Component<AddressListProps> {
             .join('');
     }
 
+    /**
+     * Запрашивает подтверждение и удаляет адрес.
+     *
+     * @param id Идентификатор удаляемого адреса.
+     */
     private async handleDelete(id: string): Promise<void> {
         const ok = await Popup.confirm('Удалить этот адрес?');
         if (!ok) return;

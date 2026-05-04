@@ -11,18 +11,33 @@ import { Header } from '@widgets/header';
 import { CartWidget } from '@widgets/cart-widget';
 import { restaurantPageTemplate } from './restaurant.tmpl.js';
 
+/**
+ * Блюдо с предвычисленной ценой в рублях для отображения на карточке.
+ */
 interface DishView extends Dish {
+    /** Цена блюда в рублях (получена из микро-единиц). */
     price_rub: number;
 }
 
+/**
+ * Секция меню: набор блюд под общим названием категории.
+ */
 interface DishSection {
+    /** Название секции (категории блюд). */
     name: string;
+    /** Блюда, попавшие в эту секцию. */
     dishes: DishView[];
 }
 
+/**
+ * Пропсы страницы ресторана.
+ */
 interface RestaurantPageProps {
+    /** Данные ресторана (бренда). */
     restaurant: Restaurant;
+    /** Загруженные блюда первой страницы. */
     dishes: DishView[];
+    /** Секции меню, построенные по списку блюд. */
     sections: DishSection[];
 }
 
@@ -91,6 +106,16 @@ const FALLBACK_RESTAURANT: Restaurant = {
 
 const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) });
 
+/**
+ * Страница ресторана с меню.
+ *
+ * Загружает данные бренда и первую страницу блюд по идентификатору из
+ * адресной строки. Группирует блюда по эвристическим категориям, монтирует
+ * шапку и виджет корзины. Поддерживает добавление блюд в корзину,
+ * подгрузку следующих страниц по скроллу, поиск блюд внутри ресторана с
+ * дебаунсом, переход к конкретному блюду по якорю в адресной строке,
+ * мобильные шторки меню и корзины, модалку отзывов с формой отправки.
+ */
 export class RestaurantPage extends Component<RestaurantPageProps> {
     private restaurantId = 0;
     private offset = 0;
@@ -109,6 +134,17 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         cart: '.js-cart-slot',
     };
 
+    /**
+     * Подготавливает данные страницы.
+     *
+     * При отсутствии параметра id возвращает заглушку для оффлайн-режима.
+     * Подгружает текущего пользователя (без падения при ошибке) и для
+     * авторизованного дополнительно загружает корзину. Параллельно
+     * запрашивает данные бренда и первую страницу блюд; при ошибке любого
+     * из запросов используется значение по умолчанию.
+     *
+     * @returns Промис с пропсами страницы ресторана.
+     */
     static async load(): Promise<RestaurantPageProps> {
         const idParam = getQueryParam('id');
         if (!idParam) {
@@ -139,6 +175,11 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         return { restaurant, dishes, sections: buildSections(dishes) };
     }
 
+    /**
+     * Монтирует дочерние виджеты, навешивает обработчики добавления в
+     * корзину, навигации по секциям, скролла подгрузки, поиска по меню,
+     * мобильных панелей, модалки отзывов и переходит к блюду по якорю.
+     */
     protected onMount(): void {
         this.pageEl = this.root?.querySelector('.js-restaurant-page') as HTMLElement | null;
 
@@ -250,6 +291,15 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Прокручивает страницу к карточке блюда по идентификатору.
+     *
+     * Если карточки ещё нет в DOM, последовательно подгружает следующие
+     * страницы блюд (до жёсткого лимита), пока карточка не появится либо
+     * пагинация не закончится.
+     *
+     * @param dishId Идентификатор искомого блюда.
+     */
     private async scrollToDishById(dishId: string): Promise<void> {
         const MAX_PAGES = 20;
         for (let i = 0; i < MAX_PAGES; i++) {
@@ -269,6 +319,13 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Загружает следующую страницу блюд и добавляет её к уже отрисованным.
+     *
+     * Игнорирует параллельные вызовы (флаг isFetching) и ничего не делает
+     * при отсутствии идентификатора ресторана либо когда подгружать больше
+     * нечего. При ошибке отключает дальнейшую пагинацию.
+     */
     private async fetchNextPage(): Promise<void> {
         if (this.isFetching || !this.hasMore || !this.restaurantId) return;
         this.isFetching = true;
@@ -285,6 +342,14 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Прокручивает к карточке блюда и подсвечивает её.
+     *
+     * Подсветка снимается на первое пользовательское взаимодействие
+     * (клик/тач/клавиша/колесо), но не на программный smooth-scroll.
+     *
+     * @param card Карточка блюда, к которой нужно прокрутить.
+     */
     private highlightAndScroll(card: HTMLElement): void {
         const scrollContainer = this.root?.querySelector('.center-column') as HTMLElement | null;
         if (scrollContainer) {
@@ -313,24 +378,43 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         document.addEventListener('keydown', dismiss, { capture: true, once: true });
     }
 
+    /**
+     * Открывает мобильную шторку меню и закрывает лист корзины.
+     */
     private openMenuDrawer(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.add('restaurant-details-page_drawer-menu');
         this.pageEl.classList.remove('restaurant-details-page_sheet-cart');
     }
 
+    /**
+     * Открывает мобильный лист корзины и закрывает шторку меню.
+     */
     private openCartSheet(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.add('restaurant-details-page_sheet-cart');
         this.pageEl.classList.remove('restaurant-details-page_drawer-menu');
     }
 
+    /**
+     * Закрывает обе мобильные панели (меню и корзину).
+     */
     private closePanels(): void {
         if (!this.pageEl) return;
         this.pageEl.classList.remove('restaurant-details-page_drawer-menu');
         this.pageEl.classList.remove('restaurant-details-page_sheet-cart');
     }
 
+    /**
+     * Обрабатывает клик по кнопке добавления блюда в корзину.
+     *
+     * Неавторизованного пользователя перенаправляет на страницу входа.
+     * Считывает данные блюда из data-атрибутов кнопки и делегирует
+     * добавление фиче addToCart, при необходимости показывая попап
+     * подтверждения смены ресторана.
+     *
+     * @param btn Нажатая кнопка с data-атрибутами блюда.
+     */
     private async handleAdd(btn: HTMLElement): Promise<void> {
         if (!userStore.getState().user) {
             window.router.go(ROUTES.login);
@@ -355,6 +439,12 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Обрабатывает скролл контейнера и подгружает следующую страницу блюд
+     * при приближении к концу списка.
+     *
+     * @param container Прокручиваемый контейнер с карточками блюд.
+     */
     private async handleScroll(container: HTMLElement): Promise<void> {
         if (this.isFetching || !this.hasMore || !this.restaurantId) return;
 
@@ -364,6 +454,11 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         await this.fetchNextPage();
     }
 
+    /**
+     * Добавляет блюда к полному списку и перерисовывает содержимое меню.
+     *
+     * @param items Список новых блюд для добавления.
+     */
     private appendDishes(items: DishView[]): void {
         const merged = [...this.allDishes, ...items];
         this.allDishes = merged;
@@ -371,6 +466,12 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         this.renderDishContent(merged);
     }
 
+    /**
+     * Перестраивает разметку секций меню и список категорий по переданным
+     * блюдам.
+     *
+     * @param dishes Блюда, по которым нужно построить секции.
+     */
     private renderDishContent(dishes: DishView[]): void {
         const content = this.root?.querySelector('.js-dish-content');
         if (!content) return;
@@ -417,6 +518,12 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Подключает поиск блюд внутри ресторана с дебаунсом.
+     *
+     * При пустом запросе восстанавливается полный список загруженных блюд.
+     * Кнопка очистки сбрасывает поле и таймер дебаунса.
+     */
     private setupRestaurantSearch(): void {
         const input = this.root?.querySelector('.js-restaurant-search-input') as HTMLInputElement | null;
         const clear = this.root?.querySelector('.js-restaurant-search-clear') as HTMLElement | null;
@@ -469,6 +576,11 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         }
     }
 
+    /**
+     * Прокручивает страницу к секции меню по её индексу.
+     *
+     * @param idxStr Индекс секции в виде строки (из data-атрибута).
+     */
     private scrollToSection(idxStr: string): void {
         const target = this.root?.querySelector(`#dish-section-${idxStr}`) as HTMLElement | null;
         const scrollContainer = this.root?.querySelector('.center-column') as HTMLElement | null;
@@ -480,6 +592,11 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
     }
 
+    /**
+     * Открывает модалку отзывов: подгружает отзывы (при ошибке показывает
+     * пустое состояние), вставляет оверлей в DOM, навешивает обработчики
+     * закрытия, инициализирует выбор оценки и форму отправки.
+     */
     private async openReviews(): Promise<void> {
         let reviews: Review[] = [];
         try {
@@ -507,6 +624,13 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         this.setupReviewForm(overlay);
     }
 
+    /**
+     * Собирает HTML модалки отзывов: список существующих отзывов или
+     * сообщение о пустом списке плюс форму нового отзыва.
+     *
+     * @param reviews Список отзывов для отображения.
+     * @returns Готовая HTML-разметка модалки.
+     */
     private buildReviewsModal(reviews: Review[]): string {
         const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
@@ -559,6 +683,15 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
             </div>`;
     }
 
+    /**
+     * Подключает интерактивный выбор оценки звёздами в модалке отзывов.
+     *
+     * Наведение временно подсвечивает звёзды до курсора, клик фиксирует
+     * оценку в data-атрибуте контейнера. Уход курсора возвращает подсветку
+     * к зафиксированному значению.
+     *
+     * @param overlay Корневой элемент модалки отзывов.
+     */
     private setupStarPicker(overlay: HTMLElement): void {
         const picker = overlay.querySelector('.js-star-picker') as HTMLElement | null;
         if (!picker) return;
@@ -583,6 +716,15 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         });
     }
 
+    /**
+     * Подключает форму отправки отзыва.
+     *
+     * Валидирует имя, оценку и комментарий перед отправкой; при успехе
+     * закрывает модалку, при ошибке возвращает кнопку в активное
+     * состояние и показывает сообщение.
+     *
+     * @param overlay Корневой элемент модалки отзывов.
+     */
     private setupReviewForm(overlay: HTMLElement): void {
         const submitBtn = overlay.querySelector('.js-review-submit');
         if (!submitBtn) return;
@@ -624,6 +766,10 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         });
     }
 
+    /**
+     * Закрывает модалку отзывов с анимацией: снимает класс открытия и
+     * удаляет оверлей по окончанию transition.
+     */
     private closeReviews(): void {
         const overlay = document.querySelector('.js-reviews-overlay');
         if (!overlay) return;

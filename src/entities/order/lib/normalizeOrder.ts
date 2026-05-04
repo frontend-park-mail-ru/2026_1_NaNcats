@@ -16,6 +16,14 @@ const STATUS_MAP: Record<string, OrderUiStatus> = {
 
 const STATUS_FALLBACK_CYCLE: OrderUiStatus[] = ['created', 'cooking', 'delivering', 'delivered'];
 
+/**
+ * Считает простой 32-битный хэш строки. Используется как детерминированный
+ * сид для выбора UI-статуса, когда сырой статус заказа неизвестен, чтобы
+ * один и тот же заказ всегда отображался с одной и той же стадией.
+ *
+ * @param id Произвольная строка.
+ * @returns Неотрицательное целое.
+ */
 function hashId(id: string): number {
     let h = 0;
     for (let i = 0; i < id.length; i++) {
@@ -24,11 +32,34 @@ function hashId(id: string): number {
     return Math.abs(h);
 }
 
+/**
+ * Маппит сырой статус заказа в UI-статус.
+ *
+ * Если сырой статус неизвестен или не задан, выбирает стадию из цикла
+ * `created -> cooking -> delivering -> delivered` детерминированно по
+ * хэшу `seed`, чтобы заказ-заглушка стабильно отображался в одной стадии
+ * между ререндерами.
+ *
+ * @param raw Сырой статус заказа от бэкенда.
+ * @param seed Строка-сид для детерминированного выбора фолбэка.
+ * @returns UI-статус заказа.
+ */
 function mapStatus(raw: string | undefined, seed: string): OrderUiStatus {
     if (raw && raw in STATUS_MAP) return STATUS_MAP[raw];
     return STATUS_FALLBACK_CYCLE[hashId(seed) % STATUS_FALLBACK_CYCLE.length];
 }
 
+/**
+ * Приводит сырой заказ из API к нормализованной форме для UI.
+ *
+ * Заполняет недостающие поля значениями по умолчанию (название ресторана,
+ * рейтинг, ETA, сборы), чтобы вызывающий код мог не проверять их на
+ * `undefined`. Итоговая стоимость, если не задана, считается как сумма
+ * позиций плюс сервисный сбор и доставка.
+ *
+ * @param raw Сырой заказ из API.
+ * @returns Нормализованный заказ.
+ */
 export function normalizeOrder(raw: Order): NormalizedOrder {
     const seed = String(raw.order_id ?? raw.created_at ?? raw.restaurant_name ?? raw.total_cost ?? Math.random());
     const status = mapStatus(raw.status, seed);

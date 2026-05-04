@@ -7,16 +7,31 @@ import { userStore } from '@entities/user';
 import { pickAddress } from '@features/address/pick-address';
 import { addressPickerTemplate } from './addressPicker.tmpl.js';
 
+/**
+ * Входные данные виджета {@link AddressPicker}.
+ */
 export interface AddressPickerProps {
+    /** Текст текущего адреса для предзаполнения инпута. */
     currentAddress?: string;
+    /** Пропускать модалку с деталями адреса (квартира, подъезд и т.п.). */
     skipDetails?: boolean;
+    /** Скрыть инлайн-инпут адреса (например, в режиме иконки). */
     hideInput?: boolean;
+    /** Колбэк выбора адреса: получает текст и координаты выбранной точки. */
     onSelect?: (text: string, coords: Coordinates) => void;
 }
 
 const SUGGEST_DEBOUNCE_MS = 400;
 const DEFAULT_COORDS: Coordinates = [55.75, 37.61];
 
+/**
+ * Виджет выбора адреса доставки.
+ *
+ * Объединяет инлайн-инпут с подсказками, модалку с картой Yandex для уточнения
+ * точки и модалку с дополнительными деталями (квартира, подъезд, комментарий).
+ * Поддерживает редактирование сохранённого адреса по идентификатору и
+ * сохранение результата через сценарий pickAddress.
+ */
 export class AddressPicker extends Component<AddressPickerProps> {
     private map: MapInstance | null = null;
     private selectedCoords: Coordinates = DEFAULT_COORDS;
@@ -29,6 +44,11 @@ export class AddressPicker extends Component<AddressPickerProps> {
         super(addressPickerTemplate);
     }
 
+    /**
+     * Восстанавливает координаты текущего адреса из стора и привязывает все
+     * обработчики: инлайн-инпут с подсказками, модалку карты, модалку деталей,
+     * закрытие подсказок по клику вне виджета.
+     */
     protected onMount(): void {
         const stored = addressStore.getState().current;
         if (stored?.coords) this.selectedCoords = stored.coords;
@@ -39,6 +59,10 @@ export class AddressPicker extends Component<AddressPickerProps> {
         this.bindOutsideClick();
     }
 
+    /**
+     * Освобождает ресурсы карты Yandex и отменяет отложенный запрос подсказок
+     * при размонтировании.
+     */
     protected onDestroy(): void {
         this.map?.destroy();
         this.map = null;
@@ -48,14 +72,31 @@ export class AddressPicker extends Component<AddressPickerProps> {
         }
     }
 
+    /**
+     * Проверяет, авторизован ли пользователь.
+     *
+     * @returns true, если в userStore есть текущий пользователь.
+     */
     private isAuthenticated(): boolean {
         return userStore.getState().user !== null;
     }
 
+    /**
+     * Возвращает тексты всех сохранённых адресов из стора.
+     *
+     * @returns Массив строк с адресами.
+     */
     private savedAddressTexts(): string[] {
         return addressStore.getState().saved.map((a) => a.location.address_text);
     }
 
+    /**
+     * Привязывает поведение инлайн-инпута с подсказками: при фокусе и вводе
+     * показываются либо сохранённые адреса (для пустого ввода), либо
+     * результаты Yandex с дебаунсом. Для неавторизованных перенаправляет на
+     * страницу логина. Также вешает клик по контейнеру, открывающий модалку
+     * карты, когда инпут скрыт.
+     */
     private bindInputDropdown(): void {
         const input = this.root?.querySelector('.js-address-input') as HTMLInputElement | null;
         const dropdown = this.root?.querySelector('.js-address-dropdown') as HTMLElement | null;
@@ -105,6 +146,12 @@ export class AddressPicker extends Component<AddressPickerProps> {
         }
     }
 
+    /**
+     * Привязывает обработчики модалки с картой: ввод и Enter в поле адреса
+     * запускают подсказки и геокодинг с перемещением карты, кнопка
+     * подтверждения завершает выбор (через модалку деталей или сразу,
+     * если skipDetails).
+     */
     private bindMapModal(): void {
         const closeBtn = this.root?.querySelector('.js-close-map-modal');
         if (closeBtn) this.on(closeBtn, 'click', () => this.closeMapModal());
@@ -156,6 +203,11 @@ export class AddressPicker extends Component<AddressPickerProps> {
         }
     }
 
+    /**
+     * Привязывает обработчики модалки деталей адреса: отправка формы вызывает
+     * финализацию выбора, кнопка смены адреса возвращает на карту, кнопка
+     * закрытия скрывает модалку.
+     */
     private bindDetailsModal(): void {
         const detailsForm = this.root?.querySelector('.js-details-form') as HTMLFormElement | null;
         if (detailsForm) {
@@ -191,6 +243,9 @@ export class AddressPicker extends Component<AddressPickerProps> {
         if (closeDetails) this.on(closeDetails, 'click', () => this.closeDetailsModal());
     }
 
+    /**
+     * Закрывает выпадающие подсказки адреса при клике вне корня виджета.
+     */
     private bindOutsideClick(): void {
         this.on(document, 'click', (e) => {
             if (!this.root?.contains(e.target as Node)) {
@@ -199,6 +254,15 @@ export class AddressPicker extends Component<AddressPickerProps> {
         });
     }
 
+    /**
+     * Открывает модалку с картой Yandex. Если передан идентификатор
+     * сохранённого адреса, центрирует карту по его координатам и подставляет
+     * текст в инпут модалки. При первом открытии создаёт карту, иначе
+     * перемещает существующую.
+     *
+     * @param addressId Идентификатор сохранённого адреса для редактирования.
+     * @returns Промис, разрешающийся после готовности карты.
+     */
     async openMapModal(addressId?: string): Promise<void> {
         this.editingAddressId = addressId ?? null;
         const modal = this.root?.querySelector('.js-map-modal') as HTMLElement | null;
@@ -238,6 +302,12 @@ export class AddressPicker extends Component<AddressPickerProps> {
         }
     }
 
+    /**
+     * Программно центрирует карту по заданным координатам и помечает следующее
+     * событие завершения действия как не требующее обратного геокодинга.
+     *
+     * @param coords Новые координаты центра карты.
+     */
     private moveMapProgrammatically(coords: Coordinates): void {
         this.selectedCoords = coords;
         if (!this.map) return;
@@ -245,10 +315,20 @@ export class AddressPicker extends Component<AddressPickerProps> {
         this.map.setCenter(coords, 16);
     }
 
+    /**
+     * Скрывает модалку с картой.
+     */
     private closeMapModal(): void {
         this.root?.querySelector('.js-map-modal')?.classList.remove('modal-overlay_active');
     }
 
+    /**
+     * Открывает модалку с дополнительными деталями адреса, заполняя поле
+     * отображаемого адреса и сохраняя координаты для последующей финализации.
+     *
+     * @param text Текст выбранного адреса.
+     * @param coords Координаты выбранной точки.
+     */
     private openDetailsModal(text: string, coords: Coordinates): void {
         const modal = this.root?.querySelector('.js-details-modal') as HTMLElement | null;
         const display = this.root?.querySelector('.js-display-address') as HTMLInputElement | null;
@@ -262,10 +342,23 @@ export class AddressPicker extends Component<AddressPickerProps> {
         modal.classList.add('modal-overlay_active');
     }
 
+    /**
+     * Скрывает модалку деталей адреса.
+     */
     private closeDetailsModal(): void {
         this.root?.querySelector('.js-details-modal')?.classList.remove('modal-overlay_active');
     }
 
+    /**
+     * Завершает выбор адреса: обновляет инлайн-инпут, вызывает сценарий
+     * сохранения через pickAddress и пробрасывает результат во внешний колбэк
+     * onSelect. Сбрасывает состояние редактирования.
+     *
+     * @param text Текст выбранного адреса.
+     * @param coords Координаты выбранной точки.
+     * @param details Дополнительные детали адреса (квартира, подъезд и т.п.).
+     * @returns Промис, разрешающийся после завершения сценария.
+     */
     private async finalize(
         text: string,
         coords: Coordinates,
@@ -283,6 +376,14 @@ export class AddressPicker extends Component<AddressPickerProps> {
         this.props.onSelect?.(text, coords);
     }
 
+    /**
+     * Рендерит подсказки в выпадающем блоке инлайн-инпута. Клик по подсказке
+     * либо сразу финализирует выбор по уже известным координатам, либо
+     * предварительно делает геокодинг и открывает модалку деталей.
+     *
+     * @param list Тексты адресов-подсказок.
+     * @param geocodeOnClick Делать ли геокодинг при клике (true для свежих подсказок Yandex, false для сохранённых).
+     */
     private renderSuggestions(list: string[], geocodeOnClick: boolean): void {
         const container = this.root?.querySelector('.js-address-suggestions') as HTMLElement | null;
         if (!container) return;
@@ -305,6 +406,14 @@ export class AddressPicker extends Component<AddressPickerProps> {
         container.onclick = onPick as EventListener;
     }
 
+    /**
+     * Рендерит подсказки в модалке карты. Клик по подсказке заполняет инпут
+     * модалки и центрирует карту по геокодированным координатам. Обработчик
+     * привязывается единожды на контейнер.
+     *
+     * @param list Тексты адресов-подсказок.
+     * @param modalInput Инпут модалки, в который подставится выбранный адрес.
+     */
     private renderModalSuggestions(list: string[], modalInput: HTMLInputElement): void {
         const container = this.root?.querySelector('.js-modal-suggestions') as HTMLElement | null;
         if (!container) return;

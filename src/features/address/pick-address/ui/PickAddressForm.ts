@@ -3,19 +3,34 @@ import type { AddressDetails, Coordinates } from '@entities/address';
 import { pickAddress } from '../model/pickAddress';
 import { pickAddressFormTemplate } from './pickAddressForm.tmpl.js';
 
+/**
+ * Параметры формы уточнения адреса.
+ */
 export interface PickAddressFormProps {
+    /** Текстовое представление выбранного адреса для отображения. */
     text: string;
+    /** Координаты выбранной точки. */
     coords: Coordinates;
+    /** Начальные значения полей формы при редактировании сохранённого адреса. */
     initial?: AddressDetails;
+    /** Идентификатор сохранённого адреса для обновления; при отсутствии создаётся новый. */
     addressId?: string | null;
+    /** Колбэк, вызываемый после успешного сохранения адреса. */
     onSaved?: () => void;
 }
 
+/**
+ * Форма ввода дополнительных полей адреса (квартира, подъезд, этаж, домофон,
+ * комментарий курьеру) и его сохранения через {@link pickAddress}.
+ */
 export class PickAddressForm extends Component<PickAddressFormProps> {
     constructor() {
         super(pickAddressFormTemplate);
     }
 
+    /**
+     * Заполняет поля формы начальными значениями и подписывается на отправку.
+     */
     protected onMount(): void {
         if (!this.root) return;
 
@@ -38,6 +53,11 @@ export class PickAddressForm extends Component<PickAddressFormProps> {
         }
     }
 
+    /**
+     * Собирает значения дополнительных полей и сохраняет адрес.
+     *
+     * @param form Элемент формы, из которого читаются значения.
+     */
     private async submit(form: HTMLFormElement): Promise<void> {
         const fd = new FormData(form);
         const details: AddressDetails = {

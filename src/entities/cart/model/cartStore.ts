@@ -3,16 +3,44 @@ import { ApiError } from '@shared/api/http';
 import { cartApi } from '../api/cartApi';
 import type { CartConfirmer, CartSnapshot, CartState, DishToAdd } from './types';
 
+/**
+ * Проверяет, является ли ошибка ответом 409 с кодом `MULTIPLE_RESTAURANTS`.
+ * Такой ответ бэкенд возвращает при попытке добавить в корзину блюдо из
+ * другого ресторана; обработчик должен спросить подтверждение и очистить
+ * корзину.
+ *
+ * @param e Произвольное значение, потенциально являющееся ошибкой.
+ * @returns `true`, если это ApiError с нужным статусом и сообщением.
+ */
 const isMultipleRestaurantsError = (e: unknown): boolean => {
     if (!(e instanceof ApiError)) return false;
     return e.status === 409 && e.message === 'MULTIPLE_RESTAURANTS';
 };
 
+/**
+ * Проверяет, является ли ошибка ответом 409 с кодом `CART_LOCKED`. Такой
+ * ответ бэкенд возвращает, когда корзина заблокирована (например, ушла в
+ * оплату); обработчик должен пересоздать корзину и повторить добавление.
+ *
+ * @param e Произвольное значение, потенциально являющееся ошибкой.
+ * @returns `true`, если это ApiError с нужным статусом и сообщением.
+ */
 const isCartLockedError = (e: unknown): boolean => {
     if (!(e instanceof ApiError)) return false;
     return e.status === 409 && e.message === 'CART_LOCKED';
 };
 
+/**
+ * Стор корзины пользователя.
+ *
+ * Поддерживает локальный снимок корзины в синхронном виде для UI и
+ * инкапсулирует все взаимодействия с {@link cartApi}: загрузку, добавление,
+ * изменение количества, очистку. Обрабатывает специфичные коды ошибок
+ * бэкенда (`MULTIPLE_RESTAURANTS`, `CART_LOCKED`), запрашивая подтверждение
+ * через переданный {@link CartConfirmer} и пересоздавая корзину при
+ * необходимости. После любой записи перечитывает корзину с сервера
+ * (`refresh`), чтобы локальное состояние совпадало с серверным.
+ */
 class CartStore extends Store<CartState> {
     constructor() {
         super({
@@ -28,6 +56,10 @@ class CartStore extends Store<CartState> {
         });
     }
 
+    /**
+     * Загружает текущую корзину с сервера и записывает в состояние. При
+     * ошибке статус переводится в `error`, прежний снимок не очищается.
+     */
     async load(): Promise<void> {
         this.setState({ status: 'loading', error: undefined });
 
@@ -40,6 +72,19 @@ class CartStore extends Store<CartState> {
         }
     }
 
+    /**
+     * Добавляет блюдо в корзину.
+     *
+     * Если в корзине уже есть позиции из другого ресторана, спрашивает
+     * подтверждение через `confirmer` и при согласии очищает корзину перед
+     * добавлением. После успеха перечитывает корзину с сервера.
+     *
+     * @param dish Блюдо к добавлению.
+     * @param restaurantId Идентификатор ресторана, к которому относится блюдо.
+     * @param confirmer Колбэк подтверждения очистки корзины при конфликте
+     *   ресторанов; если не передан, конфликт считается отклонённым.
+     * @throws Любая ошибка из API после установки статуса `error`.
+     */
     async addDish(dish: DishToAdd, restaurantId: number, confirmer?: CartConfirmer): Promise<void> {
         this.setState({ status: 'syncing', error: undefined });
 
@@ -71,6 +116,20 @@ class CartStore extends Store<CartState> {
         }
     }
 
+    /**
+     * Внутренний путь добавления блюда: инкрементирует количество, если
+     * позиция уже есть в корзине, иначе создаёт новую.
+     *
+     * Обрабатывает два специфичных кода ошибки бэкенда:
+     * `CART_LOCKED` (текущая корзина заблокирована: пересоздаётся новая) и
+     * `MULTIPLE_RESTAURANTS` (конфликт ресторанов после гонки: запрашивается
+     * подтверждение и корзина пересоздаётся).
+     *
+     * @param snapshot Текущий снимок корзины.
+     * @param dish Блюдо к добавлению.
+     * @param restaurantId Идентификатор ресторана блюда.
+     * @param confirmer Колбэк подтверждения при конфликте ресторанов.
+     */
     private async addOrIncrement(
         snapshot: CartSnapshot,
         dish: DishToAdd,
@@ -119,6 +178,14 @@ class CartStore extends Store<CartState> {
         void restaurantId;
     }
 
+    /**
+     * Меняет количество блюда в корзине на указанную дельту. Если итоговое
+     * количество становится не положительным, позиция удаляется. После
+     * успеха перечитывает корзину с сервера.
+     *
+     * @param dishId Идентификатор блюда.
+     * @param delta Прирост количества (может быть отрицательным).
+     */
     async changeQuantity(dishId: number, delta: number): Promise<void> {
         this.setState({ status: 'syncing', error: undefined });
 
@@ -151,6 +218,10 @@ class CartStore extends Store<CartState> {
         }
     }
 
+    /**
+     * Полностью очищает корзину. Если корзина ещё не создана на сервере,
+     * сбрасывает только локальное состояние без сетевого запроса.
+     */
     async clear(): Promise<void> {
         this.setState({ status: 'syncing', error: undefined });
 
@@ -181,6 +252,13 @@ class CartStore extends Store<CartState> {
         }
     }
 
+    /**
+     * Записывает поля снимка корзины в состояние стора, выставляя указанный
+     * статус и сбрасывая поле ошибки.
+     *
+     * @param snapshot Снимок корзины.
+     * @param status Целевое значение статуса.
+     */
     private applySnapshot(snapshot: CartSnapshot, status: CartState['status']): void {
         this.setState({
             cartId: snapshot.cartId,
@@ -196,12 +274,25 @@ class CartStore extends Store<CartState> {
         });
     }
 
+    /**
+     * Перечитывает корзину с сервера, применяет снимок и возвращает
+     * результирующее состояние.
+     *
+     * @returns Актуальное состояние стора после применения снимка.
+     */
     private async refresh(): Promise<CartState> {
         const fresh = await cartApi.load();
         this.applySnapshot(fresh, 'idle');
         return this.getState();
     }
 
+    /**
+     * Гарантирует, что корзина загружена. Если в локальном состоянии уже
+     * есть `cartId` или позиции, повторного запроса не делает; иначе
+     * подгружает снимок с сервера.
+     *
+     * @returns Актуальное состояние стора.
+     */
     private async ensureLoaded(): Promise<CartState> {
         const state = this.getState();
 

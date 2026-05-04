@@ -1,7 +1,13 @@
+/**
+ * Описание визуального бейджа статуса заказа.
+ */
 export interface StatusBadge {
+    /** Текст подписи. */
     label: string;
+    /** Эмодзи-иконка. */
     icon: string;
-    className: string; // CSS-модификатор: success | progress | warning | danger
+    /** CSS-модификатор: `success`, `progress`, `warning` или `danger`. */
+    className: string;
 }
 
 const BADGES: Record<string, StatusBadge> = {
@@ -19,6 +25,15 @@ const BADGES: Record<string, StatusBadge> = {
 
 const FALLBACK: StatusBadge = { label: 'Неизвестно', icon: '❓', className: 'progress' };
 
+/**
+ * Подбирает визуальный бейдж для сырого статуса заказа.
+ *
+ * При отсутствии или неизвестном статусе возвращает фолбэк с подписью
+ * «Неизвестно», чтобы UI всегда мог отобразить какой-то бейдж.
+ *
+ * @param rawStatus Сырой статус заказа от бэкенда.
+ * @returns Описание бейджа.
+ */
 export function statusBadge(rawStatus: string | undefined | null): StatusBadge {
     if (!rawStatus) return FALLBACK;
     return BADGES[rawStatus] ?? FALLBACK;

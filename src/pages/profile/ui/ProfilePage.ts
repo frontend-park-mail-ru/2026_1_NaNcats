@@ -22,12 +22,21 @@ import { Wordle } from '@widgets/wordle';
 import { OrderStatusModal } from '@widgets/order-status';
 import { profilePageTemplate } from './profile.tmpl.js';
 
+/**
+ * Заказ с предвычисленным бейджем статуса для отображения в строке списка.
+ */
 interface OrderRowView extends Order {
+    /** Готовый бейдж статуса (иконка, подпись, css-модификатор). */
     _badge: StatusBadge;
 }
 
+/**
+ * Пропсы страницы профиля.
+ */
 interface ProfilePageProps {
+    /** Данные текущего пользователя. */
     user: User;
+    /** Список заказов пользователя с предвычисленными бейджами. */
     orders: OrderRowView[];
 }
 
@@ -35,6 +44,15 @@ const TERMINAL_STATUSES = new Set(['finished', 'cancelled', 'failed']);
 
 const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
+/**
+ * Страница профиля пользователя.
+ *
+ * Монтирует форму редактирования профиля, списки адресов и карт, виджет
+ * Wordle, виджет выбора адреса на карте и модалку статуса заказа.
+ * Загружает заказы пользователя, подписывается на изменения статусов
+ * активных заказов через стрим и применяет обновления к строкам списка.
+ * Реагирует на смену пользователя в сторе userStore.
+ */
 export class ProfilePage extends Component<ProfilePageProps> {
     private picker: AddressPicker | null = null;
     private orderStatusModal: OrderStatusModal | null = null;
@@ -53,6 +71,16 @@ export class ProfilePage extends Component<ProfilePageProps> {
         orderStatus: '.js-order-status-slot',
     };
 
+    /**
+     * Подготавливает данные страницы.
+     *
+     * Загружает текущего пользователя; при отсутствии авторизации
+     * перенаправляет на страницу входа. Параллельно подгружает сохранённые
+     * адреса, карты и список заказов; неудача загрузки заказов даёт пустой
+     * список, страница продолжает работу.
+     *
+     * @returns Промис с пропсами страницы профиля.
+     */
     static async load(): Promise<ProfilePageProps> {
         try {
             await userStore.loadCurrent();
@@ -69,6 +97,11 @@ export class ProfilePage extends Component<ProfilePageProps> {
         return { user, orders: decorate(orders) };
     }
 
+    /**
+     * Монтирует дочерние виджеты, подписывается на стор пользователя и
+     * подключает обработчики кнопок аватара, добавления адреса/карты и
+     * запуска Wordle.
+     */
     protected onMount(): void {
         this.mountChild('editForm', new EditProfileForm(), {
             name: this.props.user.name,
@@ -129,12 +162,19 @@ export class ProfilePage extends Component<ProfilePageProps> {
         );
     }
 
+    /**
+     * Обновляет подпись возле виджета Wordle, если слово дня уже отгадано.
+     */
     private refreshWordleHint(): void {
         if (localStorage.getItem('wordle_solved') !== 'true') return;
         const info = this.root?.querySelector('.js-wordle-info');
         if (info) info.innerHTML = '<b>Поздравляем!</b> Вы отгадали слово дня 🎉';
     }
 
+    /**
+     * Навешивает обработчики на кнопки загрузки и удаления аватара. Ошибки
+     * запросов сообщаются пользователю через попап.
+     */
     private bindAvatar(): void {
         const uploadBtn = this.root?.querySelector('.js-upload-avatar');
         const fileInput = this.root?.querySelector('.js-avatar-input') as HTMLInputElement | null;
@@ -166,15 +206,29 @@ export class ProfilePage extends Component<ProfilePageProps> {
         }
     }
 
+    /**
+     * Открывает модалку редактирования адреса по идентификатору.
+     *
+     * @param id Идентификатор редактируемого адреса.
+     */
     private async handleEditAddress(id: string): Promise<void> {
         await this.picker?.openMapModal(id);
     }
 
+    /**
+     * Закрывает все стрим-подписки на статусы заказов при размонтировании
+     * страницы.
+     */
     protected onDestroy(): void {
         for (const t of this.orderTrackers.values()) t.close();
         this.orderTrackers.clear();
     }
 
+    /**
+     * Подписывается на стрим обновлений статуса для каждого нетерминального
+     * заказа из списка. По терминальному статусу подписка закрывается и
+     * удаляется из карты трекеров.
+     */
     private subscribeActiveOrders(): void {
         for (const order of this.props.orders) {
             if (!order.order_id || TERMINAL_STATUSES.has(order.status)) continue;
@@ -196,6 +250,13 @@ export class ProfilePage extends Component<ProfilePageProps> {
         }
     }
 
+    /**
+     * Применяет новый статус к заказу в пропсах и обновляет соответствующую
+     * строку в DOM: модификатор бейджа, иконку и подпись.
+     *
+     * @param orderId Идентификатор заказа.
+     * @param rawStatus Новый статус, пришедший из стрима.
+     */
     private applyStatusToRow(orderId: string, rawStatus: string): void {
         const idx = this.props.orders.findIndex((o) => o.order_id === orderId);
         if (idx >= 0) {
@@ -223,6 +284,12 @@ export class ProfilePage extends Component<ProfilePageProps> {
         if (labelEl) labelEl.textContent = badge.label;
     }
 
+    /**
+     * Навешивает делегированные обработчики на список заказов: клик и
+     * клавиатура (Enter/Space) открывают модалку статуса для нажатой
+     * строки. Для нетерминальных заказов модалка дополнительно
+     * подписывается на стрим обновлений.
+     */
     private bindOrderRows(): void {
         const list = this.root?.querySelector('.orders-list');
         if (!list) return;

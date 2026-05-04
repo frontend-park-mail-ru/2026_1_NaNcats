@@ -5,10 +5,19 @@ import { ApiError } from '@shared/api/http';
 import { registerFormTemplate } from './registerForm.tmpl.js';
 import { registerAction } from '../model/registerAction';
 
+/**
+ * Параметры формы регистрации.
+ */
 export interface RegisterFormProps {
+    /** Колбэк, вызываемый после успешной регистрации. */
     onSuccess?: () => void;
 }
 
+/**
+ * Форма регистрации: проверяет имя, почту, пароль и его подтверждение,
+ * отправляет данные через {@link registerAction} и отображает ошибки
+ * валидации и сервера.
+ */
 export class RegisterForm extends Component<RegisterFormProps> {
     private formErrors: FormErrors | null = null;
 
@@ -16,6 +25,9 @@ export class RegisterForm extends Component<RegisterFormProps> {
         super(registerFormTemplate);
     }
 
+    /**
+     * Инициализирует обработчик формы и переключатели видимости пароля.
+     */
     protected onMount(): void {
         if (!this.root) return;
         this.formErrors = new FormErrors(this.root);
@@ -34,6 +46,16 @@ export class RegisterForm extends Component<RegisterFormProps> {
         });
     }
 
+    /**
+     * Валидирует значения полей и выполняет регистрацию.
+     *
+     * Пустые поля, некорректное имя, неверный формат почты, слабый пароль и
+     * несовпадение подтверждения сообщаются через {@link FormErrors}. Конфликт
+     * по почте (HTTP 409) отображается отдельным сообщением; прочие ошибки
+     * сервера и сетевые сбои показываются у поля имени.
+     *
+     * @param form Элемент формы, из которого читаются значения.
+     */
     private async submit(form: HTMLFormElement): Promise<void> {
         if (!this.formErrors) return;
         this.formErrors.clearErrors();
@@ -89,6 +111,12 @@ export class RegisterForm extends Component<RegisterFormProps> {
     }
 }
 
+/**
+ * Переключает тип поля ввода пароля между `password` и `text` и обновляет
+ * визуальное состояние иконки.
+ *
+ * @param icon Элемент иконки-переключателя видимости пароля.
+ */
 function togglePasswordVisibility(icon: HTMLElement): void {
     const input = icon.parentElement?.querySelector('input') as HTMLInputElement | null;
     if (!input) return;

@@ -3,17 +3,33 @@ import { Popup } from '@shared/ui/popup';
 import { cardStore, type Card } from '@entities/card';
 import { removeCard, setDefaultCard } from '../model/manageCards';
 
+/**
+ * Параметры списка привязанных карт.
+ */
 export interface CardListProps {
+    /** Колбэк, вызываемый при инициировании добавления новой карты (используется снаружи компонента). */
     onAdd?: () => void;
 }
 
 const TEMPLATE = `<div id="profile-cards-list" class="cards-list"></div>`;
 
+/**
+ * Список привязанных банковских карт пользователя.
+ *
+ * Подписан на хранилище карт и перерисовывается при изменениях. Клик по
+ * неактивной карте делает её картой по умолчанию; клик по кнопке удаления
+ * с подтверждением отвязывает карту. Карта отрисовывается с темой по
+ * банку-эмитенту и подписью платёжной системы по типу карты.
+ */
 export class CardList extends Component<CardListProps> {
     constructor() {
         super(TEMPLATE);
     }
 
+    /**
+     * Подписывается на хранилище карт и привязывает делегированный обработчик
+     * кликов по карточкам и кнопкам удаления.
+     */
     protected onMount(): void {
         const list = this.root?.querySelector('#profile-cards-list') as HTMLElement | null;
         if (!list) return;
@@ -39,6 +55,16 @@ export class CardList extends Component<CardListProps> {
         });
     }
 
+    /**
+     * Перерисовывает содержимое списка карт или плашку про пустое состояние.
+     *
+     * Если карта одна, она помечается активной независимо от флага по
+     * умолчанию. Тема и подпись платёжной системы вычисляются по полям
+     * `issuer_name` и `card_type`.
+     *
+     * @param list Корневой элемент списка, в который пишется HTML.
+     * @param cards Привязанные карты для отображения.
+     */
     private render(list: HTMLElement, cards: Card[]): void {
         if (cards.length === 0) {
             list.innerHTML = '<div class="empty-text">Нет привязанных карт</div>';
@@ -110,6 +136,12 @@ export class CardList extends Component<CardListProps> {
             .join('');
     }
 
+    /**
+     * Запрашивает подтверждение и удаляет карту. Ошибки отвязки показываются
+     * пользователю через всплывающее уведомление.
+     *
+     * @param id Идентификатор удаляемой карты.
+     */
     private async handleDelete(id: string): Promise<void> {
         const ok = await Popup.confirm('Вы уверены, что хотите отвязать эту карту?');
         if (!ok) return;

@@ -15,26 +15,49 @@ import { orderStatusModalTemplate } from './orderStatusModal.tmpl.js';
 const PAYMENT_POLL_INTERVAL_MS = 4000;
 const TERMINAL_PAYMENT_STATUSES = new Set(['succeeded', 'canceled']);
 
+/**
+ * Один шаг прогресс-бара статусов заказа.
+ */
 interface ProgressStep {
+    /** Идентификатор статуса, к которому относится шаг. */
     key: OrderUiStatus;
+    /** Достигнут ли этот статус (включая текущий). */
     reached: boolean;
+    /** Является ли этот шаг текущим. */
     current: boolean;
 }
 
+/**
+ * Заранее отформатированные поля заказа для шаблона.
+ */
 interface FormattedFields {
+    /** Дата заказа в формате DD.MM. */
     dateLabel: string;
+    /** Итоговая сумма заказа в рублях. */
     totalLabel: string;
+    /** Количество отзывов о ресторане в человекочитаемом виде. */
     reviewsLabel: string;
+    /** Текст текущего статуса заказа. */
     statusText: string;
 }
 
+/**
+ * Входные данные виджета {@link OrderStatusModal}.
+ */
 interface OrderStatusModalProps {
+    /** Нормализованный заказ или null, если модалка не активирована. */
     order: NormalizedOrder | null;
+    /** Шаги прогресс-бара статусов. */
     steps: ProgressStep[];
+    /** Отформатированные поля заказа для шаблона. */
     formatted: FormattedFields;
+    /** Показывать ли кнопку оплаты. */
     showPaymentButton: boolean;
+    /** Показывать ли кнопку отмены заказа. */
     showCancelButton: boolean;
-    showProcessing: boolean; // спиннер пока ждём ответа YooKassa
+    /** Показывать ли спиннер ожидания подтверждения оплаты. */
+    showProcessing: boolean;
+    /** Текст ошибки для отображения (пустая строка, если ошибки нет). */
     errorText: string;
 }
 
@@ -53,6 +76,13 @@ const STATUS_TEXT: Record<OrderUiStatus, (eta: number) => string> = {
     cancelled: () => 'Заказ отменён',
 };
 
+/**
+ * Строит шаги прогресс-бара по текущему статусу заказа. Для отменённых и
+ * ожидающих оплату заказов шаги остаются недостигнутыми.
+ *
+ * @param status Текущий UI-статус заказа.
+ * @returns Список шагов с пометками достижения и текущего шага.
+ */
 function buildSteps(status: OrderUiStatus): ProgressStep[] {
     if (status === 'cancelled') {
         return STATUS_FLOW.map((key) => ({ key, reached: false, current: false }));
@@ -68,6 +98,14 @@ function buildSteps(status: OrderUiStatus): ProgressStep[] {
     }));
 }
 
+/**
+ * Приводит дату к виду DD.MM. Поддерживает как ISO-строки, так и заранее
+ * сформированные строки DD.MM.YYYY. Для невалидного значения возвращает
+ * исходную строку.
+ *
+ * @param value Дата в произвольном формате.
+ * @returns Дата вида DD.MM или исходная строка.
+ */
 function formatDate(value: string): string {
     if (!value) return '';
     const ddmmyyyy = /^(\d{2})\.(\d{2})\.\d{4}$/.exec(value);
@@ -79,15 +117,36 @@ function formatDate(value: string): string {
     return `${dd}.${mm}`;
 }
 
+/**
+ * Переводит сумму из микрорублей в рубли без дробной части.
+ *
+ * @param micros Сумма в микрорублях.
+ * @returns Целое число рублей в виде строки.
+ */
 function formatRubles(micros: number): string {
     return (micros / 1_000_000).toFixed(0);
 }
 
+/**
+ * Форматирует количество отзывов: тысячи округляются вниз с суффиксом 000+.
+ *
+ * @param count Точное число отзывов.
+ * @returns Человекочитаемая строка, например 1000+ или 42.
+ */
 function formatReviews(count: number): string {
     if (count >= 1000) return `${Math.floor(count / 1000)}000+`;
     return String(count);
 }
 
+/**
+ * Собирает пропсы виджета по нормализованному заказу. Для null-заказа
+ * возвращает пустой каркас, не показывающий шаги и кнопки.
+ *
+ * @param order Нормализованный заказ или null.
+ * @param opts Дополнительные параметры отрисовки.
+ * @param opts.processing Показывать ли индикатор ожидания подтверждения оплаты.
+ * @returns Пропсы для шаблона модалки.
+ */
 function buildProps(order: NormalizedOrder | null, opts: { processing?: boolean } = {}): OrderStatusModalProps {
     if (!order) {
         return {
@@ -117,6 +176,14 @@ function buildProps(order: NormalizedOrder | null, opts: { processing?: boolean 
     };
 }
 
+/**
+ * Модалка статуса заказа.
+ *
+ * Показывает прогресс-бар, поля заказа, кнопки оплаты и отмены. Подключается
+ * к WebSocket-трекеру обновлений и параллельно опрашивает эндпоинт оплаты до
+ * терминального статуса. Кнопка оплаты переводит модалку в состояние ожидания
+ * подтверждения с таймаутом, после которого показывается сообщение об ошибке.
+ */
 export class OrderStatusModal extends Component<OrderStatusModalProps> {
     private overlay: HTMLElement | null = null;
     private tracker: OrderTracker | null = null;
@@ -130,10 +197,20 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         super(orderStatusModalTemplate);
     }
 
+    /**
+     * Возвращает начальные пропсы модалки до получения данных заказа.
+     *
+     * @returns Пустые пропсы, не показывающие шаги и кнопки.
+     */
     static initialProps(): OrderStatusModalProps {
         return buildProps(null);
     }
 
+    /**
+     * Запоминает оверлей, привязывает обработчики закрытия (по фону и по
+     * крестику), кнопок оплаты и отмены, активирует оверлей, если заказ уже
+     * передан в пропсах.
+     */
     protected onMount(): void {
         this.overlay = this.root?.querySelector('#order-status-modal') as HTMLElement | null;
 
@@ -167,6 +244,11 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Переводит модалку в состояние ожидания подтверждения оплаты: показывает
+     * спиннер, скрывает кнопки и запускает таймер таймаута, по истечении
+     * которого выводится сообщение об ошибке. Повторный вызов игнорируется.
+     */
     private beginPaymentProcessing(): void {
         if (this.isProcessingPayment) return;
         this.isProcessingPayment = true;
@@ -189,6 +271,9 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }, PAYMENT_TIMEOUT_MS);
     }
 
+    /**
+     * Сбрасывает состояние ожидания оплаты и отменяет таймер таймаута.
+     */
     private endPaymentProcessing(): void {
         this.isProcessingPayment = false;
         if (this.paymentTimeoutTimer !== null) {
@@ -197,6 +282,13 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Перерисовывает виджет, не отключая активный WebSocket-трекер. Перед
+     * вызовом update выставляется флаг, по которому onDestroy не закрывает
+     * соединение.
+     *
+     * @param props Новые пропсы для отрисовки.
+     */
     private rerender(props: OrderStatusModalProps): void {
         this.keepTrackerAcrossRerender = true;
         try {
@@ -206,6 +298,13 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Запрашивает у пользователя подтверждение и отменяет заказ через API.
+     * При успехе локально применяет событие со статусом cancelled, при ошибке
+     * показывает сообщение пользователю.
+     *
+     * @returns Промис, разрешающийся после завершения операции отмены.
+     */
     private async handleCancel(): Promise<void> {
         const orderId = this.props.order?.order_id;
         if (!orderId) return;
@@ -220,12 +319,28 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Закрывает WebSocket-трекер и опрос оплаты при размонтировании, кроме
+     * случаев, когда размонтирование вызвано перерисовкой через {@link rerender}.
+     */
     protected onDestroy(): void {
         if (this.keepTrackerAcrossRerender) return;
         this.disconnectTracker();
         this.stopPaymentPoll();
     }
 
+    /**
+     * Открывает модалку для заданного заказа.
+     *
+     * Нормализует заказ, сбрасывает предыдущие подписки и состояние, активирует
+     * оверлей. При options.subscribe и нетерминальном статусе подключается к
+     * трекеру обновлений и запускает опрос статуса оплаты.
+     *
+     * @param rawOrder Заказ в исходном представлении API.
+     * @param options Параметры открытия.
+     * @param options.subscribe Подписаться на live-обновления заказа.
+     * @param options.onClose Колбэк закрытия модалки.
+     */
     open(rawOrder: Order, options: { subscribe?: boolean; onClose?: () => void } = {}): void {
         const order = normalizeOrder(rawOrder);
         this.disconnectTracker();
@@ -241,6 +356,10 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Закрывает модалку, сбрасывает все активные подписки и таймеры и
+     * вызывает зарегистрированный колбэк onClose, если он был задан.
+     */
     close(): void {
         this.disconnectTracker();
         this.stopPaymentPoll();
@@ -251,12 +370,21 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         if (cb) cb();
     }
 
+    /**
+     * Подключается к WebSocket-трекеру обновлений заказа и применяет каждое
+     * полученное событие к текущему состоянию.
+     *
+     * @param orderId Идентификатор заказа для отслеживания.
+     */
     private subscribeToOrder(orderId: string): void {
         this.tracker = connectOrderTracker(orderId, {
             onEvent: (event) => this.applyEvent(event),
         });
     }
 
+    /**
+     * Закрывает активный WebSocket-трекер, если он был.
+     */
     private disconnectTracker(): void {
         if (this.tracker) {
             this.tracker.close();
@@ -264,6 +392,13 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Запускает периодический опрос статуса оплаты заказа. По достижении
+     * терминального статуса оплаты опрос автоматически останавливается.
+     * Ошибки запросов проглатываются.
+     *
+     * @param orderId Идентификатор заказа.
+     */
     private startPaymentPoll(orderId: string): void {
         this.stopPaymentPoll();
         this.paymentPollTimer = setInterval(async () => {
@@ -278,6 +413,9 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }, PAYMENT_POLL_INTERVAL_MS);
     }
 
+    /**
+     * Останавливает периодический опрос статуса оплаты.
+     */
     private stopPaymentPoll(): void {
         if (this.paymentPollTimer !== null) {
             clearInterval(this.paymentPollTimer);
@@ -285,6 +423,14 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
         }
     }
 
+    /**
+     * Применяет событие из WebSocket-трекера к текущему заказу: обновляет
+     * статус, URL оплаты и текст ошибки, перерисовывает виджет, при
+     * подтверждении оплаты или терминальном статусе сбрасывает состояние
+     * ожидания и опрос.
+     *
+     * @param event Событие шлюза с обновлением заказа.
+     */
     private applyEvent(event: GatewayWsEvent): void {
         const current = this.props.order;
         if (!current) return;
@@ -327,6 +473,13 @@ export class OrderStatusModal extends Component<OrderStatusModalProps> {
     }
 }
 
+/**
+ * Проверяет, является ли исходный статус заказа терминальным (после которого
+ * нет смысла продолжать live-обновления).
+ *
+ * @param raw Исходный статус заказа из API.
+ * @returns true, если заказ завершён, отменён или упал в ошибку.
+ */
 function isTerminalRawStatus(raw: string): boolean {
     return raw === 'finished' || raw === 'cancelled' || raw === 'failed';
 }

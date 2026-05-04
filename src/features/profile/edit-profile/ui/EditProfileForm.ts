@@ -5,11 +5,24 @@ import { ApiError } from '@shared/api/http';
 import { editProfile } from '../model/editProfile';
 import { editProfileFormTemplate } from './editProfileForm.tmpl.js';
 
+/**
+ * Параметры формы редактирования профиля.
+ */
 export interface EditProfileFormProps {
+    /** Текущее имя пользователя для предзаполнения. */
     name: string;
+    /** Текущая почта пользователя для предзаполнения. */
     email: string;
 }
 
+/**
+ * Форма редактирования профиля.
+ *
+ * Поля имени и почты по умолчанию заблокированы и переключаются в режим
+ * редактирования по клику на триггер. Сохранение валидирует значения и
+ * вызывает {@link editProfile}; ошибки валидации, конфликта почты (HTTP 409),
+ * прочие ответы сервера и сетевые сбои отображаются в служебном блоке.
+ */
 export class EditProfileForm extends Component<EditProfileFormProps> {
     private isEditing = false;
     private formErrors: FormErrors | null = null;
@@ -18,6 +31,10 @@ export class EditProfileForm extends Component<EditProfileFormProps> {
         super(editProfileFormTemplate);
     }
 
+    /**
+     * Привязывает переключение режима редактирования и обработчик отправки
+     * формы.
+     */
     protected onMount(): void {
         if (!this.root) return;
         this.formErrors = new FormErrors(this.root);
@@ -52,6 +69,15 @@ export class EditProfileForm extends Component<EditProfileFormProps> {
         });
     }
 
+    /**
+     * Валидирует значения и сохраняет изменения профиля.
+     *
+     * При успехе обновляет props компонента, чтобы дальнейшее переключение
+     * режима возвращало уже новые значения.
+     *
+     * @param name Новое имя пользователя.
+     * @param email Новая почта пользователя.
+     */
     private async save(name: string, email: string): Promise<void> {
         if (!this.formErrors) return;
         this.formErrors.clearErrors();
@@ -74,6 +100,12 @@ export class EditProfileForm extends Component<EditProfileFormProps> {
         }
     }
 
+    /**
+     * Выводит сообщение в служебный блок ошибок формы. Пустая строка скрывает
+     * предыдущее сообщение.
+     *
+     * @param msg Текст сообщения об ошибке.
+     */
     private showError(msg: string): void {
         const errBlock = this.root?.querySelector('#profile-error') as HTMLElement | null;
         if (errBlock) errBlock.innerText = msg;

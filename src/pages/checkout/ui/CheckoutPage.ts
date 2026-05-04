@@ -15,18 +15,33 @@ import { checkoutPageTemplate } from './checkout.tmpl.js';
 const DELIVERY_FEE_RUB = 360;
 const SERVICE_FEE_RUB = 99;
 
+/**
+ * Пропсы страницы оформления заказа.
+ */
 interface CheckoutPageProps {
+    /** Позиции корзины, попадающие в заказ. */
     items: CartItem[];
+    /** Идентификатор ресторана, к которому привязана корзина. */
     restaurantId: number;
+    /** Отображаемое имя ресторана. */
     restaurantName: string;
+    /** Ссылка на логотип ресторана. */
     restaurantLogoUrl: string;
+    /** Сохранённые адреса пользователя для выбора доставки. */
     addresses: Address[];
+    /** Сохранённые карты пользователя для выбора способа оплаты. */
     cards: Card[];
+    /** Выбранный адрес доставки или null, если не выбран. */
     selectedAddress: Address | null;
+    /** Выбранная карта оплаты или null (оплата не картой либо не выбрана). */
     selectedCard: Card | null;
+    /** Сумма позиций корзины в рублях, отформатированная с двумя знаками. */
     cartItemsTotal: string;
+    /** Стоимость доставки в рублях, отформатированная с двумя знаками. */
     deliveryFee: string;
+    /** Сервисный сбор в рублях, отформатированный с двумя знаками. */
     serviceFee: string;
+    /** Итоговая сумма к оплате в рублях, отформатированная с двумя знаками. */
     grandTotal: string;
 }
 
@@ -62,6 +77,15 @@ const buildProps = (
     };
 };
 
+/**
+ * Страница оформления заказа.
+ *
+ * Загружает корзину, адреса и карты пользователя, монтирует виджет выбора
+ * адреса и модалку статуса заказа, обрабатывает выбор адреса/карты и кнопку
+ * оплаты. Перед созданием заказа гарантирует, что у всех позиций назначен
+ * владелец-плательщик. После успешного создания либо перенаправляет на
+ * страницу подтверждения оплаты, либо открывает модалку статуса заказа.
+ */
 export class CheckoutPage extends Component<CheckoutPageProps> {
     private picker: AddressPicker | null = null;
     private orderStatusModal: OrderStatusModal | null = null;
@@ -75,6 +99,16 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         orderStatus: '.js-order-status-slot',
     };
 
+    /**
+     * Подготавливает данные страницы перед монтированием.
+     *
+     * Загружает текущего пользователя, при отсутствии авторизации
+     * перенаправляет на страницу входа. Параллельно подгружает адреса, карты
+     * и корзину; при пустой корзине отправляет пользователя на главную.
+     * Дополнительно запрашивает имя и логотип ресторана из корзины.
+     *
+     * @returns Промис с пропсами страницы.
+     */
     static async load(): Promise<CheckoutPageProps> {
         try {
             await userStore.loadCurrent();
@@ -122,6 +156,11 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         );
     }
 
+    /**
+     * Монтирует дочерние компоненты и навешивает обработчики на корневой
+     * элемент: открытие/закрытие модалок, выбор адреса и карты, кнопку
+     * оплаты.
+     */
     protected onMount(): void {
         this.picker = new AddressPicker();
         this.mountChild('picker', this.picker, {
@@ -152,6 +191,11 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         this.bindPay();
     }
 
+    /**
+     * Навешивает обработчики открытия и закрытия для модалок корзины,
+     * адреса и оплаты, а также переход от выбора адреса к карте на
+     * странице.
+     */
     private bindModals(): void {
         const r = this.root;
         if (!r) return;
@@ -185,6 +229,10 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         }
     }
 
+    /**
+     * Навешивает обработчики выбора адреса и карты в списках. На каждый
+     * выбор обновляет пропсы страницы новым значением.
+     */
     private bindSelections(): void {
         const r = this.root;
         if (!r) return;
@@ -230,12 +278,27 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         });
     }
 
+    /**
+     * Навешивает обработчик клика по кнопке оплаты.
+     */
     private bindPay(): void {
         const btn = this.root?.querySelector('.js-pay-btn') as HTMLButtonElement | null;
         if (!btn) return;
         this.on(btn, 'click', () => void this.processCheckout(btn));
     }
 
+    /**
+     * Выполняет оформление заказа.
+     *
+     * Проверяет выбор адреса и наличие ресторана в корзине, гарантирует
+     * назначение владельцев у позиций, формирует и отправляет полезную
+     * нагрузку в API заказов. По результату либо переходит на страницу
+     * подтверждения оплаты по ссылке, либо открывает модалку статуса
+     * заказа. При ошибке выводит сообщение и возвращает кнопку в исходное
+     * состояние.
+     *
+     * @param btn Кнопка оплаты, состоянием которой управляет метод.
+     */
     private async processCheckout(btn: HTMLButtonElement): Promise<void> {
         const errEl = this.root?.querySelector('.js-checkout-error') as HTMLElement | null;
         if (errEl) errEl.innerText = '';
@@ -324,6 +387,19 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         }
     }
 
+    /**
+     * Гарантирует, что у всех позиций корзины назначен владелец-плательщик.
+     *
+     * Если все позиции уже с владельцами, возвращает текущий список без
+     * изменений. В соло-корзине автоматически назначает админа владельцем
+     * непривязанных позиций, перезагружает корзину и возвращает обновлённый
+     * список. В групповой корзине без явного владельца возвращает null с
+     * выводом сообщения в errEl.
+     *
+     * @param errEl Элемент для вывода сообщения об ошибке (может быть null).
+     * @returns Список позиций готовых к оплате либо null при невозможности
+     * назначить владельцев.
+     */
     private async ensureAssignedItems(errEl: HTMLElement | null): Promise<CartItem[] | null> {
         const cart = cartStore.getState();
         const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
