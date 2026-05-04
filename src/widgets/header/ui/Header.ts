@@ -188,7 +188,7 @@ export class Header extends Component<HeaderProps> {
         const dishItems = results.dishes
             .map(
                 (d) => `
-                <div class="search-suggest__item" data-kind="dish" data-restaurant-id="${d.restaurant_brand_id}">
+                <div class="search-suggest__item" data-kind="dish" data-restaurant-id="${d.restaurant_brand_id}" data-dish-id="${d.id}">
                     <span class="search-suggest__icon">🍽</span>
                     <span class="search-suggest__name">${d.name}</span>
                 </div>`,
@@ -201,9 +201,17 @@ export class Header extends Component<HeaderProps> {
         suggest.querySelectorAll('.search-suggest__item').forEach((el) => {
             el.addEventListener('click', () => {
                 const kind = (el as HTMLElement).dataset.kind;
-                const id = kind === 'dish'
-                    ? (el as HTMLElement).dataset.restaurantId
-                    : (el as HTMLElement).dataset.id;
+                if (kind === 'dish') {
+                    const restaurantId = (el as HTMLElement).dataset.restaurantId;
+                    const dishId = (el as HTMLElement).dataset.dishId;
+                    if (restaurantId) {
+                        const url = `${ROUTES.restaurant}?id=${encodeURIComponent(restaurantId)}`
+                            + (dishId ? `&dish=${encodeURIComponent(dishId)}` : '');
+                        window.router.go(url);
+                    }
+                    return;
+                }
+                const id = (el as HTMLElement).dataset.id;
                 if (id) window.router.go(`${ROUTES.restaurant}?id=${encodeURIComponent(id)}`);
             });
         });

@@ -231,6 +231,80 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
                 this.pageEl?.classList.remove('restaurant-details-page_drawer-menu');
             }
         });
+
+        const dishParam = getQueryParam('dish');
+        if (dishParam) {
+            void this.scrollToDishById(dishParam);
+        }
+    }
+
+    private async scrollToDishById(dishId: string): Promise<void> {
+        const MAX_PAGES = 20;
+        for (let i = 0; i < MAX_PAGES; i++) {
+            const card = this.root?.querySelector(
+                `.dish-card[data-dish-id="${dishId}"]`,
+            ) as HTMLElement | null;
+            if (card) {
+                this.highlightAndScroll(card);
+                return;
+            }
+            if (!this.hasMore || this.isFetching) {
+                if (this.isFetching) {
+                    await new Promise((r) => setTimeout(r, 150));
+                    continue;
+                }
+                return;
+            }
+            await this.fetchNextPage();
+        }
+    }
+
+    private async fetchNextPage(): Promise<void> {
+        if (this.isFetching || !this.hasMore || !this.restaurantId) return;
+        this.isFetching = true;
+        try {
+            const next = await restaurantApi.listDishes(
+                this.restaurantId,
+                PAGE_SIZE,
+                this.offset,
+            );
+            this.appendDishes(next.map(toView));
+            this.offset += next.length;
+            if (next.length < PAGE_SIZE) this.hasMore = false;
+        } catch (e) {
+            console.error('restaurant: fetchNextPage failed', e);
+            this.hasMore = false;
+        } finally {
+            this.isFetching = false;
+        }
+    }
+
+    private highlightAndScroll(card: HTMLElement): void {
+        const scrollContainer = this.root?.querySelector('.center-column') as HTMLElement | null;
+        if (scrollContainer) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
+            const offset = cardRect.top - containerRect.top + scrollContainer.scrollTop - 80;
+            scrollContainer.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+        } else {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        card.classList.add('dish-card_highlighted');
+
+        // Подсветка снимается на первое взаимодействие пользователя со страницей.
+        // Программный smooth-scroll выше не должен её снимать, поэтому слушаем
+        // только пользовательские события (клик/тач/клавиша/колесо).
+        const dismiss = () => {
+            card.classList.remove('dish-card_highlighted');
+            document.removeEventListener('pointerdown', dismiss, true);
+            document.removeEventListener('wheel', dismiss, true);
+            document.removeEventListener('touchstart', dismiss, true);
+            document.removeEventListener('keydown', dismiss, true);
+        };
+        document.addEventListener('pointerdown', dismiss, { capture: true, once: true });
+        document.addEventListener('wheel', dismiss, { capture: true, once: true, passive: true });
+        document.addEventListener('touchstart', dismiss, { capture: true, once: true, passive: true });
+        document.addEventListener('keydown', dismiss, { capture: true, once: true });
     }
 
     private openMenuDrawer(): void {
@@ -283,21 +357,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
         if (distance > 200) return;
 
-        this.isFetching = true;
-        try {
-            const next = await restaurantApi.listDishes(
-                this.restaurantId,
-                PAGE_SIZE,
-                this.offset,
-            );
-            this.appendDishes(next.map(toView));
-            this.offset += next.length;
-            if (next.length < PAGE_SIZE) this.hasMore = false;
-        } catch (e) {
-            console.error('restaurant: paginate failed', e);
-        } finally {
-            this.isFetching = false;
-        }
+        await this.fetchNextPage();
     }
 
     private appendDishes(items: DishView[]): void {
@@ -321,7 +381,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
                     ${sec.dishes
                         .map(
                             (d) => `
-                            <div class="dish-card">
+                            <div class="dish-card" data-dish-id="${d.id}">
                                 <img class="dish-card__img" src="${d.image_url}" alt="${d.name}"
                                     onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'">
                                 <div class="dish-card__prices">

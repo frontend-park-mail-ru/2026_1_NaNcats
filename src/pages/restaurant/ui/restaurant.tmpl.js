@@ -98,7 +98,7 @@ export const restaurantPageTemplate = `
                         <h2 class="restaurant-section-title" id="dish-section-{{!idx}}">{{!sec.name}}</h2>
                         <div class="res-grid">
                             {{~sec.dishes :dish}}
-                                <div class="dish-card">
+                                <div class="dish-card" data-dish-id="{{!dish.id}}">
                                     <img
                                         class="dish-card__img"
                                         src="{{!dish.image_url}}"
