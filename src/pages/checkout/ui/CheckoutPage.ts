@@ -7,6 +7,7 @@ import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
 import { cartApi, cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
 import { orderApi, type Order, type OrderCreatePayload } from '@entities/order';
+import { restaurantApi } from '@entities/restaurant';
 import { AddressPicker } from '@widgets/address-picker';
 import { OrderStatusModal } from '@widgets/order-status';
 import { checkoutPageTemplate } from './checkout.tmpl.js';
@@ -17,6 +18,8 @@ const SERVICE_FEE_RUB = 99;
 interface CheckoutPageProps {
     items: CartItem[];
     restaurantId: number;
+    restaurantName: string;
+    restaurantLogoUrl: string;
     addresses: Address[];
     cards: Card[];
     selectedAddress: Address | null;
@@ -33,6 +36,8 @@ const itemsTotalRub = (items: CartItem[]): number =>
 const buildProps = (
     items: CartItem[],
     restaurantId: number,
+    restaurantName: string,
+    restaurantLogoUrl: string,
     addresses: Address[],
     cards: Card[],
     selectedAddress: Address | null,
@@ -44,6 +49,8 @@ const buildProps = (
     return {
         items,
         restaurantId,
+        restaurantName,
+        restaurantLogoUrl,
         addresses,
         cards,
         selectedAddress,
@@ -97,7 +104,26 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
         const selectedAddress = addresses[0] ?? null;
         const selectedCard = cards.find((c) => c.is_default) ?? null;
 
-        return buildProps(cart.items, cart.restaurantId, addresses, cards, selectedAddress, selectedCard);
+        let restaurantName = 'Заказ';
+        let restaurantLogoUrl = '';
+        try {
+            const brand = await restaurantApi.getBrand(cart.restaurantId);
+            restaurantName = brand.name || restaurantName;
+            restaurantLogoUrl = brand.logo_url || '';
+        } catch (e) {
+            console.warn('checkout: getBrand failed', e);
+        }
+
+        return buildProps(
+            cart.items,
+            cart.restaurantId,
+            restaurantName,
+            restaurantLogoUrl,
+            addresses,
+            cards,
+            selectedAddress,
+            selectedCard,
+        );
     }
 
     protected onMount(): void {
@@ -111,6 +137,8 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                     buildProps(
                         this.props.items,
                         this.props.restaurantId,
+                        this.props.restaurantName,
+                        this.props.restaurantLogoUrl,
                         fresh,
                         this.props.cards,
                         fresh[0] ?? this.props.selectedAddress,
@@ -174,6 +202,8 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                     buildProps(
                         this.props.items,
                         this.props.restaurantId,
+                        this.props.restaurantName,
+                        this.props.restaurantLogoUrl,
                         this.props.addresses,
                         this.props.cards,
                         next,
@@ -192,6 +222,8 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                     buildProps(
                         this.props.items,
                         this.props.restaurantId,
+                        this.props.restaurantName,
+                        this.props.restaurantLogoUrl,
                         this.props.addresses,
                         this.props.cards,
                         this.props.selectedAddress,
@@ -256,7 +288,8 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                 total_cost: toMicros(grand),
                 created_at: new Date().toLocaleDateString('ru-RU'),
                 restaurant_id: currentCart.restaurantId,
-                restaurant_name: 'Заказ',
+                restaurant_name: this.props.restaurantName,
+                restaurant_image_url: this.props.restaurantLogoUrl,
                 items: assignedItems.map((i) => ({
                     dish_id: i.dish_id,
                     name: i.name,
@@ -315,6 +348,8 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                     buildProps(
                         freshCart.items,
                         freshCart.restaurantId,
+                        this.props.restaurantName,
+                        this.props.restaurantLogoUrl,
                         this.props.addresses,
                         this.props.cards,
                         this.props.selectedAddress,
