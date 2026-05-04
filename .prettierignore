@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+docs
+public
+package-lock.json
+
+src/**/*.tmpl.js

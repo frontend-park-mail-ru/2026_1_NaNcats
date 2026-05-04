@@ -88,14 +88,30 @@
     color: var(--text-dark);
     transition: background-color 0.2s;
 
-    &:hover { filter: brightness(0.9); }
-    &:active { transform: scale(0.95); }
+    &:hover {
+      filter: brightness(0.9);
+    }
+    &:active {
+      transform: scale(0.95);
+    }
 
-    &_wide { flex: 1.5; font-size: 12px; }
+    &_wide {
+      flex: 1.5;
+      font-size: 12px;
+    }
 
-    &.correct { background-color: #6aaa64; color: white; }
-    &.present { background-color: var(--accent-orange); color: white; }
-    &.absent { background-color: #787c7e; color: white; }
+    &.correct {
+      background-color: #6aaa64;
+      color: white;
+    }
+    &.present {
+      background-color: var(--accent-orange);
+      color: white;
+    }
+    &.absent {
+      background-color: #787c7e;
+      color: white;
+    }
   }
 }
 
@@ -111,12 +127,20 @@
   transition: opacity 0.3s;
   pointer-events: none;
   z-index: 10;
-  
-  &_show { opacity: 1; }
+
+  &_show {
+    opacity: 1;
+  }
 }
 
 @keyframes pop {
-  0% { transform: scale(0.8); }
-  40% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(0.8);
+  }
+  40% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }

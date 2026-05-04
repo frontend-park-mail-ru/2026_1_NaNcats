@@ -99,6 +99,11 @@ module.exports = (env, argv) => {
           target: 'http://localhost:8080',
           changeOrigin: true,
           secure: false,
+          ws: true,
+          onError(err, req, res) {
+            if (err && (err.code === 'EPIPE' || err.code === 'ECONNRESET')) return;
+            console.warn('[proxy] error:', err && err.message);
+          },
         },
       ],
     },

@@ -2,9 +2,20 @@ export const cartWidgetTemplate = `
 <div class="cart-wrapper">
     <div class="cart-header-top">
         <span class="cart-title">Корзина</span>
-        {{? it.items.length > 0 }}
-            <span class="js-clear-slot"></span>
-        {{?}}
+
+        <div class="cart-header-actions">
+            {{? it.items.length > 0 }}
+                <span class="js-clear-slot"></span>
+            {{?}}
+
+            <button
+                type="button"
+                class="cart-close-btn js-close-panels"
+                aria-label="Закрыть корзину"
+            >
+                ×
+            </button>
+        </div>
     </div>
 
     {{? it.items.length === 0 }}
@@ -17,11 +28,6 @@ export const cartWidgetTemplate = `
             <button class="button button_checkout" disabled>Оформить заказ</button>
         </div>
     {{??}}
-        <div class="cart-delivery-tabs">
-            <div class="cart-tab active">Доставка</div>
-            <div class="cart-tab">Самовывоз</div>
-        </div>
-
         <div class="cart-items-list">
             {{~ it.items :item }}
                 <div class="cart-item">

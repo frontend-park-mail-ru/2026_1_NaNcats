@@ -2,14 +2,7 @@ import './wordle.scss';
 import { Component } from '@shared/lib/component';
 import { Popup } from '@shared/ui/popup';
 import { wordleTemplate } from './wordle.tmpl.js';
-import {
-    scoreGuess,
-    createEmptyGrid,
-    isValidLetter,
-    WORD_LENGTH,
-    MAX_ROWS,
-    type TileColor,
-} from '../lib/wordleEngine';
+import { scoreGuess, createEmptyGrid, isValidLetter, WORD_LENGTH, MAX_ROWS, type TileColor } from '../lib/wordleEngine';
 
 const KEYBOARD_LAYOUT: string[][] = [
     ['Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З', 'Х', 'Ъ'],
@@ -17,10 +10,19 @@ const KEYBOARD_LAYOUT: string[][] = [
     ['ENTER', 'Я', 'Ч', 'С', 'М', 'И', 'Т', 'Ь', 'Б', 'Ю', 'BACKSPACE'],
 ];
 
+/**
+ * Входные данные виджета {@link Wordle}.
+ */
 export interface WordleProps {
+    /** Колбэк, вызываемый при победе пользователя. */
     onWin?: () => void;
 }
 
+/**
+ * Виджет игры Wordle на русском языке: модалка с игровым полем, экранной
+ * клавиатурой и обработкой ввода с физической клавиатуры. Словарь подгружается
+ * лениво при первом открытии.
+ */
 export class Wordle extends Component<WordleProps> {
     private targetWord = '';
     private validWords = new Set<string>();
@@ -39,6 +41,10 @@ export class Wordle extends Component<WordleProps> {
         super(wordleTemplate);
     }
 
+    /**
+     * Запоминает ссылки на ключевые DOM-узлы, привязывает обработчики закрытия
+     * модалки и глобального ввода с клавиатуры, отрисовывает поле и клавиатуру.
+     */
     protected onMount(): void {
         this.modal = this.root?.querySelector('#wordle-modal') ?? null;
         this.board = this.root?.querySelector('.js-wordle-board') as HTMLElement | null;
@@ -58,6 +64,12 @@ export class Wordle extends Component<WordleProps> {
         this.renderKeyboard();
     }
 
+    /**
+     * Открывает модалку Wordle. При первом вызове лениво подгружает словарь и
+     * запоминает слово дня, затем сбрасывает партию.
+     *
+     * @returns Промис, разрешающийся после загрузки словаря и открытия модалки.
+     */
     async open(): Promise<void> {
         if (!this.wordsLoaded) {
             const words = await import('../lib/words');
@@ -69,10 +81,16 @@ export class Wordle extends Component<WordleProps> {
         this.modal?.classList.add('modal-overlay_active');
     }
 
+    /**
+     * Закрывает модалку Wordle, не сбрасывая текущую партию.
+     */
     close(): void {
         this.modal?.classList.remove('modal-overlay_active');
     }
 
+    /**
+     * Сбрасывает игровое состояние и перерисовывает поле и клавиатуру.
+     */
     private startNewGame(): void {
         this.grid = createEmptyGrid();
         this.currentRow = 0;
@@ -82,6 +100,9 @@ export class Wordle extends Component<WordleProps> {
         this.renderKeyboard();
     }
 
+    /**
+     * Полностью перерисовывает игровое поле по текущему состоянию сетки.
+     */
     private renderBoard(): void {
         if (!this.board) return;
         this.board.innerHTML = '';
@@ -100,6 +121,10 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Перерисовывает экранную клавиатуру по фиксированной раскладке и
+     * привязывает к каждой кнопке обработчик ввода.
+     */
     private renderKeyboard(): void {
         if (!this.keyboard) return;
         this.keyboard.innerHTML = '';
@@ -118,10 +143,21 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Проверяет, открыта ли модалка в текущий момент.
+     *
+     * @returns true, если модалка видима.
+     */
     private isOpen(): boolean {
         return this.modal?.classList.contains('modal-overlay_active') ?? false;
     }
 
+    /**
+     * Обрабатывает событие нажатия клавиши на физической клавиатуре.
+     * Игнорируется, если игра завершена или модалка закрыта.
+     *
+     * @param e Событие нажатия клавиши.
+     */
     private onKeyDown(e: KeyboardEvent): void {
         if (this.isGameOver || !this.isOpen()) return;
         if (e.key === 'Enter') this.handleInput('ENTER');
@@ -132,6 +168,13 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Применяет ввод одного символа или служебной клавиши к текущей строке.
+     * Поддерживает BACKSPACE (удаление последней буквы), ENTER (проверка
+     * догадки, если строка заполнена) и обычные буквы.
+     *
+     * @param key Введённая клавиша: буква в верхнем регистре, ENTER или BACKSPACE.
+     */
     private handleInput(key: string): void {
         if (this.isGameOver) return;
 
@@ -157,14 +200,33 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Возвращает DOM-элемент плитки по координатам в сетке.
+     *
+     * @param row Индекс строки.
+     * @param col Индекс столбца.
+     * @returns Элемент плитки или null, если поле не отрисовано.
+     */
     private getTile(row: number, col: number): HTMLElement | null {
         return this.board?.querySelector(`.wordle-tile[data-row="${row}"][data-col="${col}"]`) ?? null;
     }
 
+    /**
+     * Возвращает DOM-элемент кнопки экранной клавиатуры по символу.
+     *
+     * @param key Символ или служебное имя клавиши.
+     * @returns Элемент кнопки или null, если клавиатура не отрисована.
+     */
     private getKeyButton(key: string): HTMLElement | null {
         return this.keyboard?.querySelector(`.wordle-keyboard__key[data-key="${key}"]`) ?? null;
     }
 
+    /**
+     * Обновляет содержимое и состояние одной плитки по текущему значению в сетке.
+     *
+     * @param row Индекс строки.
+     * @param col Индекс столбца.
+     */
     private updateTile(row: number, col: number): void {
         const tile = this.getTile(row, col);
         if (!tile) return;
@@ -173,6 +235,13 @@ export class Wordle extends Component<WordleProps> {
         tile.classList.toggle('filled', !!letter);
     }
 
+    /**
+     * Проверяет догадку текущей строки: валидирует слово по словарю,
+     * раскрашивает плитки и кнопки клавиатуры, обрабатывает победу или
+     * исчерпание попыток.
+     *
+     * @returns Промис, разрешающийся после применения результата.
+     */
     private async checkGuess(): Promise<void> {
         const guess = this.grid[this.currentRow].join('');
         if (!this.validWords.has(guess.toLowerCase())) {
@@ -203,6 +272,13 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Применяет вычисленные цвета к плиткам текущей строки и к кнопкам
+     * клавиатуры. Кнопка не понижается из состояния correct.
+     *
+     * @param colors Цвета плиток по позициям догадки.
+     * @param guess Догадка пользователя (по символам соответствует colors).
+     */
     private applyColors(colors: TileColor[], guess: string): void {
         for (let i = 0; i < WORD_LENGTH; i++) {
             this.getTile(this.currentRow, i)?.classList.add(colors[i]);
@@ -214,6 +290,12 @@ export class Wordle extends Component<WordleProps> {
         }
     }
 
+    /**
+     * Показывает короткое всплывающее уведомление и автоматически скрывает его
+     * через две секунды.
+     *
+     * @param msg Текст уведомления.
+     */
     private showToast(msg: string): void {
         if (!this.toast) return;
         this.toast.textContent = msg;

@@ -8,6 +8,13 @@ const TEMPLATE = `
 </div>
 `;
 
+/**
+ * Страница 404.
+ *
+ * Отображает заглушку с сообщением об отсутствии запрошенной страницы и
+ * ссылку для возврата на главную. Внешних зависимостей и собственного
+ * состояния не имеет.
+ */
 export class NotFoundPage extends Component<object> {
     constructor() {
         super(TEMPLATE);

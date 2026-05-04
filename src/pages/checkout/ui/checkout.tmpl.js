@@ -2,7 +2,7 @@ export const checkoutPageTemplate = `
 <div class="page-wrapper checkout-page" style="background: var(--bg-main); overflow-y: auto;">
     <header class="checkout-header">
         <div class="checkout-header__container">
-            <a class="checkout-header__back router-link" href="/">
+            <a class="checkout-header__back router-link" href="/" style="text-decoration: none;">
                 <div class="back-icon-arrow"></div>
                 <span>Назад</span>
             </a>
@@ -149,5 +149,6 @@ export const checkoutPageTemplate = `
     </div>
 
     <div class="js-picker-slot"></div>
+    <div class="js-order-status-slot"></div>
 </div>
 `;

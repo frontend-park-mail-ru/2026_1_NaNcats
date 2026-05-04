@@ -2,13 +2,23 @@ import './promoSlider.scss';
 import { Component } from '@shared/lib/component';
 import { promoSliderTemplate } from './promoSlider.tmpl.js';
 
+/**
+ * Один слайд промо-карусели.
+ */
 interface PromoSlide {
+    /** URL изображения для фона слайда. */
     img: string;
+    /** Заголовок слайда. */
     title: string;
+    /** Подпись под заголовком. */
     text: string;
 }
 
+/**
+ * Входные данные виджета {@link PromoSlider}.
+ */
 interface PromoProps {
+    /** Слайд, отображаемый в данный момент. */
     current: PromoSlide;
 }
 
@@ -25,6 +35,12 @@ const SLIDES: PromoSlide[] = [
     },
 ];
 
+/**
+ * Промо-карусель с фиксированным набором слайдов и кнопками переключения.
+ *
+ * Хранит индекс текущего слайда в локальном поле и обновляет пропс current
+ * по нажатию кнопок навигации; листание циклично.
+ */
 export class PromoSlider extends Component<PromoProps> {
     private index = 0;
 
@@ -32,10 +48,18 @@ export class PromoSlider extends Component<PromoProps> {
         super(promoSliderTemplate);
     }
 
+    /**
+     * Возвращает начальные пропсы виджета: первый слайд из набора.
+     *
+     * @returns Пропсы для первичной отрисовки.
+     */
     static initialProps(): PromoProps {
         return { current: SLIDES[0] };
     }
 
+    /**
+     * Подключает обработчики кнопок переключения слайдов после монтирования.
+     */
     protected onMount(): void {
         const prev = this.root?.querySelector('.js-nav-prev');
         const next = this.root?.querySelector('.js-nav-next');
@@ -43,6 +67,11 @@ export class PromoSlider extends Component<PromoProps> {
         if (next) this.on(next, 'click', () => this.go(1));
     }
 
+    /**
+     * Сдвигает текущий слайд на заданное смещение и перерисовывает виджет.
+     *
+     * @param delta Смещение по индексу: положительное вперёд, отрицательное назад.
+     */
     private go(delta: number): void {
         this.index = (this.index + delta + SLIDES.length) % SLIDES.length;
         this.update({ current: SLIDES[this.index] });

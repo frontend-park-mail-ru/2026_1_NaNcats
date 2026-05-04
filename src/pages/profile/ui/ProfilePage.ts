@@ -5,22 +5,58 @@ import { Popup } from '@shared/ui/popup';
 import { userStore, type User } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cardStore } from '@entities/card';
-import { orderApi, type Order } from '@entities/order';
+import {
+    orderApi,
+    connectOrderTracker,
+    statusBadge,
+    type Order,
+    type OrderTracker,
+    type StatusBadge,
+} from '@entities/order';
 import { uploadAvatar, deleteAvatar } from '@features/profile/upload-avatar';
 import { EditProfileForm } from '@features/profile/edit-profile';
 import { AddressList } from '@features/profile/manage-addresses';
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { AddressPicker } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
+import { OrderStatusModal } from '@widgets/order-status';
 import { profilePageTemplate } from './profile.tmpl.js';
 
-interface ProfilePageProps {
-    user: User;
-    orders: Order[];
+/**
+ * Заказ с предвычисленным бейджем статуса для отображения в строке списка.
+ */
+interface OrderRowView extends Order {
+    /** Готовый бейдж статуса (иконка, подпись, css-модификатор). */
+    _badge: StatusBadge;
 }
 
+/**
+ * Пропсы страницы профиля.
+ */
+interface ProfilePageProps {
+    /** Данные текущего пользователя. */
+    user: User;
+    /** Список заказов пользователя с предвычисленными бейджами. */
+    orders: OrderRowView[];
+}
+
+const TERMINAL_STATUSES = new Set(['finished', 'cancelled', 'failed']);
+
+const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
+
+/**
+ * Страница профиля пользователя.
+ *
+ * Монтирует форму редактирования профиля, списки адресов и карт, виджет
+ * Wordle, виджет выбора адреса на карте и модалку статуса заказа.
+ * Загружает заказы пользователя, подписывается на изменения статусов
+ * активных заказов через стрим и применяет обновления к строкам списка.
+ * Реагирует на смену пользователя в сторе userStore.
+ */
 export class ProfilePage extends Component<ProfilePageProps> {
     private picker: AddressPicker | null = null;
+    private orderStatusModal: OrderStatusModal | null = null;
+    private orderTrackers: Map<string, OrderTracker> = new Map();
 
     constructor() {
         super(profilePageTemplate);
@@ -32,8 +68,19 @@ export class ProfilePage extends Component<ProfilePageProps> {
         cardList: '.js-card-list-slot',
         wordle: '.js-wordle-slot',
         picker: '.js-picker-slot',
+        orderStatus: '.js-order-status-slot',
     };
 
+    /**
+     * Подготавливает данные страницы.
+     *
+     * Загружает текущего пользователя; при отсутствии авторизации
+     * перенаправляет на страницу входа. Параллельно подгружает сохранённые
+     * адреса, карты и список заказов; неудача загрузки заказов даёт пустой
+     * список, страница продолжает работу.
+     *
+     * @returns Промис с пропсами страницы профиля.
+     */
     static async load(): Promise<ProfilePageProps> {
         try {
             await userStore.loadCurrent();
@@ -45,15 +92,16 @@ export class ProfilePage extends Component<ProfilePageProps> {
             window.router.go(ROUTES.login);
             return Promise.reject(new Error('not authenticated'));
         }
-        const [, , ordersRes] = await Promise.allSettled([
-            addressStore.loadSaved(),
-            cardStore.load(),
-            orderApi.list(),
-        ]);
+        const [, , ordersRes] = await Promise.allSettled([addressStore.loadSaved(), cardStore.load(), orderApi.list()]);
         const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
-        return { user, orders };
+        return { user, orders: decorate(orders) };
     }
 
+    /**
+     * Монтирует дочерние виджеты, подписывается на стор пользователя и
+     * подключает обработчики кнопок аватара, добавления адреса/карты и
+     * запуска Wordle.
+     */
     protected onMount(): void {
         this.mountChild('editForm', new EditProfileForm(), {
             name: this.props.user.name,
@@ -77,7 +125,12 @@ export class ProfilePage extends Component<ProfilePageProps> {
         this.picker = new AddressPicker();
         this.mountChild('picker', this.picker, { hideInput: true, skipDetails: false });
 
+        this.orderStatusModal = new OrderStatusModal();
+        this.mountChild('orderStatus', this.orderStatusModal, OrderStatusModal.initialProps());
+
+        this.bindOrderRows();
         this.bindAvatar();
+        this.subscribeActiveOrders();
 
         const addBtn = this.root?.querySelector('.js-add-address');
         if (addBtn) {
@@ -102,19 +155,26 @@ export class ProfilePage extends Component<ProfilePageProps> {
             userStore,
             (s) => s.user,
             (next) => {
-                if (next && next.avatar_url !== this.props.user.avatar_url) {
+                if (next && next !== this.props.user) {
                     this.update({ user: next, orders: this.props.orders });
                 }
             },
         );
     }
 
+    /**
+     * Обновляет подпись возле виджета Wordle, если слово дня уже отгадано.
+     */
     private refreshWordleHint(): void {
         if (localStorage.getItem('wordle_solved') !== 'true') return;
         const info = this.root?.querySelector('.js-wordle-info');
         if (info) info.innerHTML = '<b>Поздравляем!</b> Вы отгадали слово дня 🎉';
     }
 
+    /**
+     * Навешивает обработчики на кнопки загрузки и удаления аватара. Ошибки
+     * запросов сообщаются пользователю через попап.
+     */
     private bindAvatar(): void {
         const uploadBtn = this.root?.querySelector('.js-upload-avatar');
         const fileInput = this.root?.querySelector('.js-avatar-input') as HTMLInputElement | null;
@@ -146,7 +206,113 @@ export class ProfilePage extends Component<ProfilePageProps> {
         }
     }
 
+    /**
+     * Открывает модалку редактирования адреса по идентификатору.
+     *
+     * @param id Идентификатор редактируемого адреса.
+     */
     private async handleEditAddress(id: string): Promise<void> {
         await this.picker?.openMapModal(id);
+    }
+
+    /**
+     * Закрывает все стрим-подписки на статусы заказов при размонтировании
+     * страницы.
+     */
+    protected onDestroy(): void {
+        for (const t of this.orderTrackers.values()) t.close();
+        this.orderTrackers.clear();
+    }
+
+    /**
+     * Подписывается на стрим обновлений статуса для каждого нетерминального
+     * заказа из списка. По терминальному статусу подписка закрывается и
+     * удаляется из карты трекеров.
+     */
+    private subscribeActiveOrders(): void {
+        for (const order of this.props.orders) {
+            if (!order.order_id || TERMINAL_STATUSES.has(order.status)) continue;
+            if (this.orderTrackers.has(order.order_id)) continue;
+
+            const tracker = connectOrderTracker(order.order_id, {
+                onEvent: (event) => {
+                    this.applyStatusToRow(event.order_id, event.status);
+                    if (TERMINAL_STATUSES.has(event.status)) {
+                        const t = this.orderTrackers.get(event.order_id);
+                        if (t) {
+                            t.close();
+                            this.orderTrackers.delete(event.order_id);
+                        }
+                    }
+                },
+            });
+            this.orderTrackers.set(order.order_id, tracker);
+        }
+    }
+
+    /**
+     * Применяет новый статус к заказу в пропсах и обновляет соответствующую
+     * строку в DOM: модификатор бейджа, иконку и подпись.
+     *
+     * @param orderId Идентификатор заказа.
+     * @param rawStatus Новый статус, пришедший из стрима.
+     */
+    private applyStatusToRow(orderId: string, rawStatus: string): void {
+        const idx = this.props.orders.findIndex((o) => o.order_id === orderId);
+        if (idx >= 0) {
+            this.props.orders[idx].status = rawStatus;
+            this.props.orders[idx]._badge = statusBadge(rawStatus);
+        }
+
+        const row = this.root?.querySelector(`.js-order-row[data-order-id="${CSS.escape(orderId)}"]`);
+        if (!row) return;
+        const badgeEl = row.querySelector('.js-order-status') as HTMLElement | null;
+        if (!badgeEl) return;
+
+        const badge = statusBadge(rawStatus);
+        badgeEl.classList.remove(
+            'order-row__status_progress',
+            'order-row__status_success',
+            'order-row__status_warning',
+            'order-row__status_danger',
+        );
+        badgeEl.classList.add(`order-row__status_${badge.className}`);
+
+        const iconEl = badgeEl.querySelector('.order-row__status-icon');
+        const labelEl = badgeEl.querySelector('.order-row__status-label');
+        if (iconEl) iconEl.textContent = badge.icon;
+        if (labelEl) labelEl.textContent = badge.label;
+    }
+
+    /**
+     * Навешивает делегированные обработчики на список заказов: клик и
+     * клавиатура (Enter/Space) открывают модалку статуса для нажатой
+     * строки. Для нетерминальных заказов модалка дополнительно
+     * подписывается на стрим обновлений.
+     */
+    private bindOrderRows(): void {
+        const list = this.root?.querySelector('.orders-list');
+        if (!list) return;
+
+        const openByEvent = (e: Event) => {
+            const row = (e.target as HTMLElement).closest<HTMLElement>('.js-order-row');
+            if (!row) return;
+            const raw = row.dataset.orderIndex;
+            if (raw === undefined) return;
+            const idx = Number(raw);
+            const order = this.props.orders[idx];
+            if (!order || !this.orderStatusModal) return;
+            const isTerminal = order.status === 'finished' || order.status === 'cancelled' || order.status === 'failed';
+            this.orderStatusModal.open(order, { subscribe: !isTerminal });
+        };
+
+        this.on(list, 'click', openByEvent);
+        this.on(list, 'keydown', (e) => {
+            const ke = e as KeyboardEvent;
+            if (ke.key === 'Enter' || ke.key === ' ') {
+                ke.preventDefault();
+                openByEvent(e);
+            }
+        });
     }
 }
