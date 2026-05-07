@@ -22,12 +22,13 @@ export interface OrderCreatePayload {
 
 /**
  * Ответ эндпоинта создания заказа.
+ *
+ * URL подтверждения оплаты сюда больше не приходит: бэкенд присылает его
+ * отдельным WebSocket-событием в {@link GatewayWsEvent.payment_url}.
  */
 export interface OrderCreateResponse {
     /** Идентификатор созданного заказа. */
     order_id: string;
-    /** URL страницы подтверждения оплаты, если она требуется. */
-    confirmation_url?: string;
 }
 
 /**
