@@ -2,18 +2,6 @@ import { httpClient } from '@shared/api/http';
 import type { Order, OrderCreatePayload, OrderCreateResponse } from '../model/types';
 
 /**
- * Ответ эндпоинта проверки статуса оплаты заказа.
- */
-export interface CheckPaymentResponse {
-    /** Идентификатор заказа. */
-    order_id: string;
-    /** Идентификатор платежа на стороне платёжного провайдера. */
-    payment_id?: string;
-    /** Статус платежа: `pending`, `succeeded`, `canceled`, `waiting_for_capture`. */
-    payment_status: string;
-}
-
-/**
  * REST-клиент для работы с заказами.
  */
 export const orderApi = {
@@ -25,7 +13,8 @@ export const orderApi = {
      *
      * @param payload Полезная нагрузка создания заказа.
      * @param idempotencyKey Ключ идемпотентности.
-     * @returns Идентификатор заказа и URL подтверждения оплаты, если она нужна.
+     * @returns Идентификатор созданного заказа. URL подтверждения оплаты
+     * приходит отдельным WebSocket-событием в `GatewayWsEvent.payment_url`.
      */
     create(payload: OrderCreatePayload, idempotencyKey: string): Promise<OrderCreateResponse> {
         return httpClient.postJson<OrderCreateResponse>('/orders', payload, idempotencyKey);
@@ -38,16 +27,6 @@ export const orderApi = {
      */
     list(): Promise<Order[]> {
         return httpClient.getJson<Order[]>('/profile/orders');
-    },
-
-    /**
-     * Опрашивает статус оплаты заказа у платёжного провайдера.
-     *
-     * @param orderID Идентификатор заказа.
-     * @returns Ответ со статусом платежа.
-     */
-    checkPayment(orderID: string): Promise<CheckPaymentResponse> {
-        return httpClient.postJson<CheckPaymentResponse>(`/orders/${encodeURIComponent(orderID)}/check-payment`, {});
     },
 
     /**

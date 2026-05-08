@@ -361,15 +361,9 @@ export class CheckoutPage extends Component<CheckoutPageProps> {
                 })),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
-                payment_url: result.confirmation_url,
             };
 
             await cartStore.clear();
-
-            if (result.confirmation_url) {
-                window.location.href = result.confirmation_url;
-                return;
-            }
 
             if (this.orderStatusModal) {
                 this.orderStatusModal.open(orderSnapshot, {
