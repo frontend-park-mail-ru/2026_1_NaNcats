@@ -113,6 +113,8 @@
   right: 0;
   background: var(--white);
   min-width: 110px;
+  display: flex;
+  justify-content: center;
   justify-items: center;
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);

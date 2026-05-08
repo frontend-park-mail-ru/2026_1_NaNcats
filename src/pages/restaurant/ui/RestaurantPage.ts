@@ -232,7 +232,6 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         const openMenuBtns = this.root?.querySelectorAll('.js-open-menu-drawer') ?? [];
         const openCartBtns = this.root?.querySelectorAll('.js-open-cart-sheet') ?? [];
         const overlay = this.root?.querySelector('.js-mobile-overlay');
-        const closeBtns = this.root?.querySelectorAll('.js-close-panels') ?? [];
         const menuDrawer = this.root?.querySelector('.js-menu-drawer');
 
         openMenuBtns.forEach((btn) => {
@@ -247,9 +246,17 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
             this.on(overlay, 'click', () => this.closePanels());
         }
 
-        closeBtns.forEach((btn) => {
-            this.on(btn, 'click', () => this.closePanels());
-        });
+        if (this.root) {
+            this.on(this.root, 'click', (e) => {
+                const target = e.target as HTMLElement | null;
+                const closeBtn = target?.closest('.js-close-panels');
+                if (!closeBtn) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+                this.closePanels();
+            });
+        }
 
         if (menuDrawer) {
             this.on(menuDrawer, 'click', (e) => {
