@@ -419,6 +419,7 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
      * Считывает данные блюда из data-атрибутов кнопки и делегирует
      * добавление фиче addToCart, при необходимости показывая попап
      * подтверждения смены ресторана.
+     * Также добавляет анимацию добавления иконки блюда в корзину
      *
      * @param btn Нажатая кнопка с data-атрибутами блюда.
      */
@@ -436,9 +437,60 @@ export class RestaurantPage extends Component<RestaurantPageProps> {
         };
 
         try {
+            const dataDishId = btn.dataset.id;
+            const dishCard = document.querySelector(`[data-dish-id="${dataDishId}"]`);
+            const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
+            const cartIcon = document.querySelector('.cart-fab') as HTMLElement | null;
+
             await addToCart(dish, this.restaurantId, () =>
                 Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?'),
             );
+
+            if (!dishImgToAnimate || !cartIcon) {
+                return;
+            }
+
+            const startPos = dishImgToAnimate.getBoundingClientRect();
+            const endPos = cartIcon.getBoundingClientRect();
+
+            const clone = dishImgToAnimate.cloneNode(true) as HTMLElement;
+            clone.classList.add('fly-to-cart');
+
+            clone.style.position = 'fixed';
+            clone.style.left = `${startPos.left}px`;
+            clone.style.top = `${startPos.top}px`;
+            clone.style.width = `${startPos.width}px`;
+            clone.style.height = `${startPos.height}px`;
+            clone.style.margin = '0';
+            clone.style.zIndex = '9999';
+            clone.style.pointerEvents = 'none';
+
+            document.body.appendChild(clone);
+
+            const dx = endPos.left + endPos.width / 2 - (startPos.left + startPos.width / 2);
+            const dy = endPos.top + endPos.height / 2 - (startPos.top + startPos.height / 2);
+
+            const animation = clone.animate(
+                [
+                    {
+                        transform: 'translate(0, 0) scale(1)',
+                        opacity: '1',
+                    },
+                    {
+                        transform: `translate(${dx}px, ${dy}px) scale(0.2)`,
+                        opacity: '0.2',
+                    },
+                ],
+                {
+                    duration: 1000,
+                    easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                    fill: 'forwards',
+                },
+            );
+
+            animation.onfinish = () => {
+                clone.remove();
+            };
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
             const msg = e instanceof Error && e.message ? e.message : 'Не удалось добавить блюдо.';

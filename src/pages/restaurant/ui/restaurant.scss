@@ -849,3 +849,9 @@
     }
   }
 }
+
+// анимация полета иконки блюда в корзину (при добавлении блюда в корзину)
+.fly-to-cart {
+  pointer-events: none;
+  will-change: transform, opacity;
+}
