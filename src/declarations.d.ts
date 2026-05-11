@@ -1,7 +1,5 @@
-declare module '*.scss' {
-    const content: { [className: string]: string };
-    export default content;
-}
+declare module '*.scss';
+declare module '*.css';
 
 interface Window {
     router: import('./app/router').Router;

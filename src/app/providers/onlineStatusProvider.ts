@@ -1,14 +1,17 @@
-import { OfflineBanner } from '@shared/ui/offline-banner';
-
 /**
- * Монтирует баннер сетевого статуса в конец `body`.
+ * Инициализация баннера сетевого статуса.
  *
- * Баннер сам подписывается на события `online`/`offline` и решает, показывать
- * ли себя; провайдер только обеспечивает ему собственный контейнер, чтобы
- * баннер не зависел от разметки страницы и переживал смену роутов.
+ * Раньше провайдер монтировал legacy-компонент `OfflineBanner` в собственный
+ * контейнер в конце `document.body`. В Unit 13 баннер переехал в VDOM:
+ * функциональный компонент `<OfflineBanner/>` встроен прямо в RootLayout и
+ * AuthLayout, поэтому отдельный императивный монтаж больше не нужен. Функция
+ * сохраняется как точка расширения и для обратной совместимости с вызовом
+ * из `app/index.tsx`: если потребуется централизованно подняться по статусу
+ * сети (например, послать аналитическое событие при первом offline), это
+ * место естественно.
  */
 export const initOnlineStatus = (): void => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    new OfflineBanner().mount(container, {});
+    // OfflineBanner монтируется через JSX в layout-shell-ах (RootLayout, AuthLayout).
+    // Здесь намеренно пусто: оставлено для будущих cross-cutting подписок на
+    // window online/offline без UI-компонента.
 };

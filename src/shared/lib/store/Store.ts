@@ -1,3 +1,6 @@
+import { signal } from '@shared/lib/signals';
+import type { Signal } from '@shared/lib/signals';
+
 /**
  * Функциональная форма апдейтера: получает предыдущее состояние и возвращает
  * следующее.
@@ -33,26 +36,33 @@ export type Unsubscribe = () => void;
  * результатом. Подписчики уведомляются только если ссылка на состояние
  * действительно сменилась.
  *
+ * Внутри состояние держится в {@link Signal}: это позволяет JSX-консьюмерам
+ * подписываться на стор через адаптер {@link useStoreSignal} и при этом
+ * полностью сохраняет публичный контракт Store для прежних подписчиков.
+ *
  * @template S Тип хранимого состояния (всегда объект).
  */
 export class Store<S extends object> {
-    private state: S;
-    private listeners: Set<Listener<S>> = new Set();
+    private state: Signal<S>;
 
     /**
      * @param initial Начальное состояние.
      */
     constructor(initial: S) {
-        this.state = initial;
+        this.state = signal(initial);
     }
 
     /**
      * Возвращает текущий снимок состояния.
      *
+     * Чтение идёт через `peek`, поэтому даже вызов из реактивного контекста
+     * не создаёт автоматической зависимости от сигнала: Store должен вести
+     * себя одинаково внутри и вне effect/computed.
+     *
      * @returns Текущее состояние.
      */
     getState(): S {
-        return this.state;
+        return this.state.peek();
     }
 
     /**
@@ -62,30 +72,31 @@ export class Store<S extends object> {
      * вернуть следующее. Если передан объект, его поля сливаются с текущим
      * состоянием на верхнем уровне. Подписчики уведомляются только при смене
      * ссылки на состояние, поэтому возврат той же ссылки из функционального
-     * апдейтера не приведёт к рассылке.
+     * апдейтера не приведёт к рассылке: за дедупликацию по `Object.is`
+     * отвечает сам сигнал.
      *
      * @param updater Функциональный апдейтер или частичный патч.
      */
     setState(updater: Updater<S>): void {
+        const prev = this.state.peek();
         const next =
-            typeof updater === 'function' ? (updater as UpdaterFn<S>)(this.state) : { ...this.state, ...updater };
+            typeof updater === 'function' ? (updater as UpdaterFn<S>)(prev) : { ...prev, ...updater };
 
-        if (next === this.state) return;
-        this.state = next;
-        this.notify();
+        this.state.set(next);
     }
 
     /**
      * Подписывает слушателя на любые изменения состояния.
      *
+     * Подписка не вызывает `listener` в момент привязки: семантика идентична
+     * прежнему поведению Store и подкреплена контрактом `Signal.subscribe`,
+     * который сознательно не уведомляет на старте.
+     *
      * @param listener Колбэк, вызываемый с новым состоянием.
      * @returns Функция, снимающая подписку при вызове.
      */
     subscribe(listener: Listener<S>): Unsubscribe {
-        this.listeners.add(listener);
-        return () => {
-            this.listeners.delete(listener);
-        };
+        return this.state.subscribe((next) => listener(next));
     }
 
     /**
@@ -93,6 +104,8 @@ export class Store<S extends object> {
      *
      * Селектор выполняется на каждом изменении состояния, но слушатель
      * вызывается только когда выбранное значение сменило ссылку (`Object.is`).
+     * Снимок предыдущего значения берётся в момент подписки и `listener` в
+     * этот момент не вызывается.
      *
      * @template T Тип значения, возвращаемого селектором.
      * @param selector Чистая функция, выделяющая срез состояния.
@@ -100,27 +113,13 @@ export class Store<S extends object> {
      * @returns Функция, снимающая подписку при вызове.
      */
     select<T>(selector: (s: S) => T, listener: Listener<T>): Unsubscribe {
-        let prev = selector(this.state);
-        const wrapped: Listener<S> = (s) => {
-            const next = selector(s);
-            if (!Object.is(prev, next)) {
-                prev = next;
-                listener(next);
+        let prev = selector(this.state.peek());
+        return this.state.subscribe((next) => {
+            const nextSel = selector(next);
+            if (!Object.is(prev, nextSel)) {
+                prev = nextSel;
+                listener(nextSel);
             }
-        };
-        return this.subscribe(wrapped);
-    }
-
-    /**
-     * Уведомляет всех подписчиков текущим состоянием.
-     *
-     * Итерируется по снимку набора подписчиков, чтобы добавление или удаление
-     * подписки внутри колбэка не повлияло на текущую рассылку.
-     */
-    private notify(): void {
-        const snapshot = Array.from(this.listeners);
-        for (const listener of snapshot) {
-            listener(this.state);
-        }
+        });
     }
 }
