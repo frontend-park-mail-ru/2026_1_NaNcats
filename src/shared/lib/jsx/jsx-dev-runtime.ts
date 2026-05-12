@@ -1,14 +1,7 @@
 /**
- * Dev JSX runtime для Babel automatic-runtime.
- *
- * Отличается от production-runtime тем, что Babel в dev-режиме передаёт две
- * дополнительные позиции: source (имя файла и координаты вызова) и self
- * (контекст вызова). Здесь они принимаются и игнорируются: ядро VDOM пока
- * не использует их. Если в будущем потребуется DevTools-интеграция, source
- * можно класть в метаданные VNode без правок Babel-конфига.
- *
- * Семантика делегирования совпадает с jsx-runtime: тип, пропсы и key
- * передаются в общую фабрику jsx, которая внутри уже вызывает h из ядра VDOM.
+ * Dev JSX runtime для Babel automatic. Babel в dev-режиме передаёт ещё source
+ * и self: здесь они принимаются и игнорируются. Делегирует в jsx из
+ * jsx-runtime.
  */
 
 import { Fragment } from './jsx-runtime';
@@ -17,11 +10,7 @@ import type { Component, VNodeProps } from '@shared/lib/vdom';
 
 export { Fragment };
 
-/**
- * Описание координат JSX-вызова, которые Babel automatic передаёт в dev-режиме.
- *
- * Поля заполняются плагином автоматически, пользователь их не пишет.
- */
+/** Координаты JSX-вызова, которые Babel automatic передаёт в dev-режиме. */
 interface JsxDevSource {
     /** Полное имя файла исходника. */
     fileName: string;
@@ -32,11 +21,7 @@ interface JsxDevSource {
 }
 
 /**
- * Dev-вариант фабрики VNode.
- *
- * Делегирует в общую jsx-фабрику: extra-аргументы (isStaticChildren, source,
- * self) на текущем этапе игнорируются. Это нормально, потому что в нашей
- * реализации между статическими и динамическими массивами детей разницы нет.
+ * Dev-вариант фабрики VNode: делегирует в jsx, extra-аргументы игнорируются.
  *
  * @param type Имя HTML-тега, функция-компонент или символ-маркер.
  * @param props Объект пропсов; Babel кладёт детей в props.children.

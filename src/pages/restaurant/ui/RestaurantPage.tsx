@@ -1,31 +1,4 @@
-/**
- * Страница ресторана со списком блюд в виде функционального компонента VDOM/JSX.
- *
- * Поведение перенесено из старого `RestaurantPage.ts` 1:1: загрузка бренда и
- * первой страницы блюд, эвристическая группировка блюд по секциям, поиск
- * блюд внутри ресторана с дебаунсом, добавление в корзину с анимацией полёта
- * иконки и подтверждением смены ресторана, переход к блюду по якорю в URL,
- * подгрузка следующих страниц по скроллу, мобильные шторки меню и корзины,
- * модалка отзывов с формой отправки. Шапка приложения здесь не рендерится:
- * RootLayout уже держит её выше по дереву.
- *
- * Реактивная дисциплина (см. JSDoc в `vdom/for.tsx` и `vdom/h.ts`). Все
- * динамические JSX-выражения передаются как функции-аксессоры: `<For each={sections}/>`,
- * атрибуты вида `class={() => ...}`. Голое выражение `<For each={sections()}>`
- * зафиксировалось бы при mount и реактивно не обновлялось бы.
- *
- * Поиск с дебаунсом. Локальное `searchTimer` живёт в замыкании компонента и
- * очищается в `onCleanup`. Сигнал `searchValue` это источник правды значения
- * инпута: при программной очистке мы пишем напрямую в `.value` DOM-узла через
- * ref, потому что наш VDOM прокидывает проп `value` через `setAttribute`,
- * который меняет только дефолтное значение инпута, а не его текущее содержимое.
- *
- * Модалка отзывов реализована через imperative-API (createElement + appendChild)
- * для прямой совместимости со старой версткой и SCSS-анимациями. Альтернатива
- * через VDOM-портал возможна (см. createPortal), но требует переноса всей
- * разметки модалки в JSX. Это выходит за рамки данного юнита: миграция
- * модалки отзывов на JSX это отдельная задача.
- */
+// Страница ресторана: меню по секциям, поиск блюд с дебаунсом, добавление в корзину, отзывы.
 
 import './restaurant.scss';
 
@@ -48,36 +21,20 @@ import { userStore } from '@entities/user';
 import { addToCart } from '@features/cart/add-to-cart';
 import { CartWidget } from '@widgets/cart-widget';
 
-/**
- * Блюдо с предвычисленной ценой в рублях для отображения на карточке.
- */
+/** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
-    /** Цена блюда в рублях (получена из микро-единиц). */
     price_rub: number;
 }
 
-/**
- * Секция меню: набор блюд под общим названием категории.
- */
+/** Секция меню: блюда под общим названием категории. */
 interface DishSection {
-    /** Название секции (категории блюд). */
     name: string;
-    /** Блюда, попавшие в эту секцию. */
     dishes: DishView[];
 }
 
-/**
- * Пропсы страницы ресторана.
- *
- * Совпадают по форме с возвращаемым типом `load()`: роутер вычисляет props на
- * этапе загрузки роута и передаёт их в компонент через Outlet.
- */
 export interface RestaurantPageProps {
-    /** Данные ресторана (бренда). */
     restaurant: Restaurant;
-    /** Загруженные блюда первой страницы. */
     dishes: DishView[];
-    /** Секции меню, построенные по списку блюд. */
     sections: DishSection[];
 }
 
@@ -114,14 +71,7 @@ const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
     },
 ];
 
-/**
- * Сопоставляет блюду имя секции по эвристическому списку ключевых слов.
- *
- * Если ни одно правило не совпало, относит блюдо к секции "Основное меню".
- *
- * @param dish Блюдо для классификации.
- * @returns Имя секции.
- */
+// Имя секции по ключевым словам в названии блюда; без совпадений - "Основное меню".
 const categorize = (dish: DishView): string => {
     const name = dish.name.toLowerCase();
     for (const rule of CATEGORY_RULES) {
@@ -130,13 +80,7 @@ const categorize = (dish: DishView): string => {
     return 'Основное меню';
 };
 
-/**
- * Группирует список блюд в секции меню по эвристическим правилам.
- *
- * @param dishes Полный список блюд.
- * @returns Список секций (минимум одна; для пустого входа возвращает заглушку
- *          "Меню" без блюд).
- */
+// Группирует блюда в секции; для пустого входа отдаёт заглушку "Меню" без блюд.
 const buildSections = (dishes: DishView[]): DishSection[] => {
     if (dishes.length === 0) return [{ name: 'Меню', dishes: [] }];
 
@@ -150,43 +94,27 @@ const buildSections = (dishes: DishView[]): DishSection[] => {
     return Array.from(groups.entries()).map(([name, ds]) => ({ name, dishes: ds }));
 };
 
-/** Размер одной страницы выдачи блюд. */
+/** Размер страницы выдачи блюд. */
 const PAGE_SIZE = 20;
-/** Брейкпоинт планшета: выше него мобильные шторки автоматически закрываются. */
+/** Выше этой ширины мобильные шторки автоматически закрываются. */
 const TABLET_BREAKPOINT = 1200;
-/** Брейкпоинт мобильного устройства: ниже него работают мобильные шторки. */
+/** Ниже этой ширины работают мобильные шторки. */
 const MOBILE_BREAKPOINT = 900;
-/** Длительность дебаунса поиска блюд по меню. */
+/** Дебаунс поиска блюд по меню. */
 const SEARCH_DEBOUNCE_MS = 300;
-/** Максимальное число подгружаемых страниц при поиске блюда по якорю. */
+/** Лимит подгружаемых страниц при поиске блюда по якорю. */
 const MAX_ANCHOR_PAGES = 20;
 
-/** Заглушка ресторана для оффлайн-режима (когда id отсутствует). */
+/** Заглушка ресторана, когда id в URL отсутствует. */
 const FALLBACK_RESTAURANT: Restaurant = {
     id: 0,
     name: 'Ресторан недоступен (оффлайн)',
     logo_url: '',
 };
 
-/**
- * Приводит сырое блюдо к DishView, добавляя цену в рублях.
- *
- * @param d Блюдо как пришло от API.
- * @returns Блюдо с полем price_rub.
- */
 const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) });
 
-/**
- * Подготавливает пропсы страницы ресторана перед монтированием.
- *
- * При отсутствии параметра id возвращает заглушку для оффлайн-режима.
- * Подгружает текущего пользователя (молча проглатывая ошибки сети) и для
- * авторизованного дополнительно подтягивает корзину. Параллельно запрашивает
- * данные бренда и первую страницу блюд; при ошибке любого из запросов
- * используется значение по умолчанию.
- *
- * @returns Промис с пропсами страницы ресторана.
- */
+/** Loader: грузит пользователя (и корзину для авторизованного), бренд и первую страницу блюд. */
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
@@ -217,16 +145,7 @@ export async function load(): Promise<RestaurantPageProps> {
     return { restaurant, dishes, sections: buildSections(dishes) };
 }
 
-/**
- * Запускает анимацию полёта картинки блюда от карточки до иконки корзины.
- *
- * Клон картинки позиционируется в `position: fixed`, после чего через Web
- * Animations API проигрывается transform + opacity. По завершении клон
- * удаляется из DOM. Если карточка или иконка корзины не найдены, функция
- * молча возвращается: анимация это украшение и не должна срывать поток.
- *
- * @param dishId Идентификатор блюда (используется для поиска карточки).
- */
+// Анимация полёта картинки блюда к иконке корзины; молча выходит, если узлы не найдены.
 const flyDishToCart = (dishId: number): void => {
     const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
     const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as
@@ -273,13 +192,7 @@ const flyDishToCart = (dishId: number): void => {
     };
 };
 
-/**
- * Прокручивает к карточке блюда и подсвечивает её. Подсветка снимается на
- * первое пользовательское взаимодействие (клик, тач, клавиша, колесо), но
- * не на программный smooth-scroll (он не порождает пользовательских событий).
- *
- * @param card Карточка блюда, к которой нужно прокрутить.
- */
+// Прокручивает к карточке блюда и подсвечивает; подсветка снимается на первое действие пользователя.
 const highlightAndScroll = (card: HTMLElement): void => {
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     card.classList.add('dish-card_highlighted');
@@ -297,12 +210,7 @@ const highlightAndScroll = (card: HTMLElement): void => {
     document.addEventListener('keydown', dismiss, { capture: true, once: true });
 };
 
-/**
- * Собирает HTML-разметку модалки отзывов.
- *
- * @param reviews Список отзывов для отображения.
- * @returns Готовая HTML-строка модалки.
- */
+// HTML-разметка модалки отзывов.
 const buildReviewsModalHtml = (reviews: Review[]): string => {
     const stars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n);
 
@@ -355,52 +263,27 @@ const buildReviewsModalHtml = (reviews: Review[]): string => {
         </div>`;
 };
 
-/**
- * Страница ресторана: меню, поиск блюд, добавление в корзину, отзывы.
- *
- * Внутри функции заводятся сигналы локального состояния и обработчики событий.
- * Возвращает VNode-дерево разметки страницы: сайдбар со списком секций,
- * центральный блок с поиском и карточками блюд, сайдбар с корзиной.
- *
- * @param props Пропсы страницы (результат `load()`).
- * @returns VNode-дерево разметки страницы.
- */
 export function RestaurantPage(props: RestaurantPageProps): VNode {
-    /** Идентификатор ресторана: вычисляется один раз по URL. */
     const restaurantId = ((): number => {
         const raw = getQueryParam('id');
         return raw ? parseInt(raw, 10) : 0;
     })();
 
-    /** Полный список загруженных блюд (для пагинации и сброса поиска). */
+    // Полный список загруженных блюд (для пагинации и сброса поиска).
     const allDishes = signal<DishView[]>(props.dishes.slice());
-    /** Отрисовываемый список секций (учитывает фильтр поиска по меню). */
+    // Отрисовываемые секции (учитывают фильтр поиска по меню).
     const sections = signal<DishSection[]>(props.sections);
-    /** Offset для пагинации блюд. */
     const offset = signal<number>(props.dishes.length);
-    /** Флаг наличия следующей страницы. */
     const hasMore = signal<boolean>(props.dishes.length === PAGE_SIZE);
-    /** Идёт ли сейчас запрос следующей страницы. */
     const isFetching = signal<boolean>(false);
-    /** Значение поискового инпута по меню. */
     const searchValue = signal<string>('');
-    /** Открыта ли мобильная шторка меню. */
     const menuOpen = signal<boolean>(false);
-    /** Открыт ли мобильный лист корзины. */
     const cartOpen = signal<boolean>(false);
 
-    /** Текущий запланированный таймер дебаунса поиска. */
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
-    /** Текстовый инпут поиска: нужен для прямого сброса значения через `.value`. */
     let searchInputEl: HTMLInputElement | null = null;
 
-    /**
-     * Загружает следующую страницу блюд и добавляет её к уже отрисованным.
-     *
-     * Игнорирует параллельные вызовы, ничего не делает при отсутствии
-     * идентификатора ресторана или когда подгружать больше нечего. При ошибке
-     * отключает дальнейшую пагинацию.
-     */
+    // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
     const fetchNextPage = async (): Promise<void> => {
         if (isFetching() || !hasMore() || !restaurantId) return;
         isFetching.set(true);
@@ -422,13 +305,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
     };
 
-    /**
-     * Прокручивает страницу к карточке блюда по идентификатору. Если карточки
-     * ещё нет в DOM, последовательно подгружает следующие страницы блюд (до
-     * жёсткого лимита), пока карточка не появится либо пагинация не закончится.
-     *
-     * @param dishId Идентификатор искомого блюда.
-     */
+    // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
     const scrollToDishById = async (dishId: string): Promise<void> => {
         for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
             const card = document.querySelector(
@@ -449,16 +326,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
     };
 
-    /**
-     * Обработчик клика по кнопке "В корзину" на карточке блюда.
-     *
-     * Неавторизованного пользователя редиректит на /login. Считывает данные
-     * блюда с карточки, делегирует добавление фиче addToCart с подтверждением
-     * смены ресторана через Popup, при успехе запускает анимацию полёта
-     * картинки в корзину.
-     *
-     * @param dish Блюдо для добавления.
-     */
+    // Добавление блюда в корзину; неавторизованного редиректит на /login, при смене ресторана спрашивает подтверждение.
     const handleAdd = async (dish: DishView): Promise<void> => {
         if (!userStore.getState().user) {
             void router.go(ROUTES.login);
@@ -487,12 +355,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
     };
 
-    /**
-     * Запускает поиск блюд внутри ресторана через API. При пустом запросе
-     * восстанавливает полный список загруженных блюд.
-     *
-     * @param q Текущее значение поискового инпута (обрезанное).
-     */
+    // Поиск блюд внутри ресторана; пустой запрос восстанавливает полный список.
     const runDishSearch = async (q: string): Promise<void> => {
         if (!q) {
             sections.set(buildSections(allDishes()));
@@ -518,12 +381,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
     };
 
-    /**
-     * Обработчик ввода в поисковый инпут: записывает значение в сигнал и
-     * планирует поиск с дебаунсом.
-     *
-     * @param e Событие input.
-     */
     const handleSearchInput = (e: Event): void => {
         const target = e.target as HTMLInputElement;
         const q = target.value.trim();
@@ -536,13 +393,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }, SEARCH_DEBOUNCE_MS);
     };
 
-    /**
-     * Сбрасывает поисковый запрос: очищает значение инпута через ref-узел
-     * (потому что VDOM пишет проп `value` через setAttribute), отменяет
-     * таймер дебаунса и восстанавливает полный список блюд.
-     */
     const handleSearchClear = (): void => {
         searchValue.set('');
+        // Чистим .value напрямую: проп value прокидывается через setAttribute, текущее содержимое не трогает.
         if (searchInputEl !== null) {
             searchInputEl.value = '';
         }
@@ -553,45 +406,28 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         sections.set(buildSections(allDishes()));
     };
 
-    /**
-     * Прокручивает страницу к секции меню по её индексу.
-     *
-     * @param idx Индекс секции в массиве sections.
-     */
     const scrollToSection = (idx: number): void => {
         const target = document.getElementById(`dish-section-${idx}`);
         if (!target) return;
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    /**
-     * Открывает шторку меню и закрывает лист корзины.
-     */
     const openMenuDrawer = (): void => {
         menuOpen.set(true);
         cartOpen.set(false);
     };
 
-    /**
-     * Открывает лист корзины и закрывает шторку меню.
-     */
     const openCartSheet = (): void => {
         cartOpen.set(true);
         menuOpen.set(false);
     };
 
-    /**
-     * Закрывает обе мобильные панели.
-     */
     const closePanels = (): void => {
         menuOpen.set(false);
         cartOpen.set(false);
     };
 
-    /**
-     * Закрывает модалку отзывов: снимает класс открытия и удаляет оверлей
-     * после завершения transition (через одноразовый transitionend).
-     */
+    // Закрывает модалку отзывов: снимает класс и удаляет оверлей после transition.
     const closeReviews = (): void => {
         const overlay = document.querySelector('.js-reviews-overlay');
         if (!overlay) return;
@@ -599,15 +435,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
     };
 
-    /**
-     * Подключает интерактивный выбор оценки звёздами в модалке отзывов.
-     *
-     * Наведение временно подсвечивает звёзды до курсора, клик фиксирует
-     * оценку в data-атрибуте контейнера. Уход курсора возвращает подсветку
-     * к зафиксированному значению.
-     *
-     * @param overlay Корневой элемент модалки отзывов.
-     */
+    // Интерактивный выбор оценки звёздами; зафиксированное значение лежит в data-rating контейнера.
     const setupStarPicker = (overlay: HTMLElement): void => {
         const picker = overlay.querySelector('.js-star-picker') as HTMLElement | null;
         if (!picker) return;
@@ -632,15 +460,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         });
     };
 
-    /**
-     * Подключает форму отправки отзыва.
-     *
-     * Валидирует имя, оценку и комментарий перед отправкой; при успехе
-     * закрывает модалку, при ошибке возвращает кнопку в активное состояние
-     * и показывает сообщение.
-     *
-     * @param overlay Корневой элемент модалки отзывов.
-     */
+    // Форма отправки отзыва: валидирует имя, оценку, комментарий; при успехе закрывает модалку.
     const setupReviewForm = (overlay: HTMLElement): void => {
         const submitBtn = overlay.querySelector('.js-review-submit') as HTMLButtonElement | null;
         if (!submitBtn) return;
@@ -687,11 +507,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         });
     };
 
-    /**
-     * Открывает модалку отзывов: подгружает отзывы (при ошибке показывает
-     * пустое состояние), вставляет оверлей в DOM, навешивает обработчики
-     * закрытия, инициализирует выбор оценки и форму отправки.
-     */
+    // Открывает модалку отзывов: грузит отзывы, вставляет оверлей, навешивает обработчики и форму.
     const openReviews = async (): Promise<void> => {
         let reviews: Review[] = [];
         try {
@@ -719,10 +535,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         setupReviewForm(overlay);
     };
 
-    /**
-     * Обработчик скролла окна: подгружает следующую страницу блюд при
-     * приближении к низу.
-     */
+    // Подгружает следующую страницу блюд при приближении к низу.
     const handleScroll = (): void => {
         if (isFetching() || !hasMore() || !restaurantId) return;
         const doc = document.documentElement;
@@ -731,22 +544,14 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         void fetchNextPage();
     };
 
-    /**
-     * Document-level keydown: Escape закрывает и мобильные панели, и модалку
-     * отзывов.
-     *
-     * @param e Событие keydown.
-     */
+    // Escape закрывает мобильные панели и модалку отзывов.
     const handleKeyDown = (e: KeyboardEvent): void => {
         if (e.key !== 'Escape') return;
         closePanels();
         closeReviews();
     };
 
-    /**
-     * Window resize: при росте ширины окна выше брейкпоинтов автоматически
-     * скрываем открытые мобильные панели.
-     */
+    // При росте ширины окна закрываем открытые мобильные панели.
     const handleResize = (): void => {
         const width = window.innerWidth;
         if (width > TABLET_BREAKPOINT) {
@@ -777,8 +582,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             clearTimeout(searchTimer);
             searchTimer = null;
         }
-        // Если страница размонтировалась с открытой модалкой отзывов, уберём её
-        // из body, чтобы не утекла.
+        // Если страница размонтировалась с открытой модалкой отзывов, убираем оверлей из body.
         const lingering = document.querySelector('.js-reviews-overlay');
         if (lingering) lingering.remove();
     });

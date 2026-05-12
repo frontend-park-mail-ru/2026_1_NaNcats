@@ -1,22 +1,3 @@
-/**
- * Форма входа в учётную запись на JSX/VDOM.
- *
- * Поведение перенесено из старого `LoginForm.ts` 1:1, но реализовано через
- * локальные сигналы и реактивную JSX-разметку без `.js-*`-крючков. Поля
- * email и password хранятся в сигналах; сообщения об ошибках формы лежат в
- * сигнале-словаре `errors` и рендерятся через `<Show when={() => ...}>`.
- *
- * Дисциплина реактивных выражений (см. JSDoc в `vdom/show.tsx`). Реактивные
- * пропсы и условия передаются как функции-аксессоры: `disabled={submitting}`,
- * `when={() => errors().email !== undefined}`, `type={() => showPassword() ? 'text' : 'password'}`.
- * Голое выражение зафиксировалось бы один раз при mount.
- *
- * Источник правды для полей это сами сигналы; DOM-атрибут `value` мы пишем
- * через setAttribute и при программном сбросе он меняет лишь дефолтное
- * значение инпута. Текущее содержимое читается через `peek()` в момент
- * submit, чтобы не зависеть от направления синхронизации.
- */
-
 import { ApiError } from '@shared/api/http';
 import { signal } from '@shared/lib/signals';
 import { validateEmail } from '@shared/lib/validation';
@@ -25,27 +6,14 @@ import type { VNode } from '@shared/lib/vdom';
 
 import { loginAction } from '../model/loginAction';
 
-/**
- * Параметры формы входа.
- */
 export interface LoginFormProps {
     /** Колбэк, вызываемый после успешной авторизации. */
     onSuccess?: () => void;
 }
 
-/**
- * Словарь сообщений об ошибках по идентификатору поля. Отсутствующий ключ
- * означает, что у поля нет ошибки.
- */
+/** Сообщения об ошибках по полям формы. */
 type LoginErrors = Partial<Record<'email' | 'password', string>>;
 
-/**
- * Форма входа: проверяет ввод, выполняет авторизацию через
- * {@link loginAction} и отображает ошибки валидации и сервера.
- *
- * @param props Пропсы формы.
- * @returns VNode-дерево формы.
- */
 export function LoginForm(props: LoginFormProps): VNode {
     const email = signal<string>('');
     const password = signal<string>('');
@@ -53,15 +21,6 @@ export function LoginForm(props: LoginFormProps): VNode {
     const submitting = signal<boolean>(false);
     const showPassword = signal<boolean>(false);
 
-    /**
-     * Обработчик submit формы: валидирует значения и выполняет вход.
-     *
-     * При невалидных данных или ошибке сервера заполняет сигнал `errors`
-     * соответствующими сообщениями; флаг `submitting` блокирует повторную
-     * отправку до окончания текущего запроса.
-     *
-     * @param event Событие submit формы.
-     */
     const handleSubmit = async (event: Event): Promise<void> => {
         event.preventDefault();
         if (submitting.peek()) return;
@@ -100,9 +59,6 @@ export function LoginForm(props: LoginFormProps): VNode {
         }
     };
 
-    /**
-     * Переключает видимость поля пароля между `password` и `text`.
-     */
     const togglePassword = (): void => {
         showPassword.set((prev) => !prev);
     };

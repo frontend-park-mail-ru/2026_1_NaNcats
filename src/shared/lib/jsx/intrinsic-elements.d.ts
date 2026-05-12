@@ -1,30 +1,12 @@
 /**
- * Минимальная типизация JSX-namespace для собственного importSource.
- *
- * Подключается через tsconfig.json (jsxImportSource: '@shared/lib/jsx'). В этом
- * файле объявляются:
- *   - JSX.Element: что возвращают jsx/jsxs фабрики.
- *   - JSX.IntrinsicElements: список HTML-тегов с open index-signature и
- *     узкими override'ами для тегов, которыми пользуются часто (button,
- *     input, a, img, form, label, div, span).
- *   - JSX.ElementChildrenAttribute: имя пропа для детей.
- *
- * Узкие override'ы дают подсказки IDE по типу обработчиков и часто
- * используемым атрибутам. Конкретные значения остаются unknown: точную
- * проверку типов пропсов делает рантайм-слой props.ts, а не компилятор.
- * Это сильно дешевле в поддержке, чем тащить @types/react.
+ * Минимальная типизация JSX-namespace для собственного importSource
+ * (jsxImportSource: '@shared/lib/jsx' в tsconfig.json). Узкие override'ы для
+ * ходовых тегов дают подсказки IDE; конкретные значения остаются unknown,
+ * точную проверку пропсов делает рантайм props.ts.
  */
 
 declare namespace JSX {
-    /**
-     * Тип, который возвращают фабрики jsx, jsxs и jsxDEV.
-     *
-     * Привязан к VNode из ядра VDOM: каждое JSX-выражение это узел дерева,
-     * который потом монтируется через render или попадает как ребёнок в
-     * родительский узел. Условные выражения через cond && jsx, ternary с
-     * null или строковые/числовые дети остаются совместимыми, потому что
-     * VNodeChild у пропсов компонентов шире (включает примитивы и null).
-     */
+    /** Тип, который возвращают фабрики jsx, jsxs и jsxDEV (VNode из ядра VDOM). */
     type Element = import('@shared/lib/vdom').VNode;
 
     /** Имя пропа, в котором JSX-компилятор хранит вложенных детей. */
@@ -33,12 +15,9 @@ declare namespace JSX {
     }
 
     /**
-     * Общая база для узких override'ов: open index-signature по unknown,
-     * плюс самые распространённые пропсы, которыми пользуется любой тег.
-     *
-     * Все поля опциональные и типизированы как unknown, чтобы шаблон не
-     * расходился с пропами-аксессорами сигналов и обработчиками событий.
-     * Конкретные значения проверит рантайм при патче DOM.
+     * Общая база для узких override'ов: open index-signature по unknown плюс
+     * самые ходовые пропсы. Все поля опциональные и unknown, чтобы не
+     * расходиться с аксессорами сигналов и обработчиками событий.
      */
     interface HTMLAttributesBase {
         /** Идентификатор элемента. */
@@ -284,10 +263,8 @@ declare namespace JSX {
     }
 
     /**
-     * Карта intrinsic-тегов JSX.
-     *
-     * Открытая index-signature пускает любой тег с произвольными пропсами,
-     * а узкие override'ы сверху дают подсказки IDE по самым ходовым тегам.
+     * Карта intrinsic-тегов JSX: открытая index-signature пускает любой тег,
+     * узкие override'ы дают подсказки IDE по ходовым тегам.
      */
     interface IntrinsicElements {
         div: HTMLDivAttributes;

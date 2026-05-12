@@ -1,20 +1,3 @@
-/**
- * Форма регистрации на JSX/VDOM.
- *
- * Поведение перенесено из старого `RegisterForm.ts` 1:1: проверка имени,
- * почты, пароля и его подтверждения, отправка через {@link registerAction}
- * и отображение ошибок валидации и сервера. Каждое поле живёт в своём
- * сигнале, словарь ошибок в общем сигнале `errors`.
- *
- * Дисциплина реактивных выражений (см. JSDoc в `vdom/show.tsx`). Реактивные
- * пропсы и условия передаются как функции-аксессоры:
- * `disabled={submitting}`, `when={() => errors().email !== undefined}`,
- * `type={() => showPassword() ? 'text' : 'password'}`.
- *
- * Видимость каждого пароля переключается своим сигналом, чтобы не было
- * связанности между двумя визуально независимыми инпутами.
- */
-
 import { ApiError } from '@shared/api/http';
 import { signal } from '@shared/lib/signals';
 import { validateEmail, validateName, validatePassword } from '@shared/lib/validation';
@@ -23,30 +6,16 @@ import type { VNode } from '@shared/lib/vdom';
 
 import { registerAction } from '../model/registerAction';
 
-/**
- * Параметры формы регистрации.
- */
 export interface RegisterFormProps {
     /** Колбэк, вызываемый после успешной регистрации. */
     onSuccess?: () => void;
 }
 
-/** Идентификаторы полей формы регистрации, для которых может быть ошибка. */
 type RegisterErrorKey = 'name' | 'email' | 'password' | 'repeatPassword';
 
-/**
- * Словарь сообщений об ошибках по идентификатору поля. Отсутствующий ключ
- * означает, что у поля нет ошибки.
- */
+/** Сообщения об ошибках по полям формы. */
 type RegisterErrors = Partial<Record<RegisterErrorKey, string>>;
 
-/**
- * Форма регистрации: валидирует значения, отправляет данные через
- * {@link registerAction} и показывает ошибки.
- *
- * @param props Пропсы формы.
- * @returns VNode-дерево формы.
- */
 export function RegisterForm(props: RegisterFormProps): VNode {
     const name = signal<string>('');
     const email = signal<string>('');
@@ -57,15 +26,6 @@ export function RegisterForm(props: RegisterFormProps): VNode {
     const showPassword = signal<boolean>(false);
     const showRepeatPassword = signal<boolean>(false);
 
-    /**
-     * Обработчик submit формы: валидирует поля и выполняет регистрацию.
-     *
-     * При невалидных данных собирает сообщения по всем полям сразу. Конфликт
-     * почты (HTTP 409) отображается у поля email; прочие ошибки сервера и
-     * сетевые сбои отображаются у поля name.
-     *
-     * @param event Событие submit формы.
-     */
     const handleSubmit = async (event: Event): Promise<void> => {
         event.preventDefault();
         if (submitting.peek()) return;

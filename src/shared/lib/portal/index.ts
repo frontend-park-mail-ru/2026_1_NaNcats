@@ -1,9 +1,6 @@
 /**
- * Публичный барель портал-модуля.
- *
- * Снаружи модуля доступны: сигнальный стек modalStack, функции push/pop, тип
- * записи ModalEntry и сам приёмник ModalRoot. Реализационные детали (счётчик
- * id, селектор `#modal-root`) намеренно остаются внутренними.
+ * Публичный барель портал-модуля: стек modalStack, функции push/pop, тип
+ * ModalEntry и приёмник ModalRoot.
  */
 
 export { modalStack, pushModal, popModal } from './modalStack';

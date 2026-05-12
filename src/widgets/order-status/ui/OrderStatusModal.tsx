@@ -1,28 +1,5 @@
-/**
- * Модалка статуса заказа на JSX/VDOM.
- *
- * Поведение перенесено из class-based {@link ./OrderStatusModal.ts} один в
- * один: модалка-оверлей, прогресс-бар, состав заказа, ресторан и итоговая
- * сумма, подключение к WebSocket-трекеру обновлений и реактивная
- * перерисовка при приходящих событиях. Кнопка оплаты переводит модалку в
- * состояние ожидания подтверждения с таймаутом, после которого выводится
- * сообщение об ошибке.
- *
- * Императивный API. Страницы Checkout и Profile открывают модалку из
- * собственных обработчиков уже после получения снимка заказа из API.
- * Поэтому виджет смонтирован всегда, но в скрытом виде (без активного
- * `modal-overlay_active`-класса), а открытие происходит через колбэк-
- * контроллер: страница получает controller через проп `controllerRef` и
- * зовёт его `open(order, opts)` в нужный момент. Это совместимо с legacy-
- * сигнатурой `modal.open(order, options)` и не требует переписывать
- * страницы поверх Modal/Popup.
- *
- * Дисциплина реактивных выражений. Все производные поля (`steps`,
- * `statusText`, видимость кнопок) реализованы через `computed`, чтобы
- * пересчитываться только при изменении сигнала `order` или `processing`.
- * Все JSX-выражения, которые должны меняться в рантайме, передаются как
- * аксессоры или `<Show when={...}>` с функцией-условием.
- */
+// Модалка статуса заказа: прогресс-бар, состав, ресторан, итог, WS-трекер обновлений.
+// Виджет всегда смонтирован, открывается императивно через controller.open(order).
 
 import './orderStatusModal.scss';
 
@@ -40,70 +17,35 @@ import { computed, onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
-/**
- * Параметры открытия модалки.
- */
 export interface OrderStatusModalOpenOptions {
     /** Подписаться на стрим обновлений заказа через WebSocket-трекер. */
     subscribe?: boolean;
-    /**
-     * Колбэк закрытия модалки. Вызывается при клике по затемнению, по
-     * крестику и после успешной отмены заказа. Используется страницей,
-     * чтобы выполнить навигацию или дополнительные действия.
-     */
+    /** Колбэк закрытия модалки (клик по затемнению, крестику, после отмены заказа). */
     onClose?: () => void;
 }
 
-/**
- * Внешний интерфейс модалки, отдаваемый через {@link OrderStatusModalProps.controllerRef}.
- *
- * Совпадает с legacy-сигнатурой class-based {@link ./OrderStatusModal.ts}, чтобы
- * страницы могли использовать одинаковый шаблон вызова.
- */
+/** Императивный API модалки, отдаваемый через {@link OrderStatusModalProps.controllerRef}. */
 export interface OrderStatusModalController {
-    /**
-     * Открывает модалку для заданного заказа.
-     *
-     * @param rawOrder Заказ в исходном представлении API.
-     * @param options Опции открытия (подписка, колбэк закрытия).
-     */
+    /** Открывает модалку для заданного заказа. */
     open(rawOrder: Order, options?: OrderStatusModalOpenOptions): void;
     /** Закрывает модалку, отменяет подписку и таймер ожидания оплаты. */
     close(): void;
 }
 
-/**
- * Входные данные виджета {@link OrderStatusModal}.
- *
- * Виджет монтируется один раз (обычно в корне страницы) и управляется
- * императивно через controller, переданный в `controllerRef`. При желании
- * можно подать `initialOrder`, чтобы модалка отобразилась сразу при mount
- * без дополнительного вызова `open`.
- */
 export interface OrderStatusModalProps {
-    /**
-     * Колбэк, в который виджет передаёт свой controller после mount.
-     * Передаётся под `null`, когда виджет размонтируется. Имя отличается
-     * от стандартного `ref`, потому что ядро VDOM применяет проп `ref`
-     * только к DOM-узлам.
-     */
+    /** Колбэк, в который виджет передаёт controller после mount и null при unmount. */
     controllerRef?: (ctl: OrderStatusModalController | null) => void;
-    /** Опциональный начальный заказ для немедленного открытия. */
+    /** Начальный заказ для немедленного открытия. */
     initialOrder?: Order;
     /** Опции для начального открытия (если задан `initialOrder`). */
     initialOptions?: OrderStatusModalOpenOptions;
 }
 
 /**
- * Один шаг прогресс-бара статусов заказа.
- *
- * Структура намеренно содержит только ключ. Признаки достижения и текущего
- * шага вычисляются через computed по `currentStepIdx` и индексу: `For` не
- * перевызывает children-callback при смене статуса, поэтому реактивные
- * классы должны читать значения через аксессоры, а не из полей элемента.
+ * Шаг прогресс-бара. Признаки достижения/текущего шага вычисляются через
+ * computed по индексу, потому что For не перевызывает children при смене статуса.
  */
 interface ProgressStep {
-    /** Идентификатор статуса, к которому относится шаг. */
     key: OrderUiStatus;
 }
 
@@ -143,40 +85,19 @@ const PAYMENT_SETTLED_RAW_STATUSES = new Set<string>([
 /** URL дефолтной иконки блюда/ресторана, используется при ошибке загрузки. */
 const DEFAULT_IMAGE_URL = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
-/**
- * Проверяет, является ли сырой статус заказа терминальным.
- *
- * @param raw Сырой статус из API.
- * @returns true, если заказ завершён, отменён или упал в ошибку.
- */
 function isTerminalRawStatus(raw: string): boolean {
     return TERMINAL_RAW_STATUSES.has(raw);
 }
 
-/**
- * Возвращает индекс шага, который соответствует текущему UI-статусу.
- *
- * Для отменённых и ожидающих оплату заказов возвращает -1, чтобы все шаги
- * остались не достигнутыми.
- *
- * @param status Текущий UI-статус заказа.
- * @returns Индекс текущего шага в STATUS_FLOW либо -1.
- */
+/** Индекс активного шага в STATUS_FLOW; -1 для отменённых и ожидающих оплату. */
 function activeStepIndex(status: OrderUiStatus): number {
     if (status === 'cancelled' || status === 'awaiting_payment') return -1;
     return STATUS_FLOW.indexOf(status);
 }
 
-/** Список шагов прогресс-бара (статичный, перестроения не требуется). */
 const PROGRESS_STEPS: ProgressStep[] = STATUS_FLOW.map((key) => ({ key }));
 
-/**
- * Приводит дату к виду DD.MM. Поддерживает ISO-строки и уже-сформированные
- * строки DD.MM.YYYY. Для невалидного значения возвращает исходную строку.
- *
- * @param value Дата в произвольном формате.
- * @returns Дата вида DD.MM или исходная строка.
- */
+/** Дата к виду DD.MM (поддерживает ISO и DD.MM.YYYY); для невалидной возвращает исходную строку. */
 function formatDate(value: string): string {
     if (value === '') return '';
     const ddmmyyyy = /^(\d{2})\.(\d{2})\.\d{4}$/.exec(value);
@@ -188,36 +109,19 @@ function formatDate(value: string): string {
     return `${dd}.${mm}`;
 }
 
-/**
- * Переводит сумму из микрорублей в рубли без дробной части.
- *
- * @param micros Сумма в микрорублях.
- * @returns Целое число рублей в виде строки.
- */
+/** Микрорубли в рубли без дробной части. */
 function formatRubles(micros: number): string {
     return (micros / 1_000_000).toFixed(0);
 }
 
-/**
- * Форматирует количество отзывов: тысячи округляются вниз с суффиксом 000+.
- *
- * @param count Точное число отзывов.
- * @returns Человекочитаемая строка, например 1000+ или 42.
- */
+/** Количество отзывов: тысячи округляются вниз с суффиксом 000+. */
 function formatReviews(count: number): string {
     if (count >= 1000) return `${Math.floor(count / 1000)}000+`;
     return String(count);
 }
 
-/**
- * Применяет к текущему нормализованному заказу новое событие WS-трекера:
- * меняет статус и URL оплаты, пересобирает нормализованный объект (чтобы
- * UI-статус согласовался с raw-статусом), сохраняет текст ошибки.
- *
- * @param current Текущий нормализованный заказ.
- * @param event Событие шлюза с обновлением.
- * @returns Новый нормализованный заказ.
- */
+// Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
+// нормализованного объекта (чтобы UI-статус согласовался с raw), текст ошибки.
 function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent): NormalizedOrder {
     const merged: Order = {
         order_id: current.order_id,
@@ -240,79 +144,50 @@ function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent): Normalized
     return next;
 }
 
-/**
- * Модалка статуса заказа.
- *
- * Виджет всегда смонтирован, но отображается только когда вызван
- * `controller.open(order)`. До первого open сигнал `order` равен null, и
- * корневой `.modal-overlay` рендерится без класса `_active`, оставаясь
- * невидимым.
- *
- * @param props Пропсы модалки: controllerRef, initialOrder, initialOptions.
- * @returns VNode-дерево модалки.
- */
+/** Модалка статуса заказа. До первого open сигнал `order` равен null и оверлей невидим. */
 export function OrderStatusModal(props: OrderStatusModalProps): VNode {
-    /**
-     * Текущий нормализованный заказ. null означает, что модалка ещё не
-     * открывалась или закрыта.
-     */
+    /** Текущий нормализованный заказ; null означает, что модалка не открыта. */
     const order = signal<NormalizedOrder | null>(null);
-
-    /** Активна ли модалка визуально (управляется классом `_active`). */
+    /** Активна ли модалка визуально (класс `_active`). */
     const isActive = signal<boolean>(false);
-
-    /** Флаг ожидания подтверждения оплаты после клика по кнопке "Оплатить". */
+    /** Ожидание подтверждения оплаты после клика по "Оплатить". */
     const processing = signal<boolean>(false);
 
-    /** Локальное состояние ошибки, отображаемое поверх данных заказа. */
     const errorText = computed<string>(() => order()?.error ?? '');
 
-    /**
-     * Индекс активного шага прогресс-бара. Вынесен в computed, чтобы реактивные
-     * классы каждого шага читали его и обновлялись без перерисовки списка.
-     */
+    /** Индекс активного шага прогресс-бара; шаги читают его реактивно. */
     const currentStepIdx = computed<number>(() => {
         const o = order();
         return o === null ? -1 : activeStepIndex(o.status);
     });
 
-    /** Шаги прогресс-бара. Пустой массив, пока заказ не открыт. */
     const steps = computed<readonly ProgressStep[]>(() =>
         order() === null ? [] : PROGRESS_STEPS,
     );
 
-    /** Текст статуса заказа в шапке прогресс-бара. */
     const statusText = computed<string>(() => {
         const o = order();
         return o === null ? '' : STATUS_TEXT[o.status](o.eta_minutes);
     });
 
-    /** Видна ли кнопка "Оплатить". */
     const showPaymentButton = computed<boolean>(() => {
         if (processing()) return false;
         const o = order();
         return o !== null && o.status === 'awaiting_payment' && o.payment_url !== undefined;
     });
 
-    /** Видна ли кнопка "Отменить заказ". */
     const showCancelButton = computed<boolean>(() => {
         if (processing()) return false;
         const o = order();
         return o !== null && CANCELLABLE_STATUSES.has(o.status);
     });
 
-    /** Активный WS-трекер заказа, либо null, если подписка не открыта. */
     let tracker: OrderTracker | null = null;
-
-    /** Таймер ожидания подтверждения оплаты; снимается при разрешении или при закрытии. */
+    /** Таймер ожидания подтверждения оплаты; снимается при разрешении или закрытии. */
     let paymentTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
-
     /** Колбэк закрытия, переданный в open(). */
     let onCloseCallback: (() => void) | null = null;
 
-    /**
-     * Сбрасывает состояние ожидания оплаты и отменяет таймер таймаута.
-     */
     const endPaymentProcessing = (): void => {
         processing.set(false);
         if (paymentTimeoutTimer !== null) {
@@ -321,9 +196,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    /**
-     * Переводит модалку в состояние ожидания подтверждения оплаты.
-     */
     const beginPaymentProcessing = (): void => {
         if (processing()) return;
         processing.set(true);
@@ -342,9 +214,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }, PAYMENT_TIMEOUT_MS);
     };
 
-    /**
-     * Закрывает активный WS-трекер.
-     */
     const disconnectTracker = (): void => {
         if (tracker !== null) {
             tracker.close();
@@ -352,11 +221,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    /**
-     * Применяет событие из WS-трекера к текущему заказу.
-     *
-     * @param event Событие шлюза с обновлением заказа.
-     */
     const applyEvent = (event: GatewayWsEvent): void => {
         const current = order();
         if (current === null) return;
@@ -367,23 +231,12 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         order.set(next);
     };
 
-    /**
-     * Подключается к WS-трекеру обновлений заказа.
-     *
-     * @param orderId Идентификатор заказа для отслеживания.
-     */
     const subscribeToOrder = (orderId: string): void => {
         tracker = connectOrderTracker(orderId, {
             onEvent: (event) => applyEvent(event),
         });
     };
 
-    /**
-     * Открывает модалку для заданного заказа.
-     *
-     * @param rawOrder Заказ в исходном представлении API.
-     * @param options Опции открытия (подписка, колбэк закрытия).
-     */
     const open = (rawOrder: Order, options: OrderStatusModalOpenOptions = {}): void => {
         const normalized = normalizeOrder(rawOrder);
         disconnectTracker();
@@ -397,10 +250,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    /**
-     * Закрывает модалку: сбрасывает подписку, состояние оплаты и видимость,
-     * вызывает зарегистрированный колбэк onClose.
-     */
     const close = (): void => {
         disconnectTracker();
         endPaymentProcessing();
@@ -410,9 +259,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (cb !== null) cb();
     };
 
-    /**
-     * Запрашивает у пользователя подтверждение и отменяет заказ через API.
-     */
     const handleCancel = async (): Promise<void> => {
         const current = order();
         if (current === null) return;
@@ -429,9 +275,6 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    /**
-     * Обрабатывает клик по кнопке "Оплатить".
-     */
     const handlePay = (): void => {
         const current = order();
         if (current === null || current.payment_url === undefined) return;
@@ -439,22 +282,12 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         window.open(current.payment_url, '_blank', 'noopener');
     };
 
-    /**
-     * Обрабатывает клик по затемнению модалки: закрывает модалку, если клик
-     * пришёл прямо по оверлею, а не по содержимому.
-     *
-     * @param event Событие клика.
-     */
+    // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
     const handleOverlayClick = (event: Event): void => {
         if (event.target !== event.currentTarget) return;
         close();
     };
 
-    /**
-     * Обрабатывает ошибку загрузки картинки: подменяет src на дефолтную.
-     *
-     * @param event Событие error.
-     */
     const handleImageError = (event: Event): void => {
         const img = event.target as HTMLImageElement;
         if (img.src !== DEFAULT_IMAGE_URL) img.src = DEFAULT_IMAGE_URL;
@@ -462,9 +295,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const controller: OrderStatusModalController = { open, close };
 
-    // Controller отдаётся синхронно при рендере: страница может сохранить
-    // ссылку до того, как асинхронный ответ create-order запустит
-    // controller.open(...). initialOrder, если передан, открывается уже
+    // Controller отдаётся синхронно при рендере; initialOrder открывается уже
     // после mount, чтобы Show-узлы успели смонтироваться.
     props.controllerRef?.(controller);
 
@@ -544,8 +375,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 key={(s): string => s.key}
                             >
                                 {(step, idx): VNode => {
-                                    // Реактивные computed по idx этого шага: пересчитываются,
-                                    // когда currentStepIdx (читай: статус заказа) меняется.
+                                    // Computed по idx этого шага: пересчитываются при смене статуса заказа.
                                     const reached = computed<boolean>(
                                         () => idx <= currentStepIdx() && currentStepIdx() >= 0,
                                     );

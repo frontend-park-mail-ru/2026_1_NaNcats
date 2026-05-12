@@ -1,47 +1,4 @@
-/**
- * Шапка приложения в виде функционального компонента VDOM/JSX.
- *
- * Поведение перенесено из старого `Header.ts` 1:1, но реализовано через
- * локальные сигналы и реактивную JSX-разметку без `.js-*`-крючков. Виджет
- * подписан на проп-аксессор `user` (приходит из `useStoreSignal(userStore, s => s.user)`
- * в RootLayout) и сам перерисовывает блок авторизации при смене пользователя.
- * Значение поискового инпута живёт в локальном сигнале и НЕ сбрасывается при
- * смене пользователя: ключевое улучшение по сравнению со старой реализацией,
- * которая дёргала `this.update({ user })` и пересоздавала DOM целиком.
- *
- * Дисциплина реактивных выражений (см. JSDoc в `vdom/show.tsx` и `vdom/h.ts`).
- * Все JSX-выражения, которые должны реактивно меняться, передаются как
- * функции-аксессоры: либо как сам сигнал (`class={() => mobileMenuOpen() ? ... : ...}`),
- * либо как inline-фабрика (`when={() => suggestOpen() && hasResults()}`).
- * Голые выражения вида `when={suggestOpen()}` зафиксировались бы один раз при mount.
- *
- * Поисковый инпут намеренно неконтролируемый (источник правды для
- * отображения это сам DOM-узел). Реактивная привязка пропа `value` через
- * signal-аксессор была бы избыточной: наш VDOM пишет проп `value` через
- * `setAttribute`, который меняет только дефолтное значение инпута, а не его
- * текущее содержимое. Сигнал `searchValue` остаётся источником правды для
- * логики (submit, дебаунс, видимость кнопки очистки), а при программном
- * сбросе DOM-свойство `.value` перезаписывается через ref напрямую.
- *
- * Контракт со стороны RootLayout. Header монтируется ровно один раз и живёт
- * столько же, сколько RootLayout. Между переходами `/`, `/restaurant`,
- * `/checkout` и т.д. он не пересоздаётся: меняются только дети `<Outlet/>` и
- * локальное состояние самого Header (значение поиска, открытость подсказок).
- *
- * Слот адреса. Согласно плану Unit 11b, AddressPicker мигрирует на JSX
- * отдельно. Пока что Header рендерит пустой `<div class="search-bar__group
- * search-bar__group_address"/>` как placeholder-узел: внешнего проп-API для
- * монтирования AddressPicker сейчас нет, Unit 11b добавит его (либо как
- * декларативный `<AddressPicker/>` ребёнок, либо как `addressSlot?: VNodeChild`).
- */
-
-// В старой архитектуре стили шапки (.header, .user-profile, .search-bar
-// и т.д.) лежали в home.scss и тянулись на странице через её импорт.
-// После перехода Header в persistent shell ему нужны те же стили на всех
-// маршрутах. Подтягиваем home.scss прямо здесь как временное решение,
-// пока стили не вынесены в собственный header.scss. FSD-правило про
-// запрет widgets → pages нарушается осознанно и точечно (только для
-// загрузки CSS), поэтому соответствующее правило отключено.
+// Стили шапки пока живут в home.scss.
 // eslint-disable-next-line no-restricted-imports
 import '@pages/home/ui/home.scss';
 
@@ -54,37 +11,17 @@ import { onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
-/**
- * Режим отображения шапки.
- *
- * - `default` обычная шапка с поиском и слотом адреса;
- * - `back` упрощённая шапка с кнопкой возврата вместо адреса.
- */
+/** `default` - шапка с поиском и адресом, `back` - с кнопкой возврата. */
 export type HeaderMode = 'default' | 'back';
 
-/**
- * Входные пропсы виджета {@link Header}.
- *
- * Поле `user` принимается как сигнал-аксессор (а не как plain-значение
- * `User | null`), потому что Header монтируется один раз внутри RootLayout и
- * не пересоздаётся при логине/логауте: он сам должен реактивно перерисовать
- * блок авторизации в ответ на изменение сигнала.
- */
 export interface HeaderProps {
     /** Сигнал-аксессор текущего пользователя или null, если он не авторизован. */
     user: () => User | null;
-    /**
-     * Режим отображения шапки. Принимает либо статическое значение, либо
-     * аксессор-функцию: реактивная форма позволяет менять режим при смене
-     * роута без размонтирования Header.
-     */
+    /** Режим отображения. Аксессор-форма позволяет менять режим без перемонтажа Header. */
     mode?: HeaderMode | (() => HeaderMode);
     /** Текущий поисковый запрос (для предзаполнения инпута). */
     searchQuery?: string;
-    /**
-     * Скрыть блок поиска. Принимает статическое значение или аксессор-функцию
-     * (для реактивного скрытия при смене роута без перемонтажа Header).
-     */
+    /** Скрыть блок поиска. Аксессор-форма позволяет скрывать реактивно. */
     hideSearch?: boolean | (() => boolean);
     /** Колбэк нажатия кнопки входа. */
     onLogin?: () => void;
@@ -98,56 +35,30 @@ export interface HeaderProps {
     onSearchSubmit?: (query: string) => void;
 }
 
-/** Длительность дебаунса поискового запроса в миллисекундах. */
 const SEARCH_DEBOUNCE_MS = 350;
 
-/**
- * Реализует переход на страницу ресторана по найденному элементу подсказок.
- *
- * Вынесено отдельно, чтобы не дублировать сборку URL в обработчиках кликов
- * по ресторанам и блюдам.
- *
- * @param restaurantId Идентификатор ресторана.
- * @param dishId Опциональный идентификатор блюда (для подсказок-блюд).
- */
+/** Переход на страницу ресторана (с опциональным якорем на блюдо). */
 function navigateToRestaurant(restaurantId: string | number, dishId?: string | number): void {
     const base = `${ROUTES.restaurant}?id=${encodeURIComponent(String(restaurantId))}`;
     const url = dishId !== undefined ? `${base}&dish=${encodeURIComponent(String(dishId))}` : base;
     void router.go(url);
 }
 
-/**
- * Главная шапка приложения: логотип, адрес, поиск, блок авторизации.
- *
- * Возвращает VNode-дерево с реактивной разметкой. Все динамические части
- * (поиск, подсказки, мобильное меню, блок auth/guest) переключаются через
- * сигналы и компоненты `<Show/>`/`<For/>`.
- *
- * @param props Пропсы шапки.
- * @returns VNode-дерево шапки.
- */
+/** Шапка приложения: логотип, адрес, поиск, блок авторизации. */
 export function Header(props: HeaderProps): VNode {
     const searchValue = signal<string>(props.searchQuery ?? '');
     const suggestOpen = signal<boolean>(false);
     const suggestResults = signal<SearchAllResult | null>(null);
     const mobileMenuOpen = signal<boolean>(false);
 
-    /** Текущий запланированный таймер дебаунса поиска. */
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
-    /** Корневой узел шапки: нужен для определения "клика вне" при закрытии подсказок и мобильного меню. */
+    // Узлы нужны для определения "клик вне" и для прямого сброса значения инпута.
     let headerEl: HTMLElement | null = null;
-    /** Текстовый инпут поиска: нужен для контролируемого изменения значения и фокуса. */
     let searchInputEl: HTMLInputElement | null = null;
-    /** Контейнер выпадающих подсказок: нужен для проверки "клик внутри подсказок". */
     let suggestEl: HTMLElement | null = null;
 
-    /**
-     * Запускает запрос подсказок с учётом дебаунса. Запрос отменяется, если за
-     * время ожидания пришёл новый ввод. При пустом запросе подсказки скрываются.
-     *
-     * @param query Текущее значение поискового инпута.
-     */
+    // Запрос подсказок с дебаунсом; при пустом запросе подсказки скрываются.
     const scheduleSuggest = (query: string): void => {
         if (searchTimer !== null) {
             clearTimeout(searchTimer);
@@ -171,12 +82,7 @@ export function Header(props: HeaderProps): VNode {
         }, SEARCH_DEBOUNCE_MS);
     };
 
-    /**
-     * Отправляет финальный поисковый запрос: либо через колбэк `onSearchSubmit`,
-     * либо переходом на главную с query-параметром `q`.
-     *
-     * @param query Финальное значение поискового инпута.
-     */
+    // Финальный поиск: через onSearchSubmit либо переходом на главную с ?q=.
     const submitSearch = (query: string): void => {
         if (props.onSearchSubmit) {
             props.onSearchSubmit(query);
@@ -186,12 +92,6 @@ export function Header(props: HeaderProps): VNode {
         void router.go(url);
     };
 
-    /**
-     * Обработчик ввода в поисковый инпут: записывает значение в сигнал и
-     * планирует загрузку подсказок.
-     *
-     * @param event Событие input.
-     */
     const handleSearchInput = (event: Event): void => {
         const target = event.target as HTMLInputElement;
         const next = target.value;
@@ -199,12 +99,7 @@ export function Header(props: HeaderProps): VNode {
         scheduleSuggest(next.trim());
     };
 
-    /**
-     * Обработчик нажатий клавиш в поисковом инпуте: Enter подтверждает запрос,
-     * Escape закрывает подсказки (без сброса значения инпута).
-     *
-     * @param event Событие keydown.
-     */
+    // Enter подтверждает запрос, Escape закрывает подсказки (значение не сбрасывает).
     const handleSearchKeyDown = (event: Event): void => {
         const ke = event as KeyboardEvent;
         if (ke.key === 'Enter') {
@@ -219,13 +114,8 @@ export function Header(props: HeaderProps): VNode {
         }
     };
 
-    /**
-     * Обработчик кнопки очистки поиска: сбрасывает сигнал значения, скрывает
-     * подсказки и принудительно обновляет DOM-свойство `value` инпута. Прямая
-     * запись `searchInputEl.value = ''` нужна, потому что наш VDOM прокидывает
-     * проп `value` через `setAttribute`, который меняет только дефолтное
-     * значение инпута, а не его текущее содержимое.
-     */
+    // Сброс поиска. Значение инпута пишем напрямую: VDOM прокидывает `value`
+    // через setAttribute, который меняет дефолтное значение, а не текущее.
     const handleSearchClear = (): void => {
         searchValue.set('');
         if (searchInputEl !== null) {
@@ -240,13 +130,7 @@ export function Header(props: HeaderProps): VNode {
         submitSearch('');
     };
 
-    /**
-     * Document-level обработчик клика: закрывает подсказки и мобильное гостевое
-     * меню при клике вне их зоны. Слушатель регистрируется в `onMount` и
-     * снимается в `onCleanup`.
-     *
-     * @param event Событие click из документа.
-     */
+    // Клик по документу: закрывает подсказки и мобильное гостевое меню при клике вне их зоны.
     const handleDocClick = (event: Event): void => {
         const target = event.target as Node | null;
         if (!target) return;
@@ -268,10 +152,6 @@ export function Header(props: HeaderProps): VNode {
         }
     };
 
-    /**
-     * Обработчик клика по кнопке "Назад" в режиме back-шапки. Если внешний
-     * `onBack` не задан, делается обычный `window.history.back()`.
-     */
     const handleBackClick = (): void => {
         if (props.onBack) {
             props.onBack();
@@ -280,47 +160,27 @@ export function Header(props: HeaderProps): VNode {
         window.history.back();
     };
 
-    /**
-     * Обработчик клика по кнопке "Войти": закрывает мобильное меню (если оно
-     * открыто) и проксирует вызов наружу.
-     */
     const handleLoginClick = (): void => {
         mobileMenuOpen.set(false);
         props.onLogin?.();
     };
 
-    /**
-     * Обработчик клика по кнопке "Регистрация": закрывает мобильное меню (если
-     * оно открыто) и проксирует вызов наружу.
-     */
     const handleRegisterClick = (): void => {
         mobileMenuOpen.set(false);
         props.onRegister?.();
     };
 
-    /**
-     * Обработчик клика по кнопке переключения мобильного гостевого меню.
-     * Останавливает всплытие, чтобы document-level click не закрыл меню сразу
-     * после его открытия.
-     *
-     * @param event Событие click.
-     */
+    // stopPropagation, чтобы клик по документу не закрыл меню сразу после открытия.
     const handleMobileToggle = (event: Event): void => {
         event.stopPropagation();
         mobileMenuOpen.set((prev) => !prev);
     };
 
-    /**
-     * Обработчик клика по кнопке "Выйти" (временная inline-замена LogoutButton
-     * до Unit 12). Вызывает `logoutAction`, после успешного выхода сообщает
-     * наверх через `onLoggedOut`.
-     */
     const handleLogout = async (): Promise<void> => {
         try {
             await logoutAction();
             props.onLoggedOut?.();
         } catch (err) {
-            // Тихо логируем: формальная UX-обратная связь не определена.
             console.error('[Header] logout failed:', err);
         }
     };
@@ -428,9 +288,7 @@ export function Header(props: HeaderProps): VNode {
                         </button>
                     </div>
 
-                    {/* TODO Unit 11b: сюда монтируется AddressPicker (либо как декларативный
-                        ребёнок, либо через проп addressSlot). Сейчас оставляем пустой
-                        контейнер, чтобы вёрстка корректно занимала место. */}
+                    {/* Пустой контейнер под AddressPicker (резервирует место в вёрстке). */}
                     <Show when={(): boolean => (typeof props.mode === 'function' ? props.mode() : props.mode) !== 'back'}>
                         <div class="search-bar__group search-bar__group_address" />
                     </Show>
@@ -583,9 +441,6 @@ export function Header(props: HeaderProps): VNode {
                             />
                         </a>
                         <div class="user-dropdown">
-                            {/* TODO Unit 12: заменить на функциональный `<LogoutButton/>`.
-                                Сейчас inline-кнопка с прямым вызовом logoutAction, чтобы
-                                Header.tsx не зависел от class-based LogoutButton. */}
                             <button
                                 class="button"
                                 type="button"

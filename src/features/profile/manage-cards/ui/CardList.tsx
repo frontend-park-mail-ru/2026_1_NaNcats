@@ -5,11 +5,8 @@ import { Popup } from '@shared/ui/popup';
 import { cardStore, type Card } from '@entities/card';
 import { removeCard, setDefaultCard } from '../model/manageCards';
 
-/**
- * Параметры списка привязанных карт.
- */
 export interface CardListProps {
-    /** Колбэк, вызываемый при инициировании добавления новой карты (используется снаружи компонента). */
+    /** Вызывается при инициировании добавления новой карты (используется снаружи компонента). */
     onAdd?: () => void;
 }
 
@@ -32,12 +29,7 @@ const ISSUER_THEMES: Record<string, string> = {
     ozon: 'payment-card_ozon',
 };
 
-/**
- * Возвращает класс темы карты по названию банка-эмитента.
- *
- * @param issuer Название банка из поля issuer_name.
- * @returns CSS-класс темы или пустую строку, если банк не распознан.
- */
+// CSS-класс темы карты по названию банка-эмитента или пустая строка, если банк не распознан.
 function themeFor(issuer?: string): string {
     const key = (issuer ?? '').toLowerCase().trim();
     for (const [needle, cls] of Object.entries(ISSUER_THEMES)) {
@@ -46,12 +38,7 @@ function themeFor(issuer?: string): string {
     return '';
 }
 
-/**
- * Возвращает подпись и класс платёжной системы по типу карты.
- *
- * @param type Поле card_type.
- * @returns Объект с подписью и CSS-классом стилей.
- */
+// Подпись и CSS-класс платёжной системы по типу карты.
 function cardTypeLabel(type?: string): { label: string; cls: string } {
     const t = (type ?? '').toLowerCase();
     if (t.includes('visa')) return { label: 'VISA', cls: 'payment-card__system_visa' };
@@ -62,21 +49,8 @@ function cardTypeLabel(type?: string): { label: string; cls: string } {
     return { label: t.toUpperCase() || 'CARD', cls: '' };
 }
 
-/**
- * Список привязанных банковских карт пользователя.
- *
- * Подписан на cardStore через useStoreSignal: при изменении набора карт
- * обновляется только реактивный <For>-блок. Клик по неактивной карте
- * вызывает setDefaultCard; клик по кнопке-крестику спрашивает подтверждение
- * через Popup и удаляет карту через removeCard, показывая alert на ошибку.
- *
- * Когда у пользователя одна карта, она всегда отображается активной,
- * независимо от поля is_default: с одной картой нет переключения, и пометка
- * убирает визуальную неоднозначность.
- *
- * @param _props Параметры (onAdd используется снаружи; внутри списка не нужен).
- * @returns VNode корня списка.
- */
+// Когда у пользователя одна карта, она всегда показывается активной,
+// независимо от is_default: переключать не из чего.
 export function CardList(_props: CardListProps = {}): VNode {
     const cards = useStoreSignal(cardStore, (s) => s.cards);
 

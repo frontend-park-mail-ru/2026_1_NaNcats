@@ -1,17 +1,8 @@
 /**
- * Инициализация баннера сетевого статуса.
+ * Точка инициализации сетевого статуса.
  *
- * Раньше провайдер монтировал legacy-компонент `OfflineBanner` в собственный
- * контейнер в конце `document.body`. В Unit 13 баннер переехал в VDOM:
- * функциональный компонент `<OfflineBanner/>` встроен прямо в RootLayout и
- * AuthLayout, поэтому отдельный императивный монтаж больше не нужен. Функция
- * сохраняется как точка расширения и для обратной совместимости с вызовом
- * из `app/index.tsx`: если потребуется централизованно подняться по статусу
- * сети (например, послать аналитическое событие при первом offline), это
- * место естественно.
+ * Сам баннер монтируется через JSX в layout-shell-ах (OfflineBanner в RootLayout
+ * и AuthLayout). Функция оставлена для будущих cross-cutting подписок на
+ * window online/offline.
  */
-export const initOnlineStatus = (): void => {
-    // OfflineBanner монтируется через JSX в layout-shell-ах (RootLayout, AuthLayout).
-    // Здесь намеренно пусто: оставлено для будущих cross-cutting подписок на
-    // window online/offline без UI-компонента.
-};
+export const initOnlineStatus = (): void => {};

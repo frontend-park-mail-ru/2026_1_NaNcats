@@ -1,15 +1,10 @@
 /**
- * Стили peer-layout-shell-ов RootLayout и AuthLayout.
+ * Стили layout-shell-ов RootLayout и AuthLayout.
  *
- * Зачем. body имеет height:100vh и overflow:hidden (см. styles/base.scss).
- * Раньше каждая страница была прямым ребёнком body и через .page-wrapper
- * сама держала высоту окна и внутренний scroll. После перехода на JSX
- * между body и страницей появились ещё два уровня (#root, .root-layout
- * с Header и main), и страница перестала получать ограничение по высоте.
- * Здесь мы это ограничение возвращаем: shell тянется на всю высоту окна,
- * Header занимает свой естественный размер, а main забирает оставшееся
- * пространство и сам становится скролл-контейнером для содержимого
- * страницы.
+ * body имеет height:100vh и overflow:hidden (см. styles/base.scss). Между body и
+ * страницей теперь два уровня (#root, .root-layout), поэтому ограничение по высоте
+ * возвращаем здесь: shell на всю высоту окна, Header в своём размере, main забирает
+ * остаток и становится скролл-контейнером.
  */
 
 #root {
@@ -27,10 +22,8 @@
     overflow: hidden;
 }
 
-/* Header держит свою естественную высоту: flex по умолчанию сжимает
-   детей, чтобы влезали, и Header без shrink:0 ужимается под содержимое
-   main. Запрещаем сжатие, чтобы шапка осталась той же высоты, что и
-   в старой вёрстке, а main занял оставшееся пространство. */
+/* Header держит свою естественную высоту: запрещаем flex-сжатие, чтобы шапка не
+   ужималась под содержимое main. */
 .root-layout > header,
 .auth-layout > header,
 .root-layout > .root-header,
@@ -38,21 +31,13 @@
     flex-shrink: 0;
 }
 
-/* Логотип кликабельный: ведёт на главную, при наведении подсвечивается.
-   На главной логотип остаётся в обычном flex-потоке шапки, как и был
-   изначально, чтобы не ломать существующую вёрстку search-bar и
-   header__controls (стили в home.scss его рассчитывают на flex).
-   На страницах с mode=back добавляется .logo-container_centered: он
-   вырывается из flex'а через position:absolute и встаёт в центр шапки.
-   View Transitions API через document.startViewTransition в Router.go
-   увидит, что у узла с view-transition-name="app-logo" поменялась
-   геометрия, и анимирует переход bounding-box'ов сам. */
+/* Логотип кликабельный, ведёт на главную. На главной остаётся в обычном flex-потоке
+   шапки (стили в home.scss рассчитывают на flex); на страницах с mode=back
+   .logo-container_centered вырывает его из потока в центр. */
 .logo-container {
     cursor: pointer;
     transition: opacity 0.2s ease;
-    /* view-transition-name это CSS-свойство, а не HTML-атрибут: писать
-       его в JSX как <div view-transition-name="..."> бессмысленно,
-       браузер игнорирует. Только этот CSS-объявление подключает узел к
+    /* view-transition-name это CSS-свойство: только оно подключает узел к
        shared-element-морфу при document.startViewTransition. */
     view-transition-name: app-logo;
 }
@@ -61,10 +46,8 @@
     opacity: 0.8;
 }
 
-/* Селектор .header > перебивает home.scss .logo-container { position: relative },
-   потому что специфичность (0,1,1) выше чем (0,1,0). Без этого position
-   остаётся relative и left/top сдвигают логотип относительно его flex-места,
-   а не относительно шапки. */
+/* Перебивает home.scss .logo-container { position: relative } за счёт большей
+   специфичности. Без этого left/top сдвигали бы логотип относительно его flex-места. */
 .header > .logo-container_centered {
     position: absolute;
     left: 50%;
@@ -73,28 +56,15 @@
     margin: 0;
 }
 
-/* Кастомная анимация View Transitions для shared-element-морфа логотипа.
-   ::view-transition-group(app-logo) это контейнер, который браузер
-   интерполирует между bounding-box'ами старой и новой позиции. Дефолтная
-   длительность 0.25s выглядит резко; растягиваем до 0.5s с плавным
-   easing'ом. ::view-transition-old/new это два snapshot-узла, поверх
-   которых браузер делает crossfade (opacity-fade-out + opacity-fade-in):
-   из-за этого ощущение рывка, потому что фактически летит не один
-   логотип, а две его прозрачные копии. У нас old и new идентичны
-   pixel-wise (тот же SVG), поэтому crossfade ничего полезного не даёт.
-   Выключаем fade и оставляем obe копии непрозрачными: визуально это
-   один и тот же логотип, гладко скользящий между позициями. */
+/* View Transitions для морфа логотипа: растягиваем длительность группы с дефолтных
+   0.25s и убираем crossfade old/new (old и new pixel-wise одинаковы, фейд только рябит). */
 ::view-transition-group(app-logo) {
     animation-duration: 0.4s;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Дефолтный root-view-transition покрывает всю страницу: на каждый
-   переход браузер делает crossfade всего viewport. Это нам не нужно
-   (контент меняет Outlet, для него у нас уже свой Suspense), а блокировка
-   pointer-events на время дефолтной 0.25s + 2s от группы суммируется и
-   ощущается как зависание. Дадим root тоже короткую длительность, чтобы
-   общий tail от view transition не превышал 0.4s. */
+/* Дефолтный root-view-transition нам не нужен (контент меняет Outlet), даём ему
+   короткую длительность, чтобы общий tail не превышал 0.4s. */
 ::view-transition-group(root) {
     animation-duration: 0.4s;
 }
@@ -106,8 +76,8 @@
     opacity: 1;
 }
 
-/* Кнопка "Назад" слева. Стили продублированы из restaurant.scss, чтобы
-   работали на всех страницах с mode='back', а не только на /restaurant. */
+/* Кнопка "Назад" слева. Стили продублированы из restaurant.scss, чтобы работали
+   на всех страницах с mode='back'. */
 .header__back-btn {
     height: 36px;
     background: none;
@@ -149,18 +119,14 @@
     overflow: hidden;
 }
 
-/* Раньше .page-wrapper был прямым ребёнком body и тянулся на 100vh; теперь
-   между ним и body стоит .root-layout с Header сверху, и 100vh у обёртки
-   страницы выпирает за viewport. Переключаем её на 100% от родительского
-   main: главная и страница ресторана таким образом получают ровно столько
-   высоты, сколько осталось после Header, а внутренние колонки сами
-   управляют своим скроллом. */
+/* .page-wrapper рассчитан на 100vh, но под Header он выпирает за viewport:
+   переключаем на 100% от родительского main. */
 .root-main > .page-wrapper {
     height: 100%;
 }
 
-/* На мобилке отдаём скролл документу, как и в base.scss. Это нужно для
-   страниц без внутреннего скролл-контейнера: профиль, login, register. */
+/* На мобилке отдаём скролл документу, как и в base.scss: нужно для страниц без
+   внутреннего скролл-контейнера (профиль, login, register). */
 @media (max-width: 900px) {
     #root {
         height: auto;

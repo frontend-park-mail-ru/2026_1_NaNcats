@@ -1,18 +1,10 @@
 /**
- * Peer-shell приложения для `'auth'`-layout-а.
+ * Layout-shell страниц авторизации (/login, /register).
  *
- * Активируется, когда Router.currentLayout равен 'auth' (страницы /login и
- * /register). Содержит общий логотип с view-transition-name="app-logo"
- * (тот же атрибут будет на логотипе Header в RootLayout: переход между
- * shell-ами морфит логотип через View Transitions API), центральную область
- * `<main>` с Outlet под форму, плюс `<div id="modal-root"/>` с приёмником
- * ModalRoot.
- *
- * Симметрия с RootLayout. Оба layout-а кладут собственный `<div id="modal-root"/>`,
- * потому что в каждый момент времени смонтирован ровно один shell, и приёмник
- * ModalRoot должен находить контейнер именно в своём поддереве. Если бы
- * modal-root жил снаружи (например, прямо в `#root`), при смене layout-а
- * порталы пришлось бы переподписывать.
+ * Логотип несёт view-transition-name="app-logo" (тот же атрибут на логотипе Header
+ * в RootLayout), за счёт чего при переходе между shell-ами логотип морфится через
+ * View Transitions API. `<div id="modal-root"/>` лежит внутри shell-а и стоит перед
+ * `<ModalRoot/>`: ModalRoot ищет контейнер через querySelector в первом эффекте.
  */
 
 import './layout.scss';
@@ -21,20 +13,6 @@ import { ModalRoot } from '@shared/lib/portal';
 import { OfflineBanner } from '@shared/ui/offline-banner';
 import type { VNode } from '@shared/lib/vdom';
 
-/**
- * Компонент AuthLayout: peer-shell страниц авторизации.
- *
- * Логотип. Используем минимальный inline-SVG-плейсхолдер, чтобы атрибут
- * view-transition-name="app-logo" уже работал при переходе. Unit 9 заменит
- * SVG на реальный логотип, оставив тот же атрибут: морф продолжит работать
- * без правок на этой стороне.
- *
- * Порядок JSX-детей. `<div id="modal-root"/>` стоит ПЕРЕД `<ModalRoot/>` по
- * той же причине, что и в RootLayout: ModalRoot ищет контейнер через
- * document.querySelector в момент первого эффекта.
- *
- * @returns VNode peer-shell-а со shared-element-логотипом, центральной формой и modal-root.
- */
 export function AuthLayout(): VNode {
     return (
         <div class="auth-layout">

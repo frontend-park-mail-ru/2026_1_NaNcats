@@ -1,29 +1,4 @@
-/**
- * Страница оформления заказа.
- *
- * Показывает условия доставки, состав заказа, способ оплаты и итоговую
- * сумму. Состояние выбора (адрес, карта) живёт в локальных сигналах;
- * модалки состава корзины, выбора адреса и способа оплаты управляются
- * сигналами-флагами, а классы `modal-overlay_active` ставятся через
- * реактивные аксессоры. Виджеты AddressPicker и OrderStatusModal
- * монтируются как декларативные дети; страница вызывает их императивные
- * методы (`openMapModal`, `open`) через controller-объекты, полученные
- * по `controllerRef` (`ref` ядро VDOM применяет только к DOM-узлам).
- *
- * Loader. `load()` загружает текущего пользователя (без авторизации
- * редиректит на `/login`), параллельно подгружает адреса, карты и корзину.
- * Пустая корзина приводит к редиректу на `/`. Для UI берётся бренд
- * ресторана из корзины (имя и логотип); неудача запроса бренда не
- * блокирует страницу.
- *
- * Поток оплаты. После клика по "Оплатить" страница проверяет адрес,
- * гарантирует назначение владельцев у всех позиций (в соло-корзине
- * автоматически реассайнит непривязанные на админа), формирует payload и
- * вызывает `orderApi.create`. По успеху открывает модалку статуса заказа,
- * по ошибке выводит сообщение и возвращает кнопку в исходное состояние.
- *
- * Layout: 'root'.
- */
+// Страница оформления заказа. Layout: 'root'.
 
 import './checkout.scss';
 
@@ -47,9 +22,6 @@ const DELIVERY_FEE_RUB = 360;
 /** Фиксированный сервисный сбор (рубли). */
 const SERVICE_FEE_RUB = 99;
 
-/**
- * Пропсы страницы оформления заказа, формируемые loader-ом.
- */
 export interface CheckoutPageProps {
     /** Позиции корзины, попадающие в заказ. */
     items: CartItem[];
@@ -59,31 +31,21 @@ export interface CheckoutPageProps {
     restaurantName: string;
     /** Ссылка на логотип ресторана. */
     restaurantLogoUrl: string;
-    /** Сохранённые адреса пользователя для выбора доставки. */
+    /** Сохранённые адреса пользователя. */
     addresses: Address[];
-    /** Сохранённые карты пользователя для выбора способа оплаты. */
+    /** Сохранённые карты пользователя. */
     cards: Card[];
-    /** Адрес, выбранный по умолчанию (первый из сохранённых либо null). */
+    /** Адрес по умолчанию (первый из сохранённых либо null). */
     initialAddress: Address | null;
-    /** Карта, выбранная по умолчанию (дефолтная пользователя либо null). */
+    /** Карта по умолчанию (дефолтная пользователя либо null). */
     initialCard: Card | null;
 }
 
-/**
- * Считает сумму позиций корзины в рублях.
- *
- * @param items Список позиций корзины.
- * @returns Сумма цены * количество, переведённая из micros в рубли.
- */
+/** Сумма позиций корзины в рублях. */
 const itemsTotalRub = (items: CartItem[]): number =>
     items.reduce((sum, i) => sum + fromMicros(i.price) * i.quantity, 0);
 
-/**
- * Loader страницы checkout.
- *
- * @returns Промис с пропсами страницы; редирект на `/login` или `/` приводит
- * к Promise.reject, что роутер интерпретирует как error-стейт.
- */
+/** Loader: грузит пользователя, адреса, карты, корзину; редиректит при отсутствии авторизации или пустой корзине. */
 export async function load(): Promise<CheckoutPageProps> {
     try {
         await userStore.loadCurrent();
@@ -131,47 +93,25 @@ export async function load(): Promise<CheckoutPageProps> {
     };
 }
 
-/**
- * Функциональный компонент страницы оформления заказа.
- *
- * Хранит выбор пользователя и итоговые суммы в локальных сигналах; модалки
- * управляются сигналами-флагами `cartOpen`/`addressOpen`/`paymentOpen` и
- * включаются добавлением класса `modal-overlay_active` через реактивный
- * аксессор `class`.
- *
- * @param props Пропсы страницы из loader-а.
- * @returns VNode-дерево страницы checkout.
- */
 export function CheckoutPage(props: CheckoutPageProps): VNode {
-    // Реактивный список позиций: может обновиться, если страница пере-загрузит корзину после реассайна.
     const itemsSig = signal<CartItem[]>(props.items);
-    // Реактивный список адресов: обновляется при добавлении нового через AddressPicker.
     const addressesSig = signal<Address[]>(props.addresses);
-    // Реактивный список карт: для текущей версии не меняется на странице, но удобнее держать в сигнале для For.
     const cardsSig = signal<Card[]>(props.cards);
-    // Текущий выбранный адрес.
     const selectedAddressSig = signal<Address | null>(props.initialAddress);
-    // Текущая выбранная карта (null = стандартная новая карта).
+    // null = стандартная новая карта.
     const selectedCardSig = signal<Card | null>(props.initialCard);
-    // Текст ошибки оформления: пустая строка значит "ошибки нет".
+    // Пустая строка значит "ошибки нет".
     const errorSig = signal<string>('');
-    // Статус кнопки оплаты: блокируется во время запроса.
     const payProcessingSig = signal<boolean>(false);
 
-    // Флаги открытости модалок.
     const cartOpenSig = signal<boolean>(false);
     const addressOpenSig = signal<boolean>(false);
     const paymentOpenSig = signal<boolean>(false);
 
-    // Контроллеры дочерних виджетов: устанавливаются через ref-колбэк.
     let pickerCtl: AddressPickerController | null = null;
     let orderStatusCtl: OrderStatusModalController | null = null;
 
-    /**
-     * Считает форматированные итоговые суммы по текущим позициям.
-     *
-     * @returns Объект с отформатированными строками для шаблона.
-     */
+    /** Форматированные итоговые суммы по текущим позициям. */
     const computeTotals = (): {
         cartItemsTotal: string;
         deliveryFee: string;
@@ -190,38 +130,18 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         };
     };
 
-    /**
-     * Возвращает CSS-класс модального оверлея с учётом флага открытости.
-     *
-     * @param baseClass Базовый класс оверлея.
-     * @param openSig Сигнал-флаг "модалка открыта".
-     * @returns Аксессор класса для реактивного пропа.
-     */
     const overlayClass = (baseClass: string, openSig: () => boolean): (() => string) =>
         (): string => (openSig() ? `${baseClass} modal-overlay_active` : baseClass);
 
-    /**
-     * Обработчик клика по строке выбора адреса.
-     *
-     * @param addr Выбранный адрес.
-     */
     const handleSelectAddress = (addr: Address): void => {
         selectedAddressSig.set(addr);
     };
 
-    /**
-     * Обработчик клика по карте либо по записи "стандартная оплата".
-     *
-     * @param card Выбранная карта или null для стандартной оплаты.
-     */
     const handleSelectCard = (card: Card | null): void => {
         selectedCardSig.set(card);
     };
 
-    /**
-     * Обработчик клика по кнопке "Добавить новый адрес": закрывает модалку
-     * выбора адреса и через паузу 100мс открывает модалку карты в AddressPicker.
-     */
+    // Закрывает модалку выбора адреса и через паузу открывает модалку карты в AddressPicker.
     const handleAddNewAddress = (): void => {
         addressOpenSig.set(false);
         setTimeout(() => {
@@ -229,12 +149,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         }, 100);
     };
 
-    /**
-     * Обработчик выбора адреса в AddressPicker: подменяет адреса в сигнале и
-     * проставляет первый из обновлённого списка как текущий выбранный.
-     * Аргументы виджета (text, coords) странице не нужны: актуальный список
-     * адресов читается напрямую из addressStore.
-     */
+    // Актуальный список адресов читаем напрямую из addressStore.
     const handlePickerSelect = (): void => {
         const fresh = addressStore.getState().saved;
         addressesSig.set(fresh);
@@ -243,11 +158,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         }
     };
 
-    /**
-     * Гарантирует, что у всех позиций корзины назначен владелец-плательщик.
-     *
-     * @returns Список готовых к оплате позиций либо null при невозможности.
-     */
+    // Гарантирует, что у всех позиций корзины назначен владелец-плательщик; null если не получилось.
     const ensureAssignedItems = async (): Promise<CartItem[] | null> => {
         const cart = cartStore.getState();
         const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
@@ -290,9 +201,6 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         return null;
     };
 
-    /**
-     * Основной обработчик кнопки "Оплатить".
-     */
     const handlePayClick = async (): Promise<void> => {
         errorSig.set('');
 

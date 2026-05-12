@@ -1,40 +1,6 @@
-/**
- * Виджет игры Wordle в виде функционального компонента VDOM/JSX.
- *
- * Поведение перенесено из старого `Wordle.ts` 1:1: модалка с полем 6x5,
- * экранная клавиатура с русской раскладкой, проверка догадки по словарю,
- * раскраска плиток и кнопок клавиатуры, тост-уведомления, ленивая
- * подгрузка словаря при первом открытии.
- *
- * Ключевое отличие от старой реализации: видимость модалки контролируется
- * пропом-аксессором `open`, который владеется родителем. Это симметрично
- * паттерну SolidJS: компонент это чистая функция от пропов, он не хранит
- * "глобальный" instance, который снаружи дёргают через `.open()`. Если
- * родитель пока остаётся на classic-`Component` (например, до миграции
- * ProfilePage в Unit 10/11), он создаёт сигнал руками и пробрасывает
- * аксессор сюда.
- *
- * Структура локального состояния (всё через `signal()`):
- *
- * - `grid` сетка букв размером MAX_ROWS x WORD_LENGTH; перерисовывается
- *   через `<For>` по рядам и по плиткам;
- * - `currentRow`, `currentCol` положение курсора ввода;
- * - `tileColors` цвета плиток для уже отправленных рядов;
- * - `keyStates` карта "буква -> цвет" для подсветки клавиатуры;
- * - `isGameOver` блокирует ввод после победы или после исчерпания попыток;
- * - `toastText` текущая подсказка тоста, `toastVisible` его видимость;
- * - `wordsLoaded` техно-флаг ленивой подгрузки словаря.
- *
- * Дисциплина реактивных выражений. Все динамические части (класс модалки,
- * текст плитки, цвет плитки и клавиши, видимость тоста) передаются как
- * inline-аксессоры или сам сигнал. Голые выражения вида `{toastText()}`
- * ниже не использованы.
- *
- * Ленивый словарь. `validWords` хранится в локальной переменной (Set),
- * `targetWord` в обычной строковой переменной (мутируются один раз при
- * загрузке). Импорт словаря динамический (`import('../lib/words')`),
- * чтобы тяжёлый чанк не входил в initial bundle.
- */
+// Виджет игры Wordle: модалка с полем 6x5, экранная клавиатура (русская раскладка),
+// проверка догадки по словарю, тосты, ленивая подгрузка словаря при первом открытии.
+// Видимость модалки контролируется пропом-аксессором `open`, которым владеет родитель.
 
 import './wordle.scss';
 
@@ -52,10 +18,7 @@ import {
     type TileColor,
 } from '../lib/wordleEngine';
 
-/**
- * Раскладка экранной клавиатуры. Сначала верхний ряд, затем средний, затем
- * нижний с управляющими клавишами ENTER и BACKSPACE.
- */
+/** Раскладка экранной клавиатуры (последний ряд с ENTER и BACKSPACE). */
 const KEYBOARD_LAYOUT: readonly (readonly string[])[] = [
     ['Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З', 'Х', 'Ъ'],
     ['Ф', 'Ы', 'В', 'А', 'П', 'Р', 'О', 'Л', 'Д', 'Ж', 'Э'],
@@ -68,51 +31,24 @@ const TOAST_DURATION_MS = 2000;
 /** Задержка перед показом итогового Popup после раскраски последнего ряда. */
 const RESULT_POPUP_DELAY_MS = 500;
 
-/**
- * Цвет плитки или null для ещё не сданных рядов. Null означает отсутствие
- * соответствующего CSS-класса (`correct`/`present`/`absent`) у плитки.
- */
+/** Цвет плитки или null для ещё не сданных рядов. */
 type TileColorOrEmpty = TileColor | null;
 
-/**
- * Пропсы компонента {@link Wordle}.
- */
 export interface WordleProps {
-    /**
-     * Сигнал-аксессор видимости модалки. Когда возвращает true, модалка
-     * получает класс `modal-overlay_active`. Родитель отвечает за сброс
-     * пропа в false при закрытии: сам компонент дёргает `onClose`, чтобы
-     * родитель синхронизировал сигнал.
-     */
+    /** Аксессор видимости модалки. При true модалка получает класс `modal-overlay_active`. */
     open: () => boolean;
-    /**
-     * Колбэк закрытия модалки. Компонент вызывает его, когда пользователь
-     * нажал крестик или кликнул по подложке, а также после успешного
-     * завершения партии. Родитель должен обнулить сигнал `open` внутри
-     * этого колбэка.
-     */
+    /** Колбэк закрытия модалки. Родитель должен обнулить сигнал `open` внутри него. */
     onClose: () => void;
-    /** Опциональный колбэк, вызываемый при выигрыше до закрытия модалки. */
+    /** Колбэк при выигрыше до закрытия модалки. */
     onWin?: () => void;
 }
 
-/**
- * Создаёт пустую матрицу цветов плиток с тем же ритмом, что и сетка букв.
- *
- * @returns Двумерный массив null-цветов размером MAX_ROWS x WORD_LENGTH.
- */
+/** Пустая матрица цветов плиток размером MAX_ROWS x WORD_LENGTH. */
 function createEmptyColors(): TileColorOrEmpty[][] {
     return Array.from({ length: MAX_ROWS }, () => Array<TileColorOrEmpty>(WORD_LENGTH).fill(null));
 }
 
-/**
- * Функциональный компонент Wordle. Управляет всем игровым состоянием
- * локально и реактивно перерисовывает поле и клавиатуру при изменении
- * сигналов.
- *
- * @param props Пропсы виджета: контролируемая видимость модалки и колбэки.
- * @returns VNode-дерево модалки.
- */
+/** Виджет игры Wordle. Игровое состояние полностью локальное. */
 export function Wordle(props: WordleProps): VNode {
     const grid = signal<readonly (readonly string[])[]>(createEmptyGrid());
     const tileColors = signal<readonly (readonly TileColorOrEmpty[])[]>(createEmptyColors());
@@ -127,15 +63,9 @@ export function Wordle(props: WordleProps): VNode {
     let targetWord = '';
     /** Допустимые слова в нижнем регистре; пустой Set до загрузки словаря. */
     let validWords: Set<string> = new Set();
-    /** Был ли уже асинхронно подгружен модуль словаря. */
     let wordsLoaded = false;
-    /** Текущий таймер автоскрытия тоста, чтобы не множить параллельные. */
     let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * Сбрасывает игровое состояние к начальному: пустая сетка, чистая
-     * раскраска плиток и клавиатуры, курсор в левом верхнем углу.
-     */
     const startNewGame = (): void => {
         grid.set(createEmptyGrid());
         tileColors.set(createEmptyColors());
@@ -145,11 +75,7 @@ export function Wordle(props: WordleProps): VNode {
         isGameOver.set(false);
     };
 
-    /**
-     * Лениво подгружает словарь через динамический импорт и сбрасывает
-     * партию. Идемпотентно: повторные вызовы после загрузки только
-     * сбрасывают партию.
-     */
+    // Лениво подгружает словарь (один раз) и сбрасывает партию.
     const ensureWordsAndReset = async (): Promise<void> => {
         if (!wordsLoaded) {
             const words = await import('../lib/words');
@@ -160,13 +86,6 @@ export function Wordle(props: WordleProps): VNode {
         startNewGame();
     };
 
-    /**
-     * Иммутабельно копирует сетку и записывает букву в указанную ячейку.
-     *
-     * @param row Индекс ряда.
-     * @param col Индекс столбца.
-     * @param letter Новая буква (пустая строка очищает ячейку).
-     */
     const writeLetter = (row: number, col: number, letter: string): void => {
         const prev = grid();
         const next = prev.map((rowArr, r) => {
@@ -176,12 +95,6 @@ export function Wordle(props: WordleProps): VNode {
         grid.set(next);
     };
 
-    /**
-     * Иммутабельно записывает массив цветов в указанный ряд `tileColors`.
-     *
-     * @param row Индекс ряда.
-     * @param colors Цвета плиток по столбцам.
-     */
     const writeRowColors = (row: number, colors: readonly TileColor[]): void => {
         const prev = tileColors();
         const next: TileColorOrEmpty[][] = prev.map((rowArr, r) => {
@@ -191,14 +104,7 @@ export function Wordle(props: WordleProps): VNode {
         tileColors.set(next);
     };
 
-    /**
-     * Иммутабельно обновляет карту состояний клавиатуры по результатам
-     * проверки одной догадки. Кнопка не понижается из состояния `correct`:
-     * это сохраняет максимально полезную информацию для игрока.
-     *
-     * @param colors Цвета плиток по позициям догадки.
-     * @param guess Догадка пользователя.
-     */
+    // Обновляет подсветку клавиатуры по результату догадки; из `correct` кнопку не понижаем.
     const updateKeyStates = (colors: readonly TileColor[], guess: string): void => {
         const prev = keyStates();
         const next: Record<string, TileColor | undefined> = { ...prev };
@@ -214,13 +120,7 @@ export function Wordle(props: WordleProps): VNode {
         keyStates.set(next);
     };
 
-    /**
-     * Показывает короткое сообщение в тосте и автоматически прячет его
-     * через {@link TOAST_DURATION_MS} миллисекунд. Если уже был активный
-     * тост, его таймер заменяется новым.
-     *
-     * @param msg Текст сообщения.
-     */
+    // Показывает тост и прячет его через TOAST_DURATION_MS; активный таймер заменяется новым.
     const showToast = (msg: string): void => {
         toastText.set(msg);
         toastVisible.set(true);
@@ -233,10 +133,6 @@ export function Wordle(props: WordleProps): VNode {
         }, TOAST_DURATION_MS);
     };
 
-    /**
-     * Завершает партию после победы: помечает игру оконченной, показывает
-     * поздравительный Popup, вызывает внешний `onWin` и закрывает модалку.
-     */
     const finishWin = (): void => {
         isGameOver.set(true);
         setTimeout(() => {
@@ -248,11 +144,7 @@ export function Wordle(props: WordleProps): VNode {
         }, RESULT_POPUP_DELAY_MS);
     };
 
-    /**
-     * Завершает партию после исчерпания попыток: помечает игру оконченной,
-     * показывает Popup с правильным словом, закрывает модалку и сбрасывает
-     * партию (чтобы при следующем открытии было поле с нуля).
-     */
+    // Завершение после исчерпания попыток: показывает слово, закрывает модалку, сбрасывает партию.
     const finishLose = (): void => {
         isGameOver.set(true);
         const word = targetWord;
@@ -265,10 +157,7 @@ export function Wordle(props: WordleProps): VNode {
         }, RESULT_POPUP_DELAY_MS);
     };
 
-    /**
-     * Проверяет догадку текущего ряда: валидирует по словарю, раскрашивает
-     * плитки и кнопки клавиатуры, обрабатывает победу или поражение.
-     */
+    // Проверка догадки текущего ряда: валидация по словарю, раскраска, победа/поражение.
     const checkGuess = (): void => {
         const row = currentRow();
         const guess = grid()[row].join('');
@@ -293,13 +182,7 @@ export function Wordle(props: WordleProps): VNode {
         currentCol.set(0);
     };
 
-    /**
-     * Применяет ввод одного символа или служебной клавиши к текущему ряду.
-     * Поддерживает BACKSPACE (удаление последней буквы), ENTER (проверка
-     * догадки, если ряд заполнен) и обычные буквы.
-     *
-     * @param key Введённая клавиша: буква в верхнем регистре, ENTER или BACKSPACE.
-     */
+    // Ввод символа или служебной клавиши (BACKSPACE, ENTER) в текущий ряд.
     const handleInput = (key: string): void => {
         if (isGameOver()) return;
 
@@ -329,14 +212,8 @@ export function Wordle(props: WordleProps): VNode {
         }
     };
 
-    /**
-     * Обработчик нажатий физической клавиатуры. Игнорирует ввод, если
-     * модалка закрыта или игра завершена. Enter и Backspace мапятся на
-     * управляющие клавиши; обычные буквы пропускаются через
-     * `isValidLetter`, что отсекает латиницу и спецсимволы.
-     *
-     * @param event Событие keydown из документа.
-     */
+    // Физическая клавиатура: игнорируем при закрытой модалке или законченной игре;
+    // буквы проходят через isValidLetter (отсекает латиницу и спецсимволы).
     const handleKeyDown = (event: Event): void => {
         if (!props.open()) return;
         if (isGameOver()) return;
@@ -353,12 +230,7 @@ export function Wordle(props: WordleProps): VNode {
         if (isValidLetter(key)) handleInput(key);
     };
 
-    /**
-     * Обработчик клика по подложке модалки: если кликнули в саму подложку
-     * (а не в её содержимое), сообщает родителю про закрытие.
-     *
-     * @param event Событие click.
-     */
+    // Закрывает модалку, только если клик пришёл по самой подложке, а не по содержимому.
     const handleOverlayClick = (event: Event): void => {
         const target = event.target as HTMLElement | null;
         if (target && target.id === 'wordle-modal') {
@@ -368,11 +240,7 @@ export function Wordle(props: WordleProps): VNode {
 
     onMount(() => {
         document.addEventListener('keydown', handleKeyDown);
-        // Реактивно реагируем на смену open(): при переходе false -> true
-        // лениво подгружаем словарь и сбрасываем партию. effect отрабатывает
-        // синхронно на старте, поэтому "стартовое" значение lastOpen
-        // выставляется в первой итерации, и инициализация запускается ровно
-        // один раз на открытие, а не на каждое чтение open().
+        // При переходе open() false -> true лениво подгружаем словарь и сбрасываем партию.
         let lastOpen = false;
         const stopOpenWatcher = effect(() => {
             const nextOpen = props.open();
@@ -391,23 +259,9 @@ export function Wordle(props: WordleProps): VNode {
         });
     });
 
-    /**
-     * Возвращает класс модалки в зависимости от пропа `open`. Класс
-     * `modal-overlay_active` включает CSS-видимость поверх базового
-     * `modal-overlay`.
-     */
     const modalClass = (): string =>
         props.open() ? 'modal-overlay modal-overlay_active' : 'modal-overlay';
 
-    /**
-     * Возвращает класс одной плитки по координатам в сетке. Если ряд ещё
-     * не сдан, цвет null и в class остаётся только `wordle-tile` плюс
-     * `filled` при наличии буквы.
-     *
-     * @param row Индекс ряда.
-     * @param col Индекс столбца.
-     * @returns Готовая строка class.
-     */
     const tileClass = (row: number, col: number): string => {
         const letter = grid()[row][col];
         const color = tileColors()[row][col];
@@ -417,14 +271,7 @@ export function Wordle(props: WordleProps): VNode {
         return parts.join(' ');
     };
 
-    /**
-     * Возвращает класс одной кнопки клавиатуры. Управляющие клавиши
-     * (ENTER, BACKSPACE) получают модификатор `wordle-keyboard__key_wide`;
-     * подсветка по результатам проверки берётся из `keyStates`.
-     *
-     * @param key Имя клавиши.
-     * @returns Готовая строка class.
-     */
+    // Класс кнопки клавиатуры: служебные клавиши шире, подсветка из keyStates.
     const keyClass = (key: string): string => {
         const parts = ['wordle-keyboard__key'];
         if (key.length > 1) parts.push('wordle-keyboard__key_wide');
@@ -433,16 +280,10 @@ export function Wordle(props: WordleProps): VNode {
         return parts.join(' ');
     };
 
-    /**
-     * Возвращает класс контейнера тоста. Видимость управляется
-     * модификатором `wordle-toast_show`.
-     */
     const toastClass = (): string =>
         toastVisible() ? 'wordle-toast wordle-toast_show js-wordle-toast' : 'wordle-toast js-wordle-toast';
 
-    /** Индексы рядов сетки (фиксированный массив, нужен для `<For>`). */
     const rowIndexes: readonly number[] = Array.from({ length: MAX_ROWS }, (_, i) => i);
-    /** Индексы столбцов сетки (фиксированный массив, нужен для `<For>`). */
     const colIndexes: readonly number[] = Array.from({ length: WORD_LENGTH }, (_, i) => i);
 
     return (
@@ -459,9 +300,7 @@ export function Wordle(props: WordleProps): VNode {
                     5 Букв
                 </h2>
 
-                {/* Тост всегда в DOM, видимость переключается классом `_show`:
-                    так в оригинальной реализации, и так дешевле для CSS-перехода
-                    появления. */}
+                {/* Тост всегда в DOM, видимость переключается классом `_show` (для CSS-перехода). */}
                 <div class={toastClass}>{toastText}</div>
 
                 <div class="wordle-board js-wordle-board">

@@ -1,35 +1,4 @@
-/**
- * Страница профиля пользователя.
- *
- * Рендерит шапку со ссылкой "Назад" и аватаркой, боковую панель с формой
- * редактирования профиля, виджет Wordle, основную область с адресами,
- * картами и историей заказов. Виджеты AddressPicker, Wordle и
- * OrderStatusModal монтируются как декларативные дети. AddressPicker и
- * OrderStatusModal отдают императивный контроллер через проп
- * `controllerRef` (а не `ref`, потому что ядро VDOM применяет проп `ref`
- * только к DOM-узлам). Wordle управляется сигнал-пропом `open`: страница
- * меняет сигнал-флаг по клику на ссылку "попробуйте", виджет дёргает
- * `onClose` на закрытии.
- *
- * Loader. `load()` подгружает текущего пользователя, при отсутствии
- * авторизации редиректит на `/login` и отбивает rejection; параллельно
- * запрашивает адреса, карты и список заказов (потери заказов не блокируют
- * страницу). Заказы сразу декорируются предвычисленным StatusBadge.
- *
- * Реактивность. Пользователь читается из сигнала `useStoreSignal(userStore, s => s.user)`,
- * поэтому изменение аватара или имени через форму редактирования автоматически
- * обновляет шапку и боковую панель. Список заказов хранится в локальном
- * сигнале, чтобы стрим статусов мог обновлять отдельные строки без перерисовки
- * всей страницы.
- *
- * Стрим статусов. Для каждого нетерминального заказа подключается
- * `connectOrderTracker`; событие apply'ит новый статус в соответствующую
- * строку сигнала, по терминальному статусу подписка закрывается. Все
- * трекеры закрываются на `onCleanup`, поэтому утечек подписок при
- * размонтировании страницы нет.
- *
- * Layout: 'root'.
- */
+// Страница профиля пользователя. Layout: 'root'.
 
 import './profile.scss';
 
@@ -58,50 +27,25 @@ import { For, onCleanup, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
 
-/**
- * Декорированный заказ для отображения в строке списка.
- */
+/** Заказ с предвычисленным бейджем статуса. */
 interface OrderRowView extends Order {
-    /** Предвычисленный бейдж статуса (иконка, подпись, css-модификатор). */
     _badge: StatusBadge;
 }
 
-/**
- * Пропсы страницы профиля, формируемые loader-ом.
- */
 export interface ProfilePageProps {
-    /** Данные текущего пользователя. */
     user: User;
-    /** Список заказов пользователя с предвычисленными бейджами. */
     orders: OrderRowView[];
 }
 
-/** Терминальные статусы заказа: дальнейшие обновления стрима не нужны. */
+/** Терминальные статусы заказа: обновления стрима больше не нужны. */
 const TERMINAL_STATUSES = new Set<string>(['finished', 'cancelled', 'failed']);
 
-/** URL дефолтного аватара пользователя для случая ошибки загрузки. */
 const DEFAULT_AVATAR_URL = 'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp';
 
-/**
- * Декорирует заказы предвычисленными бейджами статуса.
- *
- * @param orders Сырой список заказов из API.
- * @returns Список с добавленным полем `_badge`.
- */
 const decorate = (orders: Order[]): OrderRowView[] =>
     orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
-/**
- * Loader страницы профиля.
- *
- * Загружает текущего пользователя; при отсутствии авторизации перенаправляет
- * на страницу входа и отбивает rejection (роутер пометит роут как error,
- * Outlet останется со скелетоном до коммита редиректа). Параллельно
- * подгружает сохранённые адреса, карты и список заказов; ошибка заказов
- * даёт пустой список, страница продолжает работу.
- *
- * @returns Промис с пропсами страницы профиля.
- */
+/** Loader: грузит пользователя, адреса, карты, заказы; редиректит на /login без авторизации. */
 export async function load(): Promise<ProfilePageProps> {
     try {
         await userStore.loadCurrent();
@@ -122,47 +66,21 @@ export async function load(): Promise<ProfilePageProps> {
     return { user, orders: decorate(orders) };
 }
 
-/**
- * Функциональный компонент страницы профиля.
- *
- * Использует пропсы из loader-а как начальный снимок, далее живёт через
- * локальные сигналы: `userSig` подписан на `userStore.user`, `ordersSig`
- * хранит декорированный список заказов и обновляется как из стрима
- * статусов, так и при первичной отрисовке.
- *
- * @param props Пропсы страницы из loader-а.
- * @returns VNode-дерево страницы профиля.
- */
 export function ProfilePage(props: ProfilePageProps): VNode {
-    // Реактивный пользователь: меняется при логауте/обновлении профиля.
     const userSig = useStoreSignal(userStore, (s) => s.user);
-
-    // Локальный список заказов: стрим статусов будет точечно подменять записи.
+    // Стрим статусов точечно подменяет записи в этом списке.
     const ordersSig = signal<OrderRowView[]>(props.orders);
-
-    // Заметка о решённой Wordle: меняется по событию onWin.
     const wordleSolved = signal<boolean>(localStorage.getItem('wordle_solved') === 'true');
-
-    // Видимость модалки Wordle: контролируется страницей через сигнал-проп.
     const wordleOpen = signal<boolean>(false);
 
-    // Контроллеры дочерних виджетов: заполняются их controllerRef-колбэками после mount.
     let pickerCtl: AddressPickerController | null = null;
     let orderStatusCtl: OrderStatusModalController | null = null;
-
-    // Скрытый file-input для загрузки аватара: вызываем .click() из обработчика кнопки.
     let avatarFileInput: HTMLInputElement | null = null;
 
-    // Активные трекеры статуса заказа: сохраняются для аккуратного onCleanup.
+    // Активные трекеры статуса заказа: закрываются на onCleanup.
     const orderTrackers: Map<string, OrderTracker> = new Map();
 
-    /**
-     * Применяет новый статус к строке заказа: подменяет запись в сигнале и
-     * закрывает трекер, если статус терминальный.
-     *
-     * @param orderId Идентификатор заказа.
-     * @param rawStatus Новый сырой статус из стрима.
-     */
+    // Подменяет статус строки заказа; закрывает трекер при терминальном статусе.
     const applyStatusUpdate = (orderId: string, rawStatus: string): void => {
         const current = ordersSig.peek();
         const idx = current.findIndex((o) => o.order_id === orderId);
@@ -180,10 +98,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    /**
-     * Подключает стримы статуса для каждого нетерминального заказа из текущего
-     * списка. Повторные подключения для одного и того же заказа исключены.
-     */
+    // Подключает стрим статуса для каждого нетерминального заказа без дублей.
     const subscribeActiveOrders = (): void => {
         for (const order of ordersSig.peek()) {
             if (!order.order_id || TERMINAL_STATUSES.has(order.status)) continue;
@@ -196,17 +111,10 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    /**
-     * Обработчик клика по кнопке-оверлею аватара: триггерит выбор файла.
-     */
     const handleAvatarPickClick = (): void => {
         avatarFileInput?.click();
     };
 
-    /**
-     * Обработчик выбора файла аватара: загружает изображение, ошибки выводятся
-     * через Popup.alert.
-     */
     const handleAvatarChange = async (): Promise<void> => {
         const file = avatarFileInput?.files?.[0];
         if (!file) return;
@@ -218,10 +126,6 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    /**
-     * Обработчик клика по кнопке удаления аватара. Сетевые ошибки сообщаются
-     * пользователю через Popup.alert.
-     */
     const handleAvatarDelete = async (): Promise<void> => {
         try {
             await deleteAvatar();
@@ -231,61 +135,34 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    /**
-     * Обработчик клика по кнопке добавления нового адреса.
-     */
     const handleAddAddress = (): void => {
         void pickerCtl?.openMapModal();
     };
 
-    /**
-     * Обработчик клика по кнопке редактирования существующего адреса.
-     *
-     * @param id Идентификатор редактируемого адреса.
-     */
     const handleEditAddress = (id: string): void => {
         void pickerCtl?.openMapModal(id);
     };
 
-    /**
-     * Обработчик клика по кнопке привязки новой карты.
-     */
     const handleAddCard = (): void => {
         void bindNewCard().catch(() =>
             Popup.alert('Не удалось начать привязку карты. Попробуйте позже.'),
         );
     };
 
-    /**
-     * Обработчик клика по ссылке "попробуйте" Wordle: открывает модалку.
-     */
     const handleOpenWordle = (): void => {
         wordleOpen.set(true);
     };
 
-    /**
-     * Обработчик закрытия модалки Wordle.
-     */
     const handleWordleClose = (): void => {
         wordleOpen.set(false);
     };
 
-    /**
-     * Обработчик победы в Wordle: запоминает факт в localStorage и обновляет
-     * подпись возле блока виджета.
-     */
     const handleWordleWin = (): void => {
         localStorage.setItem('wordle_solved', 'true');
         wordleSolved.set(true);
     };
 
-    /**
-     * Обработчик клика или клавиатурного открытия строки заказа: открывает
-     * модалку статуса. Для нетерминальных заказов модалка подписывается на
-     * стрим обновлений.
-     *
-     * @param order Заказ, выбранный пользователем.
-     */
+    // Для нетерминальных заказов модалка подписывается на стрим обновлений.
     const handleOpenOrder = (order: OrderRowView): void => {
         if (!orderStatusCtl) return;
         const isTerminal = TERMINAL_STATUSES.has(order.status);

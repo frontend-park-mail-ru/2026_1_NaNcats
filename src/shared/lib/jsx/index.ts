@@ -1,10 +1,7 @@
 /**
- * Публичный барель JSX-runtime'а.
- *
- * Babel automatic-runtime импортирует jsx, jsxs и Fragment из jsx-runtime, а
- * jsxDEV из jsx-dev-runtime. Эти подмодули остаются точками входа для Babel.
- * Барель удобен для обычного кода, которому могут понадобиться jsx или
- * Fragment напрямую (например, при ручном построении VNode без JSX-синтаксиса).
+ * Публичный барель JSX-runtime'а. Babel automatic импортирует jsx/jsxs/Fragment
+ * из jsx-runtime и jsxDEV из jsx-dev-runtime напрямую; барель удобен обычному
+ * коду, которому нужны jsx или Fragment без JSX-синтаксиса.
  */
 
 export { Fragment, jsx, jsxs } from './jsx-runtime';

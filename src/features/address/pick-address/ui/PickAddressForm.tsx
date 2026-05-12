@@ -1,29 +1,9 @@
-/**
- * Форма уточнения адреса доставки на JSX/VDOM.
- *
- * Поведение перенесено из старого `PickAddressForm.ts` 1:1: пользователь
- * заполняет дополнительные поля адреса (квартира, подъезд, этаж, домофон,
- * комментарий курьеру) поверх уже выбранной точки и сохраняет их через
- * {@link pickAddress}. Текстовое представление адреса показывается как
- * read-only.
- *
- * Поля живут в локальных сигналах, исходные значения берутся из props.initial.
- * Источник правды для submit это сами сигналы (peek), DOM-атрибут `value`
- * используется только для отображения дефолтного значения.
- *
- * Дисциплина реактивных выражений (см. JSDoc в `vdom/show.tsx`). Реактивные
- * пропсы передаются как функции-аксессоры: `disabled={submitting}`.
- */
-
 import type { AddressDetails, Coordinates } from '@entities/address';
 import { signal } from '@shared/lib/signals';
 import type { VNode } from '@shared/lib/vdom';
 
 import { pickAddress } from '../model/pickAddress';
 
-/**
- * Параметры формы уточнения адреса.
- */
 export interface PickAddressFormProps {
     /** Текстовое представление выбранного адреса для отображения. */
     text: string;
@@ -37,12 +17,6 @@ export interface PickAddressFormProps {
     onSaved?: () => void;
 }
 
-/**
- * Форма уточнения адреса.
- *
- * @param props Пропсы формы.
- * @returns VNode-дерево формы.
- */
 export function PickAddressForm(props: PickAddressFormProps): VNode {
     const initial = props.initial ?? {};
     const apartment = signal<string>(initial.apartment ?? '');
@@ -52,12 +26,6 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
     const courierComment = signal<string>(initial.courier_comment ?? '');
     const submitting = signal<boolean>(false);
 
-    /**
-     * Обработчик submit формы: собирает значения дополнительных полей и
-     * сохраняет адрес через {@link pickAddress}.
-     *
-     * @param event Событие submit формы.
-     */
     const handleSubmit = async (event: Event): Promise<void> => {
         event.preventDefault();
         if (submitting.peek()) return;

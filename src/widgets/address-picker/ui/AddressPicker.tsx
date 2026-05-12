@@ -1,26 +1,5 @@
-/**
- * Виджет выбора адреса доставки на JSX/VDOM.
- *
- * Поведение перенесено из старого class-based {@link ./AddressPicker.ts}
- * один в один: инлайн-инпут с подсказками, модалка с Yandex-картой для
- * уточнения точки, модалка деталей адреса (квартира, подъезд, домофон,
- * комментарий). Все обработчики переведены на JSX-проп `onClick`/`onInput`
- * и т.п., а DOM-ссылки получаем через `ref`-колбэки вместо `.js-*`-селекторов.
- *
- * Дисциплина реактивных выражений. Видимость двух оверлеев (карта и детали)
- * и видимость кнопок переключаются через сигналы; в JSX они передаются
- * аксессорами-функциями в проп `class` (через `() => ...`) либо через `<Show
- * when={accessor}>`, чтобы соответствующие узлы реактивно перестраивались.
- *
- * Состояние карты Yandex (instance) сохраняется в локальной ссылке, потому
- * что это императивный side-effect-объект (а не значение), который не имеет
- * смысла превращать в сигнал: его создание/уничтожение делаем вручную в
- * onMount/onCleanup и при первом открытии модалки.
- *
- * Пропсы остаются обратно совместимыми с {@link AddressPickerProps} из
- * legacy-файла, чтобы потребители (HomePage, CheckoutPage, ProfilePage)
- * могли постепенно переехать на JSX-вариант без правки сигнатуры.
- */
+// Виджет выбора адреса доставки: инлайн-инпут с подсказками, модалка с
+// Yandex-картой для уточнения точки и модалка деталей адреса.
 
 import './addressPicker.scss';
 
@@ -34,33 +13,12 @@ import { onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
-/**
- * Внешний интерфейс пикера, отдаваемый через {@link AddressPickerProps.controllerRef}.
- *
- * Совпадает с legacy-сигнатурой class-based {@link ./AddressPicker.ts}: страницы
- * profile и checkout используют `openMapModal(id?)` для редактирования
- * сохранённых адресов и добавления нового, поэтому виджет отдаёт этот вызов
- * наружу через controller-объект.
- */
+/** Императивный API пикера, отдаваемый наружу через {@link AddressPickerProps.controllerRef}. */
 export interface AddressPickerController {
-    /**
-     * Открывает модалку с картой Yandex для выбора или редактирования адреса.
-     *
-     * @param addressId Идентификатор сохранённого адреса для редактирования.
-     * @returns Промис, разрешающийся после готовности карты.
-     */
+    /** Открывает модалку с картой для выбора или редактирования адреса (по id сохранённого). */
     openMapModal(addressId?: string): Promise<void>;
 }
 
-/**
- * Входные данные виджета {@link AddressPicker}.
- *
- * Сигнатура совпадает с одноимённым типом из {@link ./AddressPicker.ts},
- * чтобы JSX-версию можно было дропнуть в существующий код. Дополнительно
- * добавлен проп `controllerRef`, через который страницы получают контроллер
- * императивного API: ядро VDOM применяет проп `ref` только к DOM-узлам,
- * поэтому для controller'а используется отдельное имя.
- */
 export interface AddressPickerProps {
     /** Текст текущего адреса для предзаполнения инпута. */
     currentAddress?: string;
@@ -70,10 +28,7 @@ export interface AddressPickerProps {
     hideInput?: boolean;
     /** Колбэк выбора адреса: получает текст и координаты выбранной точки. */
     onSelect?: (text: string, coords: Coordinates) => void;
-    /**
-     * Колбэк, в который виджет передаёт свой controller после mount и null
-     * при unmount.
-     */
+    /** Колбэк, в который виджет передаёт controller после mount и null при unmount. */
     controllerRef?: (ctl: AddressPickerController | null) => void;
 }
 
@@ -83,118 +38,58 @@ const SUGGEST_DEBOUNCE_MS = 400;
 /** Дефолтные координаты центра карты (Москва, Красная площадь). */
 const DEFAULT_COORDS: Coordinates = [55.75, 37.61];
 
-/**
- * Описание одной подсказки в инлайн-выпадашке: текст плюс флаг, нужно ли
- * делать геокодинг при клике. Для сохранённых адресов координаты уже
- * известны, для свежих подсказок Yandex их надо запрашивать.
- */
+/** Подсказка инлайн-выпадашки. Для свежих подсказок Yandex координаты надо запрашивать. */
 interface InlineSuggestion {
-    /** Текст адреса для отображения и идентификации. */
     text: string;
     /** Нужно ли запрашивать геокодинг при клике (true для подсказок Yandex). */
     geocodeOnClick: boolean;
 }
 
-/**
- * Виджет выбора адреса.
- *
- * @param props Входные пропсы.
- * @returns VNode-дерево виджета.
- */
+/** Виджет выбора адреса доставки. */
 export function AddressPicker(props: AddressPickerProps): VNode {
-    /** Открыта ли инлайн-выпадашка подсказок. */
     const dropdownOpen = signal<boolean>(false);
-
-    /** Текущий список подсказок инлайн-выпадашки. */
     const inlineSuggestions = signal<readonly InlineSuggestion[]>([]);
-
-    /** Видна ли кнопка "Указать на карте" в инлайн-выпадашке. */
     const openMapButtonVisible = signal<boolean>(false);
-
-    /** Открыта ли модалка карты. */
     const mapModalOpen = signal<boolean>(false);
-
-    /** Открыта ли модалка деталей адреса. */
     const detailsModalOpen = signal<boolean>(false);
-
-    /** Текущий список подсказок в модалке карты. */
     const modalSuggestions = signal<readonly string[]>([]);
-
-    /** Раскрыт ли блок подсказок в модалке карты. */
     const modalSuggestionsActive = signal<boolean>(false);
 
     /** Текущие выбранные координаты (центр карты или координаты подсказки). */
     let selectedCoords: Coordinates = DEFAULT_COORDS;
-
     /** Инстанс карты Yandex; создаётся при первом открытии модалки. */
     let map: MapInstance | null = null;
-
-    /** Текущий запланированный таймер дебаунса подсказок и геокодинга. */
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
     /** Идентификатор редактируемого сохранённого адреса. */
     let editingAddressId: string | null = null;
-
     /** Адрес, который надо передать в finalize после закрытия модалки деталей. */
     let pendingAddressText = '';
-
-    /** Флаг: следующий actionend карты не должен делать reverseGeocode (программное перемещение). */
+    /** Следующий actionend карты не должен делать reverseGeocode (программное перемещение). */
     let suppressNextActionEnd = false;
 
-    /** Корневой DOM-узел виджета (для определения "клика вне"). */
     let rootEl: HTMLElement | null = null;
-    /** DOM-узел контейнера карты Yandex. */
     let mapContainerEl: HTMLElement | null = null;
-    /** Инпут инлайн-выпадашки. */
     let inlineInputEl: HTMLInputElement | null = null;
-    /** Инпут модалки карты. */
     let modalInputEl: HTMLInputElement | null = null;
-    /** Дисплей-поле модалки деталей. */
     let detailsDisplayEl: HTMLInputElement | null = null;
-    /** Форма модалки деталей. */
     let detailsFormEl: HTMLFormElement | null = null;
 
-    /**
-     * Проверяет, авторизован ли пользователь. Для неавторизованных любая
-     * попытка взаимодействия с пикером ведёт на страницу логина.
-     */
     const isAuthenticated = (): boolean => userStore.getState().user !== null;
 
-    /**
-     * Возвращает тексты всех сохранённых адресов из стора. Используется для
-     * первичной подсказки при фокусе на пустом инпуте.
-     */
     const savedAddressTexts = (): string[] =>
         addressStore.getState().saved.map((a) => a.location.address_text);
 
-    /**
-     * Подставляет в инлайн-инпут заданное значение через прямую запись
-     * DOM-свойства. Прямая запись `.value` нужна потому, что VDOM прокидывает
-     * проп `value` через `setAttribute`, который меняет только default-value
-     * инпута, но не текущее содержимое.
-     *
-     * @param text Новый текст инпута.
-     */
+    // Значение инпута пишем напрямую: VDOM прокидывает `value` через
+    // setAttribute, который меняет дефолтное значение, а не текущее.
     const setInlineInputValue = (text: string): void => {
         if (inlineInputEl !== null) inlineInputEl.value = text;
     };
 
-    /**
-     * Подставляет значение в инпут модалки карты, синхронизируя DOM-свойство.
-     *
-     * @param text Новый текст инпута модалки.
-     */
     const setModalInputValue = (text: string): void => {
         if (modalInputEl !== null) modalInputEl.value = text;
     };
 
-    /**
-     * Программно перемещает карту в новые координаты с сохранением текущего
-     * зума и помечает следующее событие actionend как не требующее обратного
-     * геокодинга.
-     *
-     * @param coords Новые координаты центра.
-     */
+    // Программное перемещение карты: следующий actionend не должен геокодить.
     const moveMapProgrammatically = (coords: Coordinates): void => {
         selectedCoords = coords;
         if (map === null) return;
@@ -202,15 +97,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         map.setCenter(coords, 16);
     };
 
-    /**
-     * Завершает выбор адреса: обновляет инлайн-инпут, вызывает сценарий
-     * `pickAddress` и пробрасывает результат во внешний колбэк `onSelect`.
-     * Сбрасывает состояние редактирования.
-     *
-     * @param text Текст выбранного адреса.
-     * @param coords Координаты выбранной точки.
-     * @param details Дополнительные детали адреса (квартира, подъезд и т.п.).
-     */
+    // Завершает выбор адреса: обновляет инпут, вызывает pickAddress, дёргает onSelect.
     const finalize = async (
         text: string,
         coords: Coordinates,
@@ -227,13 +114,6 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         props.onSelect?.(text, coords);
     };
 
-    /**
-     * Открывает модалку деталей адреса, заполняя поле отображаемого адреса и
-     * сохраняя координаты для последующей финализации.
-     *
-     * @param text Текст выбранного адреса.
-     * @param coords Координаты выбранной точки.
-     */
     const openDetailsModal = (text: string, coords: Coordinates): void => {
         if (detailsFormEl !== null) detailsFormEl.reset();
         if (detailsDisplayEl !== null) detailsDisplayEl.value = text;
@@ -242,21 +122,11 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         detailsModalOpen.set(true);
     };
 
-    /**
-     * Закрывает модалку деталей адреса. Содержимое формы не очищается, чтобы
-     * пользователь мог вернуться к редактированию повторно.
-     */
     const closeDetailsModal = (): void => {
         detailsModalOpen.set(false);
     };
 
-    /**
-     * Открывает модалку карты. При передаче идентификатора сохранённого
-     * адреса центрирует карту по его координатам и подставляет текст в инпут
-     * модалки. При первом открытии создаёт карту, иначе перемещает её.
-     *
-     * @param addressId Идентификатор сохранённого адреса для редактирования.
-     */
+    // Открывает модалку карты; при первом открытии создаёт карту, иначе перемещает её.
     const openMapModal = async (addressId?: string): Promise<void> => {
         editingAddressId = addressId ?? null;
         mapModalOpen.set(true);
@@ -293,21 +163,11 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         requestAnimationFrame(() => map?.fitToViewport());
     };
 
-    /**
-     * Скрывает модалку с картой.
-     */
     const closeMapModal = (): void => {
         mapModalOpen.set(false);
     };
 
-    /**
-     * Реактивно отрисовывает подсказки инлайн-выпадашки. Если для подсказки
-     * стоит флаг geocodeOnClick, перед открытием деталей запрашивается
-     * геокодинг адреса; иначе используется уже известные текущие координаты.
-     *
-     * @param event Событие клика по элементу подсказки.
-     * @param suggestion Описание выбранной подсказки.
-     */
+    // Клик по подсказке: при geocodeOnClick сначала геокодим адрес, иначе берём текущие координаты.
     const handleInlineSuggestionClick = async (suggestion: InlineSuggestion): Promise<void> => {
         if (suggestion.geocodeOnClick) {
             const coords = await yandexMaps.geocode(suggestion.text);
@@ -317,13 +177,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         await finalize(suggestion.text, selectedCoords);
     };
 
-    /**
-     * Реактивно обрабатывает клик по подсказке в модалке карты: подставляет
-     * текст в инпут модалки, скрывает блок подсказок и центрирует карту по
-     * геокодированным координатам.
-     *
-     * @param text Текст выбранной подсказки.
-     */
+    // Клик по подсказке в модалке карты: подставляет текст, скрывает блок, центрирует карту.
     const handleModalSuggestionPick = async (text: string): Promise<void> => {
         setModalInputValue(text);
         modalSuggestionsActive.set(false);
@@ -331,10 +185,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         if (coords !== null) moveMapProgrammatically(coords);
     };
 
-    /**
-     * Обрабатывает фокус/ввод в инлайн-инпуте: показывает подсказки, делает
-     * редирект на логин для неавторизованных, дебаунсит запрос к Yandex.
-     */
+    // Фокус/ввод в инлайн-инпуте: показывает подсказки; неавторизованных уводит на логин.
     const handleInlineInput = (): void => {
         if (!isAuthenticated()) {
             inlineInputEl?.blur();
@@ -362,15 +213,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         }, SUGGEST_DEBOUNCE_MS);
     };
 
-    /**
-     * Обрабатывает клик по контейнеру виджета, когда инлайн-инпут скрыт: в
-     * этом случае контейнер играет роль "кнопки" открытия модалки карты.
-     *
-     * @param event Событие клика.
-     */
+    // Если инлайн-инпут скрыт, контейнер играет роль кнопки открытия модалки карты.
     const handleContainerClick = (event: Event): void => {
         if (inlineInputEl === null) {
-            // Когда инпут скрыт через hideInput, его DOM-узла вообще нет.
+            // При hideInput DOM-узла инпута вообще нет.
             if (!isAuthenticated()) {
                 void router.go(ROUTES.login);
                 return;
@@ -391,10 +237,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         void openMapModal();
     };
 
-    /**
-     * Обрабатывает ввод в инпут модалки карты: делает дебаунсный запрос
-     * подсказок и центрирование карты по геокоду введённого адреса.
-     */
+    // Ввод в инпут модалки карты: дебаунсный запрос подсказок и центрирование по геокоду.
     const handleModalInput = (): void => {
         const query = modalInputEl?.value.trim() ?? '';
         if (query.length <= 2) return;
@@ -411,12 +254,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         }, SUGGEST_DEBOUNCE_MS);
     };
 
-    /**
-     * Обрабатывает Enter в инпуте модалки карты: запускает геокодинг и
-     * перемещает карту, без отправки формы.
-     *
-     * @param event Событие keydown.
-     */
+    // Enter в инпуте модалки карты: геокодинг и перемещение карты, без отправки формы.
     const handleModalKeyDown = (event: Event): void => {
         const ke = event as KeyboardEvent;
         if (ke.key !== 'Enter') return;
@@ -429,10 +267,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         })();
     };
 
-    /**
-     * Обрабатывает нажатие кнопки подтверждения адреса в модалке карты: либо
-     * сразу финализирует выбор (skipDetails), либо открывает модалку деталей.
-     */
+    // Подтверждение адреса в модалке карты: при skipDetails финализирует, иначе открывает детали.
     const handleConfirmMap = (): void => {
         const addr = modalInputEl?.value ?? '';
         closeMapModal();
@@ -443,12 +278,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         }
     };
 
-    /**
-     * Отправка формы деталей: собирает поля квартиры/подъезда/этажа/кода
-     * домофона/комментария и завершает выбор адреса через finalize.
-     *
-     * @param event Событие submit.
-     */
+    // Отправка формы деталей: собирает поля и завершает выбор адреса через finalize.
     const handleDetailsSubmit = async (event: Event): Promise<void> => {
         event.preventDefault();
         if (detailsFormEl === null) return;
@@ -468,22 +298,13 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         await finalize(text, selectedCoords, details);
     };
 
-    /**
-     * Обрабатывает кнопку смены адреса в модалке деталей: закрывает детали и
-     * возвращает пользователя в модалку карты.
-     */
+    // Кнопка смены адреса в модалке деталей: закрывает детали, возвращает в модалку карты.
     const handleChangeAddress = (): void => {
         closeDetailsModal();
         void openMapModal();
     };
 
-    /**
-     * Document-level обработчик клика: закрывает инлайн-выпадашку подсказок
-     * при клике вне корня виджета. Регистрируется в onMount, снимается в
-     * onCleanup, чтобы не утекал между смонтированными экземплярами.
-     *
-     * @param event Событие click из документа.
-     */
+    // Клик по документу: закрывает инлайн-выпадашку подсказок при клике вне корня виджета.
     const handleDocClick = (event: Event): void => {
         const target = event.target as Node | null;
         if (target === null) return;
@@ -495,11 +316,8 @@ export function AddressPicker(props: AddressPickerProps): VNode {
 
     const controller: AddressPickerController = { openMapModal };
 
-    // Controller отдаётся синхронно при рендере: страница может сохранить
-    // ссылку до того, как пользователь успеет кликнуть по UI-элементу,
-    // дёргающему openMapModal. Это безопасно, потому что openMapModal сам
-    // обращается к DOM только через свои внутренние ссылки, которые
-    // заполнятся при mount поддерева.
+    // Controller отдаётся синхронно при рендере: openMapModal трогает DOM только
+    // через свои внутренние ссылки, которые заполнятся при mount поддерева.
     props.controllerRef?.(controller);
 
     onMount(() => {

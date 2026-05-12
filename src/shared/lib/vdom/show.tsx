@@ -1,26 +1,14 @@
 /**
  * Компонент <Show>: ленивое условное переключение поддерева.
  *
- * Поведение. <Show when={accessor} fallback={vnode}>{vnode}</Show> подписывается
- * на аксессор when через effect; пока when() истина, в DOM висят children, как
- * только when() ложь, дети отмонтируются и вместо них монтируется fallback (если
- * задан). Каждая ветка лениво построится только при первом входе в неё.
+ * <Show when={accessor} fallback={vnode}>{vnode}</Show> подписывается на
+ * аксессор when через effect: пока when() истина, в DOM висят children, иначе
+ * монтируется fallback (если задан). Каждая ветка строится лениво при первом
+ * входе.
  *
- * Дисциплина реактивных выражений. Проп when ДОЛЖЕН быть функцией-аксессором,
- * а не уже-вычисленным значением: иначе условие зафиксируется один раз при
- * mount и переключение перестанет работать. Это специфика VDOM без compile-
- * time-перезаписи JSX: реактивно ровно то, что является функцией. Допустимые
- * формы:
- *   <Show when={isActive}>...</Show>
- *   <Show when={() => count() > 0}>...</Show>
- * НЕдопустимая форма (фиксируется один раз при mount):
- *   <Show when={isActive()}>...</Show>
- *
- * Реализация. Show отдаёт ядру VNode-маркер DynamicType c заранее заданной
- * парой mount/disposer. Внутри mount мы кладём comment-anchor в DOM и
- * заводим effect, который читает when() и переключает поддерево. Все
- * собственные ресурсы (effect, child-VNode, anchor) убираются disposer'ом,
- * который ядро вызовет при unmount узла-Show.
+ * Проп when должен быть функцией-аксессором, иначе условие зафиксируется при
+ * mount: <Show when={isActive}> или <Show when={() => count() > 0}>, но не
+ * <Show when={isActive()}>.
  */
 
 import { createOwner, disposeOwner, effect, runWithOwner } from '@shared/lib/signals';
@@ -33,8 +21,7 @@ import type { VNode, VNodeChild, VNodeProps } from './types';
 /**
  * Пропсы компонента Show.
  *
- * @template T Тип значения, возвращаемого аксессором when. На условие
- *             проверяется через truthy-семантику JS.
+ * @template T Тип значения аксессора when (проверяется на truthy).
  */
 export interface ShowProps<T = unknown> {
     /** Аксессор-функция, чьё текущее значение определяет, какую ветку показать. */
@@ -46,11 +33,8 @@ export interface ShowProps<T = unknown> {
 }
 
 /**
- * Приводит сырой VNodeChild к одиночному VNode либо null. null означает,
- * что для текущей ветки ничего рисовать не надо.
- *
- * Примитивы (строки, числа) и массивы заворачиваются в синтетический Fragment,
- * чтобы mount-логика имела единое представление о ветке.
+ * Приводит сырой VNodeChild к одиночному VNode либо null (ничего не рисуем).
+ * Примитивы и массивы заворачиваются в Fragment.
  *
  * @param raw Сырое содержимое ветки (children или fallback).
  * @returns VNode для монтирования либо null, если ветка пустая.
@@ -82,10 +66,6 @@ function toBranchVNode(raw: VNodeChild): VNode | null {
 
 /**
  * Компонент Show: ленивое условное переключение поддерева.
- *
- * Возвращает VNode-маркер DynamicType, чьи props.mount при монтировании
- * заводят anchor-комментарий и effect, который переключает дочернее
- * поддерево в зависимости от when().
  *
  * @template T Тип значения аксессора when.
  * @param props Конфигурация показа: when, fallback, children.
