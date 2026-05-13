@@ -12,6 +12,7 @@ import type { VNode } from '@shared/lib/vdom';
 
 import { AuthLayout, RootLayout } from './layout';
 
+/** Корневой компонент: рендерит RootLayout или AuthLayout по currentLayout. */
 export function App(): VNode {
     return (
         <Show when={() => router.currentLayout() === 'root'} fallback={<AuthLayout />}>
