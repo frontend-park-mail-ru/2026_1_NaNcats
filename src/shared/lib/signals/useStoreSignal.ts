@@ -17,7 +17,7 @@ import { onCleanup } from './owner';
  * @returns Аксессор сигнала с текущим значением среза.
  */
 export function useStoreSignal<S extends object, T>(store: Store<S>, selector: (s: S) => T): () => T {
-    const sig: Signal<T> = signal(selector(store.getState()));
+    const sig = signal(selector(store.getState()));
     const unsubscribe = store.select(selector, (v) => sig.set(v));
     onCleanup(unsubscribe);
     return sig;

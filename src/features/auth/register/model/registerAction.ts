@@ -5,7 +5,7 @@ import { userApi, userStore } from '@entities/user';
  *
  * @param payload Данные нового пользователя (имя, почта, пароль).
  */
-export const registerAction = async (payload: { name: string; email: string; password: string }): Promise<void> => {
+export const registerAction = async (payload: { name: string; email: string; password: string }) => {
     await userApi.register(payload);
     await userStore.loadCurrent();
 };

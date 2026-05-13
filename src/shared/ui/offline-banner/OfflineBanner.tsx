@@ -20,10 +20,10 @@ const OFFLINE_MESSAGE = 'Нет интернета. Приложение раб�
 export function OfflineBanner(): VNode {
     const online = signal<boolean>(typeof navigator === 'undefined' ? true : navigator.onLine);
 
-    const handleOnline = (): void => {
+    const handleOnline = () => {
         online.set(true);
     };
-    const handleOffline = (): void => {
+    const handleOffline = () => {
         online.set(false);
     };
 
@@ -40,10 +40,10 @@ export function OfflineBanner(): VNode {
     });
 
     return (
-        <Show when={(): boolean => !online()}>
+        <Show when={() => !online()}>
             <div class="offline-banner offline-banner_active">
                 <div class="offline-banner-text">{OFFLINE_MESSAGE}</div>
             </div>
         </Show>
-    ) as VNode;
+    );
 }

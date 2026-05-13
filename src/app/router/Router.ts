@@ -129,7 +129,7 @@ export class Router {
     }
 
     /** Обрабатывает popstate (кнопки браузера "назад"/"вперёд"): то же, что go, но без pushState. */
-    private handlePopState = (): void => {
+    private handlePopState = () => {
         const path = window.location.pathname + window.location.search;
         void this.navigate(path, false);
     };
@@ -222,7 +222,7 @@ export class Router {
  * @param mod Распакованный модуль чанка (результат await import).
  * @returns Найденный компонент или null.
  */
-function extractComponent(mod: ComponentChunk): Component<VNodeProps> | null {
+function extractComponent(mod: ComponentChunk) {
     if (typeof mod.default === 'function') {
         return mod.default;
     }

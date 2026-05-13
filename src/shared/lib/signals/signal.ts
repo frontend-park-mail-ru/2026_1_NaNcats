@@ -61,7 +61,7 @@ export function signal<T>(initial: T): Signal<T> {
     /** Прямые подписчики через subscribe (без авто-tracking, без owner). */
     const directSubs: Set<SignalListener<T>> = new Set();
 
-    const read = (): T => {
+    const read = () => {
         const listener = getListener();
         if (listener && listener.sources) {
             reactiveSubs.add(listener);
@@ -70,7 +70,7 @@ export function signal<T>(initial: T): Signal<T> {
         return value;
     };
 
-    const set = (next: T | SignalUpdater<T>): void => {
+    const set = (next: T | SignalUpdater<T>) => {
         const resolved = typeof next === 'function' ? (next as SignalUpdater<T>)(value) : next;
         if (Object.is(resolved, value)) return;
         value = resolved;
@@ -102,9 +102,9 @@ export function signal<T>(initial: T): Signal<T> {
         }
     };
 
-    const peek = (): T => value;
+    const peek = () => value;
 
-    const subscribe = (fn: SignalListener<T>): (() => void) => {
+    const subscribe = (fn: SignalListener<T>) => {
         directSubs.add(fn);
         return () => {
             directSubs.delete(fn);

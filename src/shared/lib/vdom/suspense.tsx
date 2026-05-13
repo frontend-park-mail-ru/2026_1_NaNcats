@@ -11,7 +11,6 @@
  */
 
 import { createOwner, disposeOwner, effect, runWithOwner } from '@shared/lib/signals';
-import type { Owner } from '@shared/lib/signals';
 
 import { DynamicType, Fragment, normalizeChildren } from './h';
 import { mount, unmount } from './render';
@@ -69,16 +68,16 @@ function toBranchVNode(raw: VNodeChild): VNode | null {
  */
 export function Suspense(props: SuspenseProps): VNode {
     const dynamicProps = {
-        mount(parent: Node, anchor: Node | null): { sentinel: Node; dispose: () => void } {
-            const suspenseAnchor: Comment = document.createComment('suspense');
+        mount(parent: Node, anchor: Node | null) {
+            const suspenseAnchor = document.createComment('suspense');
             parent.insertBefore(suspenseAnchor, anchor);
 
-            const ownerNode: Owner = createOwner(null);
+            const ownerNode = createOwner(null);
 
             let currentVNode: VNode | null = null;
             let currentPending: boolean | null = null;
 
-            const swap = (pending: boolean): void => {
+            const swap = (pending: boolean) => {
                 if (currentVNode) {
                     unmount(currentVNode);
                     currentVNode = null;
@@ -100,7 +99,7 @@ export function Suspense(props: SuspenseProps): VNode {
                 }),
             );
 
-            const dispose = (): void => {
+            const dispose = () => {
                 disposeEffect();
                 if (currentVNode) {
                     unmount(currentVNode);

@@ -4,7 +4,7 @@
  * Пропускается на localhost (чтобы воркер не подменял свежие ассеты при отладке)
  * и при отсутствии Service Worker API. Ошибки регистрации не пробрасываются.
  */
-export const initServiceWorker = (): void => {
+export const initServiceWorker = () => {
     if (window.location.hostname === 'localhost') return;
     if (!('serviceWorker' in navigator)) return;
     window.addEventListener('load', () => {

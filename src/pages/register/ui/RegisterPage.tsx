@@ -22,7 +22,7 @@ export function RegisterPage(): VNode {
                         </p>
                     </div>
                     <RegisterForm
-                        onSuccess={(): void => {
+                        onSuccess={() => {
                             void router.go(ROUTES.home);
                         }}
                     />
@@ -32,5 +32,5 @@ export function RegisterPage(): VNode {
                 </div>
             </div>
         </div>
-    ) as VNode;
+    );
 }

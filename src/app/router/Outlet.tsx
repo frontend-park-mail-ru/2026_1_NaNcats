@@ -8,18 +8,18 @@
  */
 
 import { Suspense } from '@shared/lib/vdom';
-import type { Component, VNode, VNodeProps } from '@shared/lib/vdom';
+import type { VNode, VNodeProps } from '@shared/lib/vdom';
 import { PageLoadingSkeleton } from '@shared/ui/skeleton';
 
 import { router } from './index';
 
 /** Рендерит текущую страницу из currentRoute; при не-'ready' статусе или промахе route отдаёт пустой div. */
-function ActiveRoute(): VNode {
+function ActiveRoute() {
     const state = router.currentRoute();
     if (state.status !== 'ready' || !state.component) {
         return (<div class="page-empty" />) as VNode;
     }
-    const PageComponent: Component<VNodeProps> = state.component;
+    const PageComponent = state.component;
     const props = (state.props ?? {}) as VNodeProps;
     return (<PageComponent {...props} />) as VNode;
 }

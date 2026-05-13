@@ -20,7 +20,7 @@ export interface CartWidgetProps {
     onCheckout?: () => void;
 }
 
-async function handleClear(): Promise<void> {
+async function handleClear() {
     try {
         await clearCart();
     } catch (err) {
@@ -30,7 +30,7 @@ async function handleClear(): Promise<void> {
 }
 
 /** Цена одной позиции в рублях, без дробной части. */
-function formatItemPriceRub(item: CartItem): string {
+function formatItemPriceRub(item: CartItem) {
     return `${fromMicros(item.price).toFixed(0)}₽`;
 }
 
@@ -40,16 +40,16 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const totalCost = useStoreSignal(cartStore, (s) => s.totalCost);
     const status = useStoreSignal(cartStore, (s) => s.status);
 
-    const hasItems = computed<boolean>(() => items().length > 0);
-    const totalRub = computed<string>(() => `${fromMicros(totalCost()).toFixed(0)}₽`);
-    const clearDisabled = computed<boolean>(() => status() === 'syncing');
+    const hasItems = computed(() => items().length > 0);
+    const totalRub = computed(() => `${fromMicros(totalCost()).toFixed(0)}₽`);
+    const clearDisabled = computed(() => status() === 'syncing');
 
-    const handleCheckout = (): void => {
+    const handleCheckout = () => {
         void router.go(ROUTES.checkout);
         props.onCheckout?.();
     };
 
-    const handleImgError = (event: Event): void => {
+    const handleImgError = (event: Event) => {
         const img = event.target as HTMLImageElement | null;
         if (img) img.src = FALLBACK_DISH_IMAGE;
     };
@@ -65,7 +65,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             class="button button_secondary"
                             type="button"
                             disabled={clearDisabled}
-                            onClick={(): void => {
+                            onClick={() => {
                                 void handleClear();
                             }}
                         >
@@ -100,8 +100,8 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For each={items} key={(item): number => item.dish_id}>
-                        {(item): VNode => {
+                    <For each={items} key={(item) => item.dish_id}>
+                        {(item) => {
                             const dishId = item.dish_id;
                             // For не перевызывает children при изменении полей позиции,
                             // поэтому актуальную позицию читаем из сигнала items на каждом
@@ -109,8 +109,8 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             const currentItem = computed<CartItem>(
                                 () => items().find((it) => it.dish_id === dishId) ?? item,
                             );
-                            const quantity = computed<number>(() => currentItem().quantity);
-                            const priceRub = computed<string>(() => formatItemPriceRub(currentItem()));
+                            const quantity = computed(() => currentItem().quantity);
+                            const priceRub = computed(() => formatItemPriceRub(currentItem()));
                             return (
                                 <div class="cart-item">
                                     <img
@@ -128,7 +128,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                             type="button"
                                             class="counter-btn js-minus"
                                             data-id={dishId}
-                                            onClick={(): void => {
+                                            onClick={() => {
                                                 void cartStore.changeQuantity(dishId, -1);
                                             }}
                                         >
@@ -139,7 +139,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                             type="button"
                                             class="counter-btn js-plus"
                                             data-id={dishId}
-                                            onClick={(): void => {
+                                            onClick={() => {
                                                 void cartStore.changeQuantity(dishId, 1);
                                             }}
                                         >
@@ -164,5 +164,5 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 </div>
             </Show>
         </div>
-    ) as VNode;
+    );
 }

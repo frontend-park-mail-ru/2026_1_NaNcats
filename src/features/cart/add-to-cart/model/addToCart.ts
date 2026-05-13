@@ -10,6 +10,6 @@ import { cartStore, type CartConfirmer, type DishToAdd } from '@entities/cart';
  * @param restaurantId Идентификатор ресторана, из которого берётся блюдо.
  * @param confirmer Коллбэк подтверждения очистки корзины при смене ресторана.
  */
-export const addToCart = async (dish: DishToAdd, restaurantId: number, confirmer?: CartConfirmer): Promise<void> => {
+export const addToCart = async (dish: DishToAdd, restaurantId: number, confirmer?: CartConfirmer) => {
     await cartStore.addDish(dish, restaurantId, confirmer);
 };

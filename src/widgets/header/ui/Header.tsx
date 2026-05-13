@@ -38,7 +38,7 @@ export interface HeaderProps {
 const SEARCH_DEBOUNCE_MS = 350;
 
 /** Переход на страницу ресторана (с опциональным якорем на блюдо). */
-function navigateToRestaurant(restaurantId: string | number, dishId?: string | number): void {
+function navigateToRestaurant(restaurantId: string | number, dishId?: string | number) {
     const base = `${ROUTES.restaurant}?id=${encodeURIComponent(String(restaurantId))}`;
     const url = dishId !== undefined ? `${base}&dish=${encodeURIComponent(String(dishId))}` : base;
     void router.go(url);
@@ -59,7 +59,7 @@ export function Header(props: HeaderProps): VNode {
     let suggestEl: HTMLElement | null = null;
 
     // Запрос подсказок с дебаунсом; при пустом запросе подсказки скрываются.
-    const scheduleSuggest = (query: string): void => {
+    const scheduleSuggest = (query: string) => {
         if (searchTimer !== null) {
             clearTimeout(searchTimer);
             searchTimer = null;
@@ -83,7 +83,7 @@ export function Header(props: HeaderProps): VNode {
     };
 
     // Финальный поиск: через onSearchSubmit либо переходом на главную с ?q=.
-    const submitSearch = (query: string): void => {
+    const submitSearch = (query: string) => {
         if (props.onSearchSubmit) {
             props.onSearchSubmit(query);
             return;
@@ -92,7 +92,7 @@ export function Header(props: HeaderProps): VNode {
         void router.go(url);
     };
 
-    const handleSearchInput = (event: Event): void => {
+    const handleSearchInput = (event: Event) => {
         const target = event.target as HTMLInputElement;
         const next = target.value;
         searchValue.set(next);
@@ -100,7 +100,7 @@ export function Header(props: HeaderProps): VNode {
     };
 
     // Enter подтверждает запрос, Escape закрывает подсказки (значение не сбрасывает).
-    const handleSearchKeyDown = (event: Event): void => {
+    const handleSearchKeyDown = (event: Event) => {
         const ke = event as KeyboardEvent;
         if (ke.key === 'Enter') {
             if (searchTimer !== null) {
@@ -116,7 +116,7 @@ export function Header(props: HeaderProps): VNode {
 
     // Сброс поиска. Значение инпута пишем напрямую: VDOM прокидывает `value`
     // через setAttribute, который меняет дефолтное значение, а не текущее.
-    const handleSearchClear = (): void => {
+    const handleSearchClear = () => {
         searchValue.set('');
         if (searchInputEl !== null) {
             searchInputEl.value = '';
@@ -131,7 +131,7 @@ export function Header(props: HeaderProps): VNode {
     };
 
     // Клик по документу: закрывает подсказки и мобильное гостевое меню при клике вне их зоны.
-    const handleDocClick = (event: Event): void => {
+    const handleDocClick = (event: Event) => {
         const target = event.target as Node | null;
         if (!target) return;
 
@@ -152,7 +152,7 @@ export function Header(props: HeaderProps): VNode {
         }
     };
 
-    const handleBackClick = (): void => {
+    const handleBackClick = () => {
         if (props.onBack) {
             props.onBack();
             return;
@@ -160,23 +160,23 @@ export function Header(props: HeaderProps): VNode {
         window.history.back();
     };
 
-    const handleLoginClick = (): void => {
+    const handleLoginClick = () => {
         mobileMenuOpen.set(false);
         props.onLogin?.();
     };
 
-    const handleRegisterClick = (): void => {
+    const handleRegisterClick = () => {
         mobileMenuOpen.set(false);
         props.onRegister?.();
     };
 
     // stopPropagation, чтобы клик по документу не закрыл меню сразу после открытия.
-    const handleMobileToggle = (event: Event): void => {
+    const handleMobileToggle = (event: Event) => {
         event.stopPropagation();
         mobileMenuOpen.set((prev) => !prev);
     };
 
-    const handleLogout = async (): Promise<void> => {
+    const handleLogout = async () => {
         try {
             await logoutAction();
             props.onLoggedOut?.();
@@ -200,11 +200,11 @@ export function Header(props: HeaderProps): VNode {
     return (
         <header
             class="header"
-            ref={(el: Element | null): void => {
+            ref={(el: Element | null) => {
                 headerEl = el as HTMLElement | null;
             }}
         >
-            <Show when={(): boolean => (typeof props.mode === 'function' ? props.mode() : props.mode) === 'back'}>
+            <Show when={() => (typeof props.mode === 'function' ? props.mode() : props.mode) === 'back'}>
                 <button
                     class="button header__back-btn"
                     type="button"
@@ -226,14 +226,14 @@ export function Header(props: HeaderProps): VNode {
             </Show>
 
             <div
-                class={(): string =>
+                class={() =>
                     (typeof props.mode === 'function' ? props.mode() : props.mode) === 'back'
                         ? 'logo-container logo-container_centered'
                         : 'logo-container'
                 }
                 role="button"
                 tabindex="0"
-                onClick={(): void => {
+                onClick={() => {
                     void router.go(ROUTES.home);
                 }}
             >
@@ -254,7 +254,7 @@ export function Header(props: HeaderProps): VNode {
                 </svg>
             </div>
 
-            <Show when={(): boolean => !(typeof props.hideSearch === 'function' ? props.hideSearch() : props.hideSearch)}>
+            <Show when={() => !(typeof props.hideSearch === 'function' ? props.hideSearch() : props.hideSearch)}>
                 <div class="search-bar">
                     <div class="search-bar__group search-bar__group_main">
                         <div class="search-bar__icon">
@@ -273,7 +273,7 @@ export function Header(props: HeaderProps): VNode {
                             value={props.searchQuery ?? ''}
                             onInput={handleSearchInput}
                             onKeyDown={handleSearchKeyDown}
-                            ref={(el: Element | null): void => {
+                            ref={(el: Element | null) => {
                                 searchInputEl = el as HTMLInputElement | null;
                             }}
                         />
@@ -281,7 +281,7 @@ export function Header(props: HeaderProps): VNode {
                             type="button"
                             class="search-bar__clear"
                             aria-label="Очистить"
-                            style={(): string => (searchValue() ? 'display: flex' : 'display: none')}
+                            style={() => (searchValue() ? 'display: flex' : 'display: none')}
                             onClick={handleSearchClear}
                         >
                             ×
@@ -289,12 +289,12 @@ export function Header(props: HeaderProps): VNode {
                     </div>
 
                     {/* Пустой контейнер под AddressPicker (резервирует место в вёрстке). */}
-                    <Show when={(): boolean => (typeof props.mode === 'function' ? props.mode() : props.mode) !== 'back'}>
+                    <Show when={() => (typeof props.mode === 'function' ? props.mode() : props.mode) !== 'back'}>
                         <div class="search-bar__group search-bar__group_address" />
                     </Show>
 
                     <Show
-                        when={(): boolean => {
+                        when={() => {
                             if (!suggestOpen()) return false;
                             const r = suggestResults();
                             if (!r) return false;
@@ -304,20 +304,18 @@ export function Header(props: HeaderProps): VNode {
                         <div
                             class="search-suggest"
                             style="display: block"
-                            ref={(el: Element | null): void => {
+                            ref={(el: Element | null) => {
                                 suggestEl = el as HTMLElement | null;
                             }}
                         >
                             <For
-                                each={(): readonly SearchAllResult['restaurants'][number][] =>
-                                    suggestResults()?.restaurants ?? []
-                                }
-                                key={(r): string => `r-${String(r.id)}`}
+                                each={() => suggestResults()?.restaurants ?? []}
+                                key={(r) => `r-${String(r.id)}`}
                             >
-                                {(r): VNode => (
+                                {(r) => (
                                     <div
                                         class="search-suggest__item"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             suggestOpen.set(false);
                                             navigateToRestaurant(r.id);
                                         }}
@@ -328,15 +326,13 @@ export function Header(props: HeaderProps): VNode {
                                 )}
                             </For>
                             <For
-                                each={(): readonly SearchAllResult['dishes'][number][] =>
-                                    suggestResults()?.dishes ?? []
-                                }
-                                key={(d): string => `d-${String(d.id)}`}
+                                each={() => suggestResults()?.dishes ?? []}
+                                key={(d) => `d-${String(d.id)}`}
                             >
-                                {(d): VNode => (
+                                {(d) => (
                                     <div
                                         class="search-suggest__item"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             suggestOpen.set(false);
                                             navigateToRestaurant(d.restaurant_brand_id, d.id);
                                         }}
@@ -371,7 +367,7 @@ export function Header(props: HeaderProps): VNode {
                                 </button>
                             </div>
                             <div
-                                class={(): string =>
+                                class={() =>
                                     mobileMenuOpen()
                                         ? 'mobile-auth-guest-controls mobile-auth-guest-controls_open'
                                         : 'mobile-auth-guest-controls'
@@ -435,7 +431,7 @@ export function Header(props: HeaderProps): VNode {
                     <div class="user-menu-wrapper">
                         <a href="/profile" class="user-profile router-link">
                             <img
-                                src={(): string => props.user()?.avatar_url ?? ''}
+                                src={() => props.user()?.avatar_url ?? ''}
                                 class="user-profile__avatar"
                                 onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp'"
                             />
@@ -444,7 +440,7 @@ export function Header(props: HeaderProps): VNode {
                             <button
                                 class="button"
                                 type="button"
-                                onClick={(): void => {
+                                onClick={() => {
                                     void handleLogout();
                                 }}
                             >
@@ -455,5 +451,5 @@ export function Header(props: HeaderProps): VNode {
                 </Show>
             </div>
         </header>
-    ) as VNode;
+    );
 }

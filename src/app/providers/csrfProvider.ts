@@ -7,7 +7,7 @@ import { httpClient } from '@shared/api/http';
  * стартовать даже при недоступном эндпоинте, проблема логируется и проявится
  * позже на конкретном защищённом запросе.
  */
-export const initCsrf = async (): Promise<void> => {
+export const initCsrf = async () => {
     try {
         await httpClient.fetchCsrf();
     } catch (e) {

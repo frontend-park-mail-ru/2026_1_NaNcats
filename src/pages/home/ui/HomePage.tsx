@@ -57,16 +57,16 @@ export async function load(): Promise<HomePageProps> {
 
     await Promise.all([
         (initialQuery ? restaurantApi.search(initialQuery, PAGE_SIZE) : restaurantApi.listBrands(PAGE_SIZE, 0))
-            .then((r): void => {
+            .then((r) => {
                 restaurants = r;
             })
-            .catch((e: unknown): void => console.warn('home: initial brands fetch failed', e)),
+            .catch((e) => console.warn('home: initial brands fetch failed', e)),
         restaurantApi
             .listCategories()
-            .then((c): void => {
+            .then((c) => {
                 categories = c;
             })
-            .catch((e: unknown): void => console.warn('home: listCategories failed', e)),
+            .catch((e) => console.warn('home: listCategories failed', e)),
     ]);
 
     return { restaurants, categories, activeCategory: '', searchQuery: initialQuery };
@@ -96,7 +96,7 @@ export function HomePage(props: HomePageProps): VNode {
     // Перезапрашивает выдачу по текущим фильтрам. Пагинация работает только без фильтров;
     // комбинацию "запрос + категория" бэк не умеет, поэтому берём категорию с большим лимитом
     // и фильтруем на клиенте по подстроке в названии/описании.
-    const refreshGrid = async (): Promise<void> => {
+    const refreshGrid = async () => {
         const q = searchQuery();
         const cat = activeCategory();
 
@@ -106,18 +106,18 @@ export function HomePage(props: HomePageProps): VNode {
         let results: Restaurant[] = [];
 
         if (!q && !cat) {
-            results = await restaurantApi.listBrands(PAGE_SIZE, 0).catch((): Restaurant[] => []);
+            results = await restaurantApi.listBrands(PAGE_SIZE, 0).catch(() => []);
             offset.set(results.length);
             hasMore.set(results.length === PAGE_SIZE);
         } else if (q && !cat) {
-            results = await restaurantApi.search(q, PAGE_SIZE).catch((): Restaurant[] => []);
+            results = await restaurantApi.search(q, PAGE_SIZE).catch(() => []);
         } else if (!q && cat) {
-            results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch((): Restaurant[] => []);
+            results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch(() => []);
         } else {
             const COMBINED_LIMIT = 100;
             const inCat = await restaurantApi
                 .listBrandsByCategory(cat, COMBINED_LIMIT, 0)
-                .catch((): Restaurant[] => []);
+                .catch(() => []);
             const needle = q.toLowerCase();
             results = inCat.filter((r) => {
                 const name = (r.name ?? '').toLowerCase();
@@ -130,7 +130,7 @@ export function HomePage(props: HomePageProps): VNode {
     };
 
     // Повторный клик по активной категории сбрасывает фильтр.
-    const selectCategory = async (id: string): Promise<void> => {
+    const selectCategory = async (id: string) => {
         if (id === '' || activeCategory() === id) {
             activeCategory.set('');
         } else {
@@ -139,23 +139,23 @@ export function HomePage(props: HomePageProps): VNode {
         await refreshGrid();
     };
 
-    const openCategoriesDrawer = (): void => {
+    const openCategoriesDrawer = () => {
         categoriesOpen.set(true);
         cartOpen.set(false);
     };
 
-    const openCartSheet = (): void => {
+    const openCartSheet = () => {
         cartOpen.set(true);
         categoriesOpen.set(false);
     };
 
-    const closePanels = (): void => {
+    const closePanels = () => {
         categoriesOpen.set(false);
         cartOpen.set(false);
     };
 
     // Подгружает следующую страницу при приближении к низу; пропускается при фильтрах и во время запроса.
-    const handleScroll = async (): Promise<void> => {
+    const handleScroll = async () => {
         if (isFetching() || !hasMore() || searchQuery() || activeCategory()) return;
 
         const doc = document.documentElement;
@@ -176,12 +176,12 @@ export function HomePage(props: HomePageProps): VNode {
     };
 
     // Escape закрывает мобильные панели.
-    const handleKeyDown = (e: KeyboardEvent): void => {
+    const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape') closePanels();
     };
 
     // При росте ширины окна закрываем открытые мобильные панели, чтобы они не висели на десктопе.
-    const handleResize = (): void => {
+    const handleResize = () => {
         const width = window.innerWidth;
         if (width > TABLET_BREAKPOINT) {
             closePanels();
@@ -206,7 +206,7 @@ export function HomePage(props: HomePageProps): VNode {
 
     return (
         <div
-            class={(): string => {
+            class={() => {
                 const classes = ['page-wrapper', 'home-page'];
                 if (categoriesOpen()) classes.push('home-page_drawer-categories');
                 if (cartOpen()) classes.push('home-page_sheet-cart');
@@ -314,18 +314,18 @@ export function HomePage(props: HomePageProps): VNode {
 
                         <div class="categories-list">
                             <div
-                                class={(): string =>
+                                class={() =>
                                     activeCategory() === ''
                                         ? 'category-item category-item_active'
                                         : 'category-item'
                                 }
                                 tabindex="0"
                                 role="button"
-                                onClick={(): void => {
+                                onClick={() => {
                                     void selectCategory('');
                                     if (window.innerWidth <= MOBILE_BREAKPOINT) closePanels();
                                 }}
-                                onKeyDown={(e: Event): void => {
+                                onKeyDown={(e: Event) => {
                                     const ke = e as KeyboardEvent;
                                     if (ke.key !== 'Enter' && ke.key !== ' ') return;
                                     ke.preventDefault();
@@ -335,21 +335,21 @@ export function HomePage(props: HomePageProps): VNode {
                                 <span class="category-item__icon">🍽️</span>
                                 <span class="category-item__name">Все рестораны</span>
                             </div>
-                            <For each={(): readonly Category[] => props.categories} key={(c) => c.id}>
-                                {(cat: Category): VNode => (
+                            <For each={() => props.categories} key={(c) => c.id}>
+                                {(cat) => (
                                     <div
-                                        class={(): string =>
+                                        class={() =>
                                             activeCategory() === cat.id
                                                 ? 'category-item category-item_active'
                                                 : 'category-item'
                                         }
                                         tabindex="0"
                                         role="button"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             void selectCategory(cat.id);
                                             if (window.innerWidth <= MOBILE_BREAKPOINT) closePanels();
                                         }}
-                                        onKeyDown={(e: Event): void => {
+                                        onKeyDown={(e: Event) => {
                                             const ke = e as KeyboardEvent;
                                             if (ke.key !== 'Enter' && ke.key !== ' ') return;
                                             ke.preventDefault();
@@ -369,27 +369,27 @@ export function HomePage(props: HomePageProps): VNode {
                     <div class="sheet">
                         <div class="sheet__header">
                             <h1 class="sheet__title">
-                                {(): string =>
+                                {() =>
                                     buildTitle(props.categories, activeCategory(), searchQuery())
                                 }
                             </h1>
                         </div>
 
-                        <Show when={(): boolean => searchQuery() !== ''}>
+                        <Show when={() => searchQuery() !== ''}>
                             <div class="search-results-label" style="display: block">
-                                {(): string => `Найдено по запросу «${searchQuery()}»`}
+                                {() => `Найдено по запросу «${searchQuery()}»`}
                             </div>
                         </Show>
 
                         <div class="res-grid">
                             <For
                                 each={restaurants}
-                                key={(r: Restaurant): string | number => r.id}
+                                key={(r) => r.id}
                             >
-                                {(r: Restaurant): VNode => (
+                                {(r) => (
                                     <div
                                         class="res-card"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             void router.go(
                                                 `${ROUTES.restaurant}?id=${encodeURIComponent(String(r.id))}`,
                                             );
@@ -412,7 +412,7 @@ export function HomePage(props: HomePageProps): VNode {
                             </For>
                         </div>
 
-                        <Show when={(): boolean => restaurants().length === 0}>
+                        <Show when={() => restaurants().length === 0}>
                             <div class="res-empty" style="display: flex">
                                 <p class="res-empty__text">Ничего не найдено 😔</p>
                                 <p class="res-empty__hint">
@@ -424,7 +424,7 @@ export function HomePage(props: HomePageProps): VNode {
                 </main>
 
                 <aside class="side-column side-column_right">
-                    <Show when={(): boolean => user() !== null}>
+                    <Show when={() => user() !== null}>
                         <div class="card card_streak_points">
                             <Streak />
                         </div>
@@ -438,5 +438,5 @@ export function HomePage(props: HomePageProps): VNode {
                 </aside>
             </div>
         </div>
-    ) as VNode;
+    );
 }

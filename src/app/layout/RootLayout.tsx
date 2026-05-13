@@ -26,14 +26,14 @@ export function RootLayout(): VNode {
         <div class="root-layout">
             <Header
                 user={user}
-                hideSearch={(): boolean => router.currentRoute().path !== ROUTES.home}
-                mode={(): 'default' | 'back' =>
+                hideSearch={() => router.currentRoute().path !== ROUTES.home}
+                mode={() =>
                     router.currentRoute().path === ROUTES.home ? 'default' : 'back'
                 }
-                onLogin={(): void => {
+                onLogin={() => {
                     void router.go(ROUTES.login);
                 }}
-                onRegister={(): void => {
+                onRegister={() => {
                     void router.go(ROUTES.register);
                 }}
             />

@@ -26,7 +26,7 @@ export function RegisterForm(props: RegisterFormProps): VNode {
     const showPassword = signal<boolean>(false);
     const showRepeatPassword = signal<boolean>(false);
 
-    const handleSubmit = async (event: Event): Promise<void> => {
+    const handleSubmit = async (event: Event) => {
         event.preventDefault();
         if (submitting.peek()) return;
 
@@ -89,7 +89,7 @@ export function RegisterForm(props: RegisterFormProps): VNode {
         <form
             id="auth-form"
             class="auth-form"
-            onSubmit={(e: Event): void => {
+            onSubmit={(e: Event) => {
                 void handleSubmit(e);
             }}
         >
@@ -102,13 +102,13 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                     id="name"
                     placeholder="Ваше имя"
                     value={name.peek()}
-                    onInput={(e: Event): void => {
+                    onInput={(e: Event) => {
                         name.set((e.target as HTMLInputElement).value);
                     }}
                 />
-                <Show when={(): boolean => errors().name !== undefined}>
+                <Show when={() => errors().name !== undefined}>
                     <span id="name-error" class="error-msg">
-                        {(): string => errors().name ?? ''}
+                        {() => errors().name ?? ''}
                     </span>
                 </Show>
             </div>
@@ -122,13 +122,13 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                     id="email"
                     placeholder="Example@mail.com"
                     value={email.peek()}
-                    onInput={(e: Event): void => {
+                    onInput={(e: Event) => {
                         email.set((e.target as HTMLInputElement).value);
                     }}
                 />
-                <Show when={(): boolean => errors().email !== undefined}>
+                <Show when={() => errors().email !== undefined}>
                     <span id="email-error" class="error-msg">
-                        {(): string => errors().email ?? ''}
+                        {() => errors().email ?? ''}
                     </span>
                 </Show>
             </div>
@@ -138,29 +138,29 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                 <div class="password-wrapper">
                     <input
                         class="input-field"
-                        type={(): string => (showPassword() ? 'text' : 'password')}
+                        type={() => (showPassword() ? 'text' : 'password')}
                         name="password"
                         id="password"
                         placeholder="Пароль"
                         value={password.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             password.set((e.target as HTMLInputElement).value);
                         }}
                     />
                     <div
-                        class={(): string =>
+                        class={() =>
                             showPassword()
                                 ? 'password-wrapper__icon password-wrapper__icon_visible'
                                 : 'password-wrapper__icon'
                         }
-                        onClick={(): void => {
+                        onClick={() => {
                             showPassword.set((prev) => !prev);
                         }}
                     />
                 </div>
-                <Show when={(): boolean => errors().password !== undefined}>
+                <Show when={() => errors().password !== undefined}>
                     <span id="password-error" class="error-msg">
-                        {(): string => errors().password ?? ''}
+                        {() => errors().password ?? ''}
                     </span>
                 </Show>
             </div>
@@ -170,29 +170,29 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                 <div class="password-wrapper">
                     <input
                         class="input-field"
-                        type={(): string => (showRepeatPassword() ? 'text' : 'password')}
+                        type={() => (showRepeatPassword() ? 'text' : 'password')}
                         name="repeatPassword"
                         id="repeatPassword"
                         placeholder="Повторите пароль"
                         value={repeatPassword.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             repeatPassword.set((e.target as HTMLInputElement).value);
                         }}
                     />
                     <div
-                        class={(): string =>
+                        class={() =>
                             showRepeatPassword()
                                 ? 'password-wrapper__icon password-wrapper__icon_visible'
                                 : 'password-wrapper__icon'
                         }
-                        onClick={(): void => {
+                        onClick={() => {
                             showRepeatPassword.set((prev) => !prev);
                         }}
                     />
                 </div>
-                <Show when={(): boolean => errors().repeatPassword !== undefined}>
+                <Show when={() => errors().repeatPassword !== undefined}>
                     <span id="repeatPassword-error" class="error-msg">
-                        {(): string => errors().repeatPassword ?? ''}
+                        {() => errors().repeatPassword ?? ''}
                     </span>
                 </Show>
             </div>
@@ -209,5 +209,5 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                 Зарегистрироваться
             </button>
         </form>
-    ) as VNode;
+    );
 }

@@ -26,7 +26,7 @@ export interface MatchResult {
  * @param search Часть URL после знака вопроса, со знаком или без; пустая строка допустима.
  * @returns Карта ключ-значение query-параметров.
  */
-function parseQuery(search: string): Record<string, string> {
+function parseQuery(search: string) {
     const trimmed = search.startsWith('?') ? search.slice(1) : search;
     if (trimmed.length === 0) {
         return {};

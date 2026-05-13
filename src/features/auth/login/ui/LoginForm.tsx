@@ -21,7 +21,7 @@ export function LoginForm(props: LoginFormProps): VNode {
     const submitting = signal<boolean>(false);
     const showPassword = signal<boolean>(false);
 
-    const handleSubmit = async (event: Event): Promise<void> => {
+    const handleSubmit = async (event: Event) => {
         event.preventDefault();
         if (submitting.peek()) return;
 
@@ -59,7 +59,7 @@ export function LoginForm(props: LoginFormProps): VNode {
         }
     };
 
-    const togglePassword = (): void => {
+    const togglePassword = () => {
         showPassword.set((prev) => !prev);
     };
 
@@ -67,7 +67,7 @@ export function LoginForm(props: LoginFormProps): VNode {
         <form
             id="auth-form"
             class="auth-form"
-            onSubmit={(e: Event): void => {
+            onSubmit={(e: Event) => {
                 void handleSubmit(e);
             }}
         >
@@ -80,13 +80,13 @@ export function LoginForm(props: LoginFormProps): VNode {
                     id="email"
                     placeholder="Example@mail.com"
                     value={email.peek()}
-                    onInput={(e: Event): void => {
+                    onInput={(e: Event) => {
                         email.set((e.target as HTMLInputElement).value);
                     }}
                 />
-                <Show when={(): boolean => errors().email !== undefined}>
+                <Show when={() => errors().email !== undefined}>
                     <div id="email-error" class="error-msg">
-                        {(): string => errors().email ?? ''}
+                        {() => errors().email ?? ''}
                     </div>
                 </Show>
             </div>
@@ -100,18 +100,18 @@ export function LoginForm(props: LoginFormProps): VNode {
                 </div>
                 <div class="password-wrapper">
                     <input
-                        type={(): string => (showPassword() ? 'text' : 'password')}
+                        type={() => (showPassword() ? 'text' : 'password')}
                         class="input-field"
                         name="password"
                         id="password"
                         placeholder="Пароль"
                         value={password.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             password.set((e.target as HTMLInputElement).value);
                         }}
                     />
                     <div
-                        class={(): string =>
+                        class={() =>
                             showPassword()
                                 ? 'password-wrapper__icon password-wrapper__icon_visible'
                                 : 'password-wrapper__icon'
@@ -119,9 +119,9 @@ export function LoginForm(props: LoginFormProps): VNode {
                         onClick={togglePassword}
                     />
                 </div>
-                <Show when={(): boolean => errors().password !== undefined}>
+                <Show when={() => errors().password !== undefined}>
                     <div id="password-error" class="error-msg">
-                        {(): string => errors().password ?? ''}
+                        {() => errors().password ?? ''}
                     </div>
                 </Show>
             </div>
@@ -130,5 +130,5 @@ export function LoginForm(props: LoginFormProps): VNode {
                 Войти
             </button>
         </form>
-    ) as VNode;
+    );
 }

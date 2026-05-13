@@ -81,7 +81,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     const orderTrackers: Map<string, OrderTracker> = new Map();
 
     // Подменяет статус строки заказа; закрывает трекер при терминальном статусе.
-    const applyStatusUpdate = (orderId: string, rawStatus: string): void => {
+    const applyStatusUpdate = (orderId: string, rawStatus: string) => {
         const current = ordersSig.peek();
         const idx = current.findIndex((o) => o.order_id === orderId);
         if (idx < 0) return;
@@ -99,7 +99,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     // Подключает стрим статуса для каждого нетерминального заказа без дублей.
-    const subscribeActiveOrders = (): void => {
+    const subscribeActiveOrders = () => {
         for (const order of ordersSig.peek()) {
             if (!order.order_id || TERMINAL_STATUSES.has(order.status)) continue;
             if (orderTrackers.has(order.order_id)) continue;
@@ -111,11 +111,11 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    const handleAvatarPickClick = (): void => {
+    const handleAvatarPickClick = () => {
         avatarFileInput?.click();
     };
 
-    const handleAvatarChange = async (): Promise<void> => {
+    const handleAvatarChange = async () => {
         const file = avatarFileInput?.files?.[0];
         if (!file) return;
         try {
@@ -126,7 +126,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    const handleAvatarDelete = async (): Promise<void> => {
+    const handleAvatarDelete = async () => {
         try {
             await deleteAvatar();
         } catch (e) {
@@ -135,35 +135,35 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
     };
 
-    const handleAddAddress = (): void => {
+    const handleAddAddress = () => {
         void pickerCtl?.openMapModal();
     };
 
-    const handleEditAddress = (id: string): void => {
+    const handleEditAddress = (id: string) => {
         void pickerCtl?.openMapModal(id);
     };
 
-    const handleAddCard = (): void => {
+    const handleAddCard = () => {
         void bindNewCard().catch(() =>
             Popup.alert('Не удалось начать привязку карты. Попробуйте позже.'),
         );
     };
 
-    const handleOpenWordle = (): void => {
+    const handleOpenWordle = () => {
         wordleOpen.set(true);
     };
 
-    const handleWordleClose = (): void => {
+    const handleWordleClose = () => {
         wordleOpen.set(false);
     };
 
-    const handleWordleWin = (): void => {
+    const handleWordleWin = () => {
         localStorage.setItem('wordle_solved', 'true');
         wordleSolved.set(true);
     };
 
     // Для нетерминальных заказов модалка подписывается на стрим обновлений.
-    const handleOpenOrder = (order: OrderRowView): void => {
+    const handleOpenOrder = (order: OrderRowView) => {
         if (!orderStatusCtl) return;
         const isTerminal = TERMINAL_STATUSES.has(order.status);
         orderStatusCtl.open(order, { subscribe: !isTerminal });
@@ -187,7 +187,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                             <img
                                 id="profile-avatar-img"
                                 class="profile-avatar__img"
-                                src={(): string => userSig()?.avatar_url ?? DEFAULT_AVATAR_URL}
+                                src={() => userSig()?.avatar_url ?? DEFAULT_AVATAR_URL}
                                 alt="avatar"
                                 onerror={`this.src='${DEFAULT_AVATAR_URL}'`}
                             />
@@ -198,14 +198,14 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 📷
                             </div>
                             <Show
-                                when={(): boolean => {
+                                when={() => {
                                     const u = userSig();
                                     return Boolean(u?.avatar_url) && u?.avatar_url !== DEFAULT_AVATAR_URL;
                                 }}
                             >
                                 <div
                                     class="profile-avatar__delete-hover"
-                                    onClick={(): void => {
+                                    onClick={() => {
                                         void handleAvatarDelete();
                                     }}
                                 >
@@ -217,10 +217,10 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 class="js-avatar-input"
                                 accept="image/png, image/jpeg, image/webp"
                                 hidden
-                                ref={(el: Element | null): void => {
+                                ref={(el: Element | null) => {
                                     avatarFileInput = el as HTMLInputElement | null;
                                 }}
-                                onChange={(): void => {
+                                onChange={() => {
                                     void handleAvatarChange();
                                 }}
                             />
@@ -228,7 +228,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         <div class="profile-name-card">
                             <div class="profile-user-info">
                                 <span class="profile-input profile-input_name">
-                                    {(): string => userSig()?.name ?? ''}
+                                    {() => userSig()?.name ?? ''}
                                 </span>
                             </div>
                         </div>
@@ -247,7 +247,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                             <div class="orange-dot orange-dot_small" />
                         </div>
                         <div class="card-side-content card-value-text">
-                            {(): string => `${userSig()?.streak_weeks ?? 0} нед. — так держать! 🔥`}
+                            {() => `${userSig()?.streak_weeks ?? 0} нед. — так держать! 🔥`}
                         </div>
                     </div>
 
@@ -305,18 +305,18 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         <h2 class="section-title">История заказов</h2>
                         <div class="orders-list">
                             <Show
-                                when={(): boolean => ordersSig().length > 0}
+                                when={() => ordersSig().length > 0}
                                 fallback={<div class="empty-text">История заказов пуста</div>}
                             >
-                                <For each={ordersSig} key={(o): string => o.order_id}>
-                                    {(order): VNode => (
+                                <For each={ordersSig} key={(o) => o.order_id}>
+                                    {(order) => (
                                         <div
                                             class="order-row"
                                             data-order-id={order.order_id}
                                             role="button"
                                             tabindex="0"
-                                            onClick={(): void => handleOpenOrder(order)}
-                                            onKeyDown={(event: Event): void => {
+                                            onClick={() => handleOpenOrder(order)}
+                                            onKeyDown={(event: Event) => {
                                                 const ke = event as KeyboardEvent;
                                                 if (ke.key === 'Enter' || ke.key === ' ') {
                                                     ke.preventDefault();
@@ -361,7 +361,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
             <AddressPicker
                 hideInput
                 skipDetails={false}
-                controllerRef={(ctl: AddressPickerController | null): void => {
+                controllerRef={(ctl: AddressPickerController | null) => {
                     pickerCtl = ctl;
                 }}
             />
@@ -371,10 +371,10 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                 onWin={handleWordleWin}
             />
             <OrderStatusModal
-                controllerRef={(ctl: OrderStatusModalController | null): void => {
+                controllerRef={(ctl: OrderStatusModalController | null) => {
                     orderStatusCtl = ctl;
                 }}
             />
         </div>
-    ) as VNode;
+    );
 }

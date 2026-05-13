@@ -13,14 +13,14 @@ export interface AddressListProps {
 export function AddressList(props: AddressListProps): VNode {
     const addresses = useStoreSignal(addressStore, (s) => s.saved);
 
-    const handleDelete = async (id: string): Promise<void> => {
+    const handleDelete = async (id: string) => {
         const ok = await Popup.confirm('Удалить этот адрес?');
         if (!ok) return;
         await removeAddress(id);
     };
 
     // Текст адреса с квартирой, подъездом и этажом в одной строке.
-    const formatLine = (addr: Address): string => {
+    const formatLine = (addr: Address) => {
         const text = addr.location.address_text;
         const ap = addr.apartment ? `, кв. ${addr.apartment}` : '';
         const ent = addr.entrance ? `, под. ${addr.entrance}` : '';
@@ -31,21 +31,21 @@ export function AddressList(props: AddressListProps): VNode {
     return (
         <div class="address-list" id="profile-address-list">
             <Show
-                when={(): boolean => addresses().length > 0}
+                when={() => addresses().length > 0}
                 fallback={<div class="empty-text">У вас пока нет сохраненных адресов</div>}
             >
-                <For each={addresses} key={(a): string => a.id}>
-                    {(addr: Address): VNode => (
+                <For each={addresses} key={(a) => a.id}>
+                    {(addr) => (
                         <div class="address-row" data-id={addr.id}>
                             <span class="address-row__text">{formatLine(addr)}</span>
                             <div class="address-row__actions">
                                 <div
                                     class="edit-icon-orange edit-addr-btn"
-                                    onClick={(): void => props.onEdit?.(addr.id)}
+                                    onClick={() => props.onEdit?.(addr.id)}
                                 />
                                 <div
                                     class="delete-icon-orange delete-addr-btn"
-                                    onClick={(): void => {
+                                    onClick={() => {
                                         void handleDelete(addr.id);
                                     }}
                                 />

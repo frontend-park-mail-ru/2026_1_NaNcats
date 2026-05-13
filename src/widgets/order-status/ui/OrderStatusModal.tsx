@@ -85,12 +85,12 @@ const PAYMENT_SETTLED_RAW_STATUSES = new Set<string>([
 /** URL дефолтной иконки блюда/ресторана, используется при ошибке загрузки. */
 const DEFAULT_IMAGE_URL = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
-function isTerminalRawStatus(raw: string): boolean {
+function isTerminalRawStatus(raw: string) {
     return TERMINAL_RAW_STATUSES.has(raw);
 }
 
 /** Индекс активного шага в STATUS_FLOW; -1 для отменённых и ожидающих оплату. */
-function activeStepIndex(status: OrderUiStatus): number {
+function activeStepIndex(status: OrderUiStatus) {
     if (status === 'cancelled' || status === 'awaiting_payment') return -1;
     return STATUS_FLOW.indexOf(status);
 }
@@ -98,7 +98,7 @@ function activeStepIndex(status: OrderUiStatus): number {
 const PROGRESS_STEPS: ProgressStep[] = STATUS_FLOW.map((key) => ({ key }));
 
 /** Дата к виду DD.MM (поддерживает ISO и DD.MM.YYYY); для невалидной возвращает исходную строку. */
-function formatDate(value: string): string {
+function formatDate(value: string) {
     if (value === '') return '';
     const ddmmyyyy = /^(\d{2})\.(\d{2})\.\d{4}$/.exec(value);
     if (ddmmyyyy !== null) return `${ddmmyyyy[1]}.${ddmmyyyy[2]}`;
@@ -110,19 +110,19 @@ function formatDate(value: string): string {
 }
 
 /** Микрорубли в рубли без дробной части. */
-function formatRubles(micros: number): string {
+function formatRubles(micros: number) {
     return (micros / 1_000_000).toFixed(0);
 }
 
 /** Количество отзывов: тысячи округляются вниз с суффиксом 000+. */
-function formatReviews(count: number): string {
+function formatReviews(count: number) {
     if (count >= 1000) return `${Math.floor(count / 1000)}000+`;
     return String(count);
 }
 
 // Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
 // нормализованного объекта (чтобы UI-статус согласовался с raw), текст ошибки.
-function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent): NormalizedOrder {
+function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
     const merged: Order = {
         order_id: current.order_id,
         status: event.status,
@@ -153,10 +153,10 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     /** Ожидание подтверждения оплаты после клика по "Оплатить". */
     const processing = signal<boolean>(false);
 
-    const errorText = computed<string>(() => order()?.error ?? '');
+    const errorText = computed(() => order()?.error ?? '');
 
     /** Индекс активного шага прогресс-бара; шаги читают его реактивно. */
-    const currentStepIdx = computed<number>(() => {
+    const currentStepIdx = computed(() => {
         const o = order();
         return o === null ? -1 : activeStepIndex(o.status);
     });
@@ -165,18 +165,18 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         order() === null ? [] : PROGRESS_STEPS,
     );
 
-    const statusText = computed<string>(() => {
+    const statusText = computed(() => {
         const o = order();
         return o === null ? '' : STATUS_TEXT[o.status](o.eta_minutes);
     });
 
-    const showPaymentButton = computed<boolean>(() => {
+    const showPaymentButton = computed(() => {
         if (processing()) return false;
         const o = order();
         return o !== null && o.status === 'awaiting_payment' && o.payment_url !== undefined;
     });
 
-    const showCancelButton = computed<boolean>(() => {
+    const showCancelButton = computed(() => {
         if (processing()) return false;
         const o = order();
         return o !== null && CANCELLABLE_STATUSES.has(o.status);
@@ -188,7 +188,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     /** Колбэк закрытия, переданный в open(). */
     let onCloseCallback: (() => void) | null = null;
 
-    const endPaymentProcessing = (): void => {
+    const endPaymentProcessing = () => {
         processing.set(false);
         if (paymentTimeoutTimer !== null) {
             clearTimeout(paymentTimeoutTimer);
@@ -196,7 +196,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    const beginPaymentProcessing = (): void => {
+    const beginPaymentProcessing = () => {
         if (processing()) return;
         processing.set(true);
 
@@ -214,14 +214,14 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }, PAYMENT_TIMEOUT_MS);
     };
 
-    const disconnectTracker = (): void => {
+    const disconnectTracker = () => {
         if (tracker !== null) {
             tracker.close();
             tracker = null;
         }
     };
 
-    const applyEvent = (event: GatewayWsEvent): void => {
+    const applyEvent = (event: GatewayWsEvent) => {
         const current = order();
         if (current === null) return;
         const next = mergeEvent(current, event);
@@ -231,13 +231,13 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         order.set(next);
     };
 
-    const subscribeToOrder = (orderId: string): void => {
+    const subscribeToOrder = (orderId: string) => {
         tracker = connectOrderTracker(orderId, {
             onEvent: (event) => applyEvent(event),
         });
     };
 
-    const open = (rawOrder: Order, options: OrderStatusModalOpenOptions = {}): void => {
+    const open = (rawOrder: Order, options: OrderStatusModalOpenOptions = {}) => {
         const normalized = normalizeOrder(rawOrder);
         disconnectTracker();
         endPaymentProcessing();
@@ -250,7 +250,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    const close = (): void => {
+    const close = () => {
         disconnectTracker();
         endPaymentProcessing();
         isActive.set(false);
@@ -259,7 +259,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (cb !== null) cb();
     };
 
-    const handleCancel = async (): Promise<void> => {
+    const handleCancel = async () => {
         const current = order();
         if (current === null) return;
         const orderId = current.order_id;
@@ -275,7 +275,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         }
     };
 
-    const handlePay = (): void => {
+    const handlePay = () => {
         const current = order();
         if (current === null || current.payment_url === undefined) return;
         beginPaymentProcessing();
@@ -283,12 +283,12 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     };
 
     // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
-    const handleOverlayClick = (event: Event): void => {
+    const handleOverlayClick = (event: Event) => {
         if (event.target !== event.currentTarget) return;
         close();
     };
 
-    const handleImageError = (event: Event): void => {
+    const handleImageError = (event: Event) => {
         const img = event.target as HTMLImageElement;
         if (img.src !== DEFAULT_IMAGE_URL) img.src = DEFAULT_IMAGE_URL;
     };
@@ -313,7 +313,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     return (
         <div
-            class={(): string =>
+            class={() =>
                 isActive() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
             }
             id="order-status-modal"
@@ -331,26 +331,26 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                     </button>
 
                     <div class="order-status-modal__header">
-                        Заказ от {(): string => formatDate(order()?.created_at ?? '')} на сумму{' '}
-                        {(): string => formatRubles(order()?.total_cost ?? 0)}₽
+                        Заказ от {() => formatDate(order()?.created_at ?? '')} на сумму{' '}
+                        {() => formatRubles(order()?.total_cost ?? 0)}₽
                     </div>
 
                     <div class="order-status-modal__restaurant">
                         <img
                             class="order-status-modal__restaurant-img"
-                            src={(): string => order()?.restaurant.image_url ?? ''}
-                            alt={(): string => order()?.restaurant.name ?? ''}
+                            src={() => order()?.restaurant.image_url ?? ''}
+                            alt={() => order()?.restaurant.name ?? ''}
                             onError={handleImageError}
                         />
                         <div class="order-status-modal__restaurant-info">
                             <div class="order-status-modal__restaurant-name">
-                                {(): string => order()?.restaurant.name ?? ''}
+                                {() => order()?.restaurant.name ?? ''}
                             </div>
                             <div class="order-status-modal__restaurant-rating">
                                 <span class="order-status-modal__star">★</span>
                                 <span>
-                                    {(): string => String(order()?.restaurant.rating ?? 0)} (
-                                    {(): string =>
+                                    {() => String(order()?.restaurant.rating ?? 0)} (
+                                    {() =>
                                         formatReviews(order()?.restaurant.reviews_count ?? 0)
                                     }
                                     )
@@ -360,31 +360,31 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                     </div>
 
                     <div
-                        class={(): string =>
+                        class={() =>
                             order()?.status === 'cancelled'
                                 ? 'order-status-modal__progress order-status-modal__progress_cancelled'
                                 : 'order-status-modal__progress'
                         }
                     >
                         <div class="order-status-modal__progress-text">
-                            {(): string => statusText()}
+                            {statusText}
                         </div>
                         <div class="order-status-modal__progress-track">
                             <For
-                                each={(): readonly ProgressStep[] => steps()}
-                                key={(s): string => s.key}
+                                each={steps}
+                                key={(s) => s.key}
                             >
-                                {(step, idx): VNode => {
+                                {(step, idx) => {
                                     // Computed по idx этого шага: пересчитываются при смене статуса заказа.
-                                    const reached = computed<boolean>(
+                                    const reached = computed(
                                         () => idx <= currentStepIdx() && currentStepIdx() >= 0,
                                     );
-                                    const current = computed<boolean>(() => idx === currentStepIdx());
+                                    const current = computed(() => idx === currentStepIdx());
                                     return (
                                         <>
-                                            <Show when={(): boolean => idx > 0}>
+                                            <Show when={() => idx > 0}>
                                                 <div
-                                                    class={(): string =>
+                                                    class={() =>
                                                         reached()
                                                             ? 'order-status-modal__progress-dot order-status-modal__progress-dot_active'
                                                             : 'order-status-modal__progress-dot'
@@ -392,7 +392,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                                 />
                                             </Show>
                                             <div
-                                                class={(): string => {
+                                                class={() => {
                                                     const base = 'order-status-modal__progress-step';
                                                     const reachedCls = reached()
                                                         ? ' order-status-modal__progress-step_active'
@@ -431,16 +431,16 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                             <button
                                 type="button"
                                 class="order-status-modal__cancel-btn"
-                                onClick={(): void => {
+                                onClick={() => {
                                     void handleCancel();
                                 }}
                             >
                                 Отменить заказ
                             </button>
                         </Show>
-                        <Show when={(): boolean => errorText() !== ''}>
+                        <Show when={() => errorText() !== ''}>
                             <div class="order-status-modal__error">
-                                {(): string => errorText()}
+                                {errorText}
                             </div>
                         </Show>
                     </div>
@@ -451,12 +451,10 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
                     <div class="order-status-modal__items">
                         <For
-                            each={(): readonly NormalizedOrder['items'][number][] =>
-                                order()?.items ?? []
-                            }
-                            key={(it): string => `${String(it.dish_id)}-${it.name}`}
+                            each={() => order()?.items ?? []}
+                            key={(it) => `${String(it.dish_id)}-${it.name}`}
                         >
-                            {(item): VNode => (
+                            {(item) => (
                                 <div class="order-status-modal__item">
                                     <div class="order-status-modal__item-left">
                                         <img
@@ -485,19 +483,19 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                         <div class="order-status-modal__fee-row">
                             <div class="order-status-modal__fee-label">Сервисный сбор:</div>
                             <div class="order-status-modal__fee-value">
-                                {(): string => formatRubles(order()?.service_fee ?? 0)}₽
+                                {() => formatRubles(order()?.service_fee ?? 0)}₽
                             </div>
                         </div>
 
                         <div class="order-status-modal__fee-row">
                             <div class="order-status-modal__fee-label">Доставка:</div>
                             <div class="order-status-modal__fee-value">
-                                {(): string => formatRubles(order()?.delivery_cost ?? 0)}₽
+                                {() => formatRubles(order()?.delivery_cost ?? 0)}₽
                             </div>
                         </div>
                     </div>
                 </div>
             </Show>
         </div>
-    ) as VNode;
+    );
 }

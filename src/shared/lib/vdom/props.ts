@@ -223,7 +223,7 @@ function applyProp(el: Element, name: string, prev: unknown, next: unknown): voi
         }
         const handler = next as PropEventHandler;
         if (typeof handler === 'function') {
-            const listener: EventListener = (event) => handler(event);
+            const listener = (event: Event) => handler(event);
             el.addEventListener(evName, listener);
             map.set(evName, listener);
         }

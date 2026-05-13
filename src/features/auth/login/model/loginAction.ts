@@ -7,7 +7,7 @@ import { userApi, userStore } from '@entities/user';
  * @param email Адрес электронной почты пользователя.
  * @param password Пароль пользователя в открытом виде.
  */
-export const loginAction = async (email: string, password: string): Promise<void> => {
+export const loginAction = async (email: string, password: string) => {
     await userApi.login(email, password);
     await userStore.loadCurrent();
 };

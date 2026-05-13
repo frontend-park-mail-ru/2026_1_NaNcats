@@ -100,15 +100,15 @@ interface ForEntry<T> {
  */
 export function For<T>(props: ForProps<T>): VNode {
     const dynamicProps = {
-        mount(parent: Node, anchor: Node | null): { sentinel: Node; dispose: () => void } {
-            const forAnchor: Comment = document.createComment('for');
+        mount(parent: Node, anchor: Node | null) {
+            const forAnchor = document.createComment('for');
             parent.insertBefore(forAnchor, anchor);
 
-            const outerOwner: Owner = createOwner(null);
+            const outerOwner = createOwner(null);
 
             let entries: Array<ForEntry<T>> = [];
 
-            const buildEntry = (item: T, index: number, key: Key): ForEntry<T> | null => {
+            const buildEntry = (item: T, index: number, key: Key) => {
                 const itemOwner = createOwner(null);
                 let raw: VNodeChild;
                 try {
@@ -129,9 +129,9 @@ export function For<T>(props: ForProps<T>): VNode {
             const disposeEffect = runWithOwner(outerOwner, () =>
                 effect(() => {
                     const items = props.each();
-                    const keyFn = props.key ?? ((it: T): Key => it as unknown as Key);
+                    const keyFn = props.key ?? ((it: T) => it as unknown as Key);
 
-                    const oldByKey: Map<Key, ForEntry<T>> = new Map();
+                    const oldByKey = new Map<Key, ForEntry<T>>();
                     for (const entry of entries) {
                         oldByKey.set(entry.key, entry);
                     }
@@ -193,7 +193,7 @@ export function For<T>(props: ForProps<T>): VNode {
                 }),
             );
 
-            const dispose = (): void => {
+            const dispose = () => {
                 disposeEffect();
                 for (const entry of entries) {
                     unmount(entry.vnode);

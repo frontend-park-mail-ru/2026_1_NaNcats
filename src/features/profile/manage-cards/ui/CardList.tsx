@@ -2,7 +2,7 @@ import { useStoreSignal } from '@shared/lib/signals';
 import { Show, For } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
-import { cardStore, type Card } from '@entities/card';
+import { cardStore } from '@entities/card';
 import { removeCard, setDefaultCard } from '../model/manageCards';
 
 export interface CardListProps {
@@ -54,7 +54,7 @@ function cardTypeLabel(type?: string): { label: string; cls: string } {
 export function CardList(_props: CardListProps = {}): VNode {
     const cards = useStoreSignal(cardStore, (s) => s.cards);
 
-    const handleDelete = async (id: string): Promise<void> => {
+    const handleDelete = async (id: string) => {
         const ok = await Popup.confirm('Вы уверены, что хотите отвязать эту карту?');
         if (!ok) return;
         try {
@@ -64,32 +64,30 @@ export function CardList(_props: CardListProps = {}): VNode {
         }
     };
 
-    void _props;
-
     return (
         <div id="profile-cards-list" class="cards-list">
             <Show
-                when={(): boolean => cards().length > 0}
+                when={() => cards().length > 0}
                 fallback={<div class="empty-text">Нет привязанных карт</div>}
             >
-                <For each={cards} key={(c): string => c.id}>
-                    {(c: Card): VNode => {
-                        const isOnlyOne = (): boolean => cards().length === 1;
-                        const isActive = (): boolean => isOnlyOne() || c.is_default;
+                <For each={cards} key={(c) => c.id}>
+                    {(c) => {
+                        const isOnlyOne = () => cards().length === 1;
+                        const isActive = () => isOnlyOne() || c.is_default;
                         const brand = c.issuer_name || 'Карта';
                         const themeCls = themeFor(c.issuer_name);
                         const sys = cardTypeLabel(c.card_type);
 
                         return (
                             <div
-                                class={(): string =>
+                                class={() =>
                                     `payment-card ${themeCls} ${isActive() ? 'payment-card_active' : ''}`.trim()
                                 }
                                 data-id={c.id}
                                 role="button"
                                 tabindex="0"
-                                title={(): string => (isActive() ? 'Активная карта' : 'Сделать активной')}
-                                onClick={(): void => {
+                                title={() => (isActive() ? 'Активная карта' : 'Сделать активной')}
+                                onClick={() => {
                                     if (isActive()) return;
                                     void setDefaultCard(c.id);
                                 }}
@@ -101,7 +99,7 @@ export function CardList(_props: CardListProps = {}): VNode {
                                         class="payment-card__remove js-delete-card"
                                         data-id={c.id}
                                         aria-label="Отвязать карту"
-                                        onClick={(e: Event): void => {
+                                        onClick={(e: Event) => {
                                             e.stopPropagation();
                                             void handleDelete(c.id);
                                         }}

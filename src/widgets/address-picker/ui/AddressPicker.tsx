@@ -74,23 +74,23 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     let detailsDisplayEl: HTMLInputElement | null = null;
     let detailsFormEl: HTMLFormElement | null = null;
 
-    const isAuthenticated = (): boolean => userStore.getState().user !== null;
+    const isAuthenticated = () => userStore.getState().user !== null;
 
-    const savedAddressTexts = (): string[] =>
+    const savedAddressTexts = () =>
         addressStore.getState().saved.map((a) => a.location.address_text);
 
     // Значение инпута пишем напрямую: VDOM прокидывает `value` через
     // setAttribute, который меняет дефолтное значение, а не текущее.
-    const setInlineInputValue = (text: string): void => {
+    const setInlineInputValue = (text: string) => {
         if (inlineInputEl !== null) inlineInputEl.value = text;
     };
 
-    const setModalInputValue = (text: string): void => {
+    const setModalInputValue = (text: string) => {
         if (modalInputEl !== null) modalInputEl.value = text;
     };
 
     // Программное перемещение карты: следующий actionend не должен геокодить.
-    const moveMapProgrammatically = (coords: Coordinates): void => {
+    const moveMapProgrammatically = (coords: Coordinates) => {
         selectedCoords = coords;
         if (map === null) return;
         suppressNextActionEnd = true;
@@ -102,7 +102,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         text: string,
         coords: Coordinates,
         details?: Record<string, string | undefined>,
-    ): Promise<void> => {
+    ) => {
         setInlineInputValue(text);
         try {
             await pickAddress({ text, coords, details, addressId: editingAddressId });
@@ -114,7 +114,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         props.onSelect?.(text, coords);
     };
 
-    const openDetailsModal = (text: string, coords: Coordinates): void => {
+    const openDetailsModal = (text: string, coords: Coordinates) => {
         if (detailsFormEl !== null) detailsFormEl.reset();
         if (detailsDisplayEl !== null) detailsDisplayEl.value = text;
         pendingAddressText = text;
@@ -122,12 +122,12 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         detailsModalOpen.set(true);
     };
 
-    const closeDetailsModal = (): void => {
+    const closeDetailsModal = () => {
         detailsModalOpen.set(false);
     };
 
     // Открывает модалку карты; при первом открытии создаёт карту, иначе перемещает её.
-    const openMapModal = async (addressId?: string): Promise<void> => {
+    const openMapModal = async (addressId?: string) => {
         editingAddressId = addressId ?? null;
         mapModalOpen.set(true);
 
@@ -163,12 +163,12 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         requestAnimationFrame(() => map?.fitToViewport());
     };
 
-    const closeMapModal = (): void => {
+    const closeMapModal = () => {
         mapModalOpen.set(false);
     };
 
     // Клик по подсказке: при geocodeOnClick сначала геокодим адрес, иначе берём текущие координаты.
-    const handleInlineSuggestionClick = async (suggestion: InlineSuggestion): Promise<void> => {
+    const handleInlineSuggestionClick = async (suggestion: InlineSuggestion) => {
         if (suggestion.geocodeOnClick) {
             const coords = await yandexMaps.geocode(suggestion.text);
             if (coords !== null) openDetailsModal(suggestion.text, coords);
@@ -178,7 +178,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Клик по подсказке в модалке карты: подставляет текст, скрывает блок, центрирует карту.
-    const handleModalSuggestionPick = async (text: string): Promise<void> => {
+    const handleModalSuggestionPick = async (text: string) => {
         setModalInputValue(text);
         modalSuggestionsActive.set(false);
         const coords = await yandexMaps.geocode(text);
@@ -186,7 +186,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Фокус/ввод в инлайн-инпуте: показывает подсказки; неавторизованных уводит на логин.
-    const handleInlineInput = (): void => {
+    const handleInlineInput = () => {
         if (!isAuthenticated()) {
             inlineInputEl?.blur();
             void router.go(ROUTES.login);
@@ -214,7 +214,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Если инлайн-инпут скрыт, контейнер играет роль кнопки открытия модалки карты.
-    const handleContainerClick = (event: Event): void => {
+    const handleContainerClick = (event: Event) => {
         if (inlineInputEl === null) {
             // При hideInput DOM-узла инпута вообще нет.
             if (!isAuthenticated()) {
@@ -238,7 +238,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Ввод в инпут модалки карты: дебаунсный запрос подсказок и центрирование по геокоду.
-    const handleModalInput = (): void => {
+    const handleModalInput = () => {
         const query = modalInputEl?.value.trim() ?? '';
         if (query.length <= 2) return;
         if (debounceTimer !== null) clearTimeout(debounceTimer);
@@ -255,7 +255,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Enter в инпуте модалки карты: геокодинг и перемещение карты, без отправки формы.
-    const handleModalKeyDown = (event: Event): void => {
+    const handleModalKeyDown = (event: Event) => {
         const ke = event as KeyboardEvent;
         if (ke.key !== 'Enter') return;
         ke.preventDefault();
@@ -268,7 +268,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Подтверждение адреса в модалке карты: при skipDetails финализирует, иначе открывает детали.
-    const handleConfirmMap = (): void => {
+    const handleConfirmMap = () => {
         const addr = modalInputEl?.value ?? '';
         closeMapModal();
         if (props.skipDetails === true) {
@@ -279,7 +279,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Отправка формы деталей: собирает поля и завершает выбор адреса через finalize.
-    const handleDetailsSubmit = async (event: Event): Promise<void> => {
+    const handleDetailsSubmit = async (event: Event) => {
         event.preventDefault();
         if (detailsFormEl === null) return;
         const formData = new FormData(detailsFormEl);
@@ -299,13 +299,13 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Кнопка смены адреса в модалке деталей: закрывает детали, возвращает в модалку карты.
-    const handleChangeAddress = (): void => {
+    const handleChangeAddress = () => {
         closeDetailsModal();
         void openMapModal();
     };
 
     // Клик по документу: закрывает инлайн-выпадашку подсказок при клике вне корня виджета.
-    const handleDocClick = (event: Event): void => {
+    const handleDocClick = (event: Event) => {
         const target = event.target as Node | null;
         if (target === null) return;
         if (rootEl === null) return;
@@ -343,11 +343,11 @@ export function AddressPicker(props: AddressPickerProps): VNode {
 
     return (
         <>
-            <Show when={(): boolean => props.hideInput !== true}>
+            <Show when={() => props.hideInput !== true}>
                 <div
                     class="address-picker search-bar__group search-bar__group_address"
                     onClick={handleContainerClick}
-                    ref={(el: Element | null): void => {
+                    ref={(el: Element | null) => {
                         rootEl = el as HTMLElement | null;
                     }}
                 >
@@ -374,12 +374,12 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                         autocomplete="off"
                         onFocus={handleInlineInput}
                         onInput={handleInlineInput}
-                        ref={(el: Element | null): void => {
+                        ref={(el: Element | null) => {
                             inlineInputEl = el as HTMLInputElement | null;
                         }}
                     />
                     <div
-                        class={(): string =>
+                        class={() =>
                             dropdownOpen()
                                 ? 'address-dropdown address-dropdown_active'
                                 : 'address-dropdown'
@@ -387,10 +387,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     >
                         <div
                             class="address-dropdown__map-button-wrapper"
-                            style={(): string =>
+                            style={() =>
                                 openMapButtonVisible() ? 'display: block' : 'display: none'
                             }
-                            onClick={(): void => {
+                            onClick={() => {
                                 void openMapModal();
                             }}
                         >
@@ -398,13 +398,13 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                         </div>
                         <div class="address-dropdown__suggestions">
                             <For
-                                each={(): readonly InlineSuggestion[] => inlineSuggestions()}
-                                key={(s): string => s.text}
+                                each={inlineSuggestions}
+                                key={(s) => s.text}
                             >
-                                {(s): VNode => (
+                                {(s) => (
                                     <div
                                         class="address-dropdown__item"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             void handleInlineSuggestionClick(s);
                                         }}
                                     >
@@ -418,7 +418,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             </Show>
 
             <div
-                class={(): string =>
+                class={() =>
                     mapModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
                 }
             >
@@ -440,30 +440,30 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                     autocomplete="off"
                                     onInput={handleModalInput}
                                     onKeyDown={handleModalKeyDown}
-                                    ref={(el: Element | null): void => {
+                                    ref={(el: Element | null) => {
                                         modalInputEl = el as HTMLInputElement | null;
                                     }}
                                 />
                             </div>
                             <div
-                                class={(): string =>
+                                class={() =>
                                     modalSuggestionsActive()
                                         ? 'address-modal__suggestions address-modal__suggestions_active'
                                         : 'address-modal__suggestions'
                                 }
                             >
                                 <For
-                                    each={(): readonly string[] => modalSuggestions()}
-                                    key={(text): string => text}
+                                    each={modalSuggestions}
+                                    key={(text) => text}
                                 >
-                                    {(text): VNode => (
+                                    {(text) => (
                                         <div
                                             class="modal-suggestion-item"
-                                            onPointerDown={(e: Event): void => {
+                                            onPointerDown={(e: Event) => {
                                                 e.preventDefault();
                                                 void handleModalSuggestionPick(text);
                                             }}
-                                            onClick={(e: Event): void => {
+                                            onClick={(e: Event) => {
                                                 e.preventDefault();
                                                 void handleModalSuggestionPick(text);
                                             }}
@@ -485,7 +485,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     <div class="address-modal__map-container">
                         <div
                             style="width: 100%; height: 297px; border-radius: 24px;"
-                            ref={(el: Element | null): void => {
+                            ref={(el: Element | null) => {
                                 mapContainerEl = el as HTMLElement | null;
                             }}
                         />
@@ -495,7 +495,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             </div>
 
             <div
-                class={(): string =>
+                class={() =>
                     detailsModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
                 }
             >
@@ -507,10 +507,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     <form
                         class="auth-form"
                         style="max-width:100%"
-                        onSubmit={(e: Event): void => {
+                        onSubmit={(e: Event) => {
                             void handleDetailsSubmit(e);
                         }}
-                        ref={(el: Element | null): void => {
+                        ref={(el: Element | null) => {
                             detailsFormEl = el as HTMLFormElement | null;
                         }}
                     >
@@ -522,7 +522,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                     class="input-field"
                                     disabled
                                     style="background:#eee; flex: 1;"
-                                    ref={(el: Element | null): void => {
+                                    ref={(el: Element | null) => {
                                         detailsDisplayEl = el as HTMLInputElement | null;
                                     }}
                                 />
@@ -565,5 +565,5 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                 </div>
             </div>
         </>
-    ) as VNode;
+    );
 }

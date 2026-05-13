@@ -13,7 +13,6 @@ import { For, createPortal } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
 import { modalStack } from './modalStack';
-import type { ModalEntry } from './modalStack';
 
 /**
  * Селектор контейнера, в который ModalRoot отправляет каждую модалку.
@@ -31,8 +30,8 @@ const MODAL_ROOT_SELECTOR = '#modal-root';
  */
 export function ModalRoot(): VNode {
     return (
-        <For each={modalStack} key={(entry: ModalEntry) => entry.id}>
-            {(entry: ModalEntry) => createPortal(MODAL_ROOT_SELECTOR, entry.vnode)}
+        <For each={modalStack} key={(entry) => entry.id}>
+            {(entry) => createPortal(MODAL_ROOT_SELECTOR, entry.vnode)}
         </For>
-    ) as VNode;
+    );
 }

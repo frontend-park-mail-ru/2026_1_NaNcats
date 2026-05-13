@@ -21,7 +21,7 @@ export interface LinkProps {
 }
 
 /** true, если это обычный левый клик без модификаторов (модификаторные клики оставляем браузеру). */
-function isPlainLeftClick(event: MouseEvent): boolean {
+function isPlainLeftClick(event: MouseEvent) {
     return (
         event.button === 0 &&
         !event.metaKey &&
@@ -34,7 +34,7 @@ function isPlainLeftClick(event: MouseEvent): boolean {
 export function Link(props: LinkProps): VNode {
     const { to, children, ...rest } = props;
 
-    const handleClick = (event: Event): void => {
+    const handleClick = (event: Event) => {
         const mouseEvent = event as MouseEvent;
         if (!isPlainLeftClick(mouseEvent)) {
             return;

@@ -27,7 +27,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
     let nameInputEl: HTMLInputElement | null = null;
     let emailInputEl: HTMLInputElement | null = null;
 
-    const toggleEdit = (): void => {
+    const toggleEdit = () => {
         const next = !isEditing.peek();
         isEditing.set(next);
         if (next) {
@@ -42,7 +42,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
         generalError.set('');
     };
 
-    const handleSubmit = async (event: Event): Promise<void> => {
+    const handleSubmit = async (event: Event) => {
         event.preventDefault();
         if (submitting.peek()) return;
 
@@ -86,7 +86,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
     return (
         <form
             class="edit-profile-form"
-            onSubmit={(e: Event): void => {
+            onSubmit={(e: Event) => {
                 void handleSubmit(e);
             }}
         >
@@ -99,11 +99,11 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                         class="profile-input profile-input_email"
                         type="text"
                         value={savedName}
-                        disabled={(): boolean => !isEditing()}
-                        onInput={(e: Event): void => {
+                        disabled={() => !isEditing()}
+                        onInput={(e: Event) => {
                             nameValue.set((e.target as HTMLInputElement).value);
                         }}
-                        ref={(el: Element | null): void => {
+                        ref={(el: Element | null) => {
                             nameInputEl = el as HTMLInputElement | null;
                         }}
                     />
@@ -120,11 +120,11 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                         class="profile-input profile-input_email"
                         type="email"
                         value={savedEmail}
-                        disabled={(): boolean => !isEditing()}
-                        onInput={(e: Event): void => {
+                        disabled={() => !isEditing()}
+                        onInput={(e: Event) => {
                             emailValue.set((e.target as HTMLInputElement).value);
                         }}
-                        ref={(el: Element | null): void => {
+                        ref={(el: Element | null) => {
                             emailInputEl = el as HTMLInputElement | null;
                         }}
                     />
@@ -141,16 +141,16 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                 </div>
             </div>
 
-            <Show when={(): boolean => generalError() !== ''}>
+            <Show when={() => generalError() !== ''}>
                 <div id="profile-error" class="error-msg">
-                    {(): string => generalError()}
+                    {() => generalError()}
                 </div>
             </Show>
 
             <button
                 type="submit"
                 id="save-profile-btn"
-                class={(): string =>
+                class={() =>
                     isEditing() ? 'button button_primary' : 'button button_primary button_hidden'
                 }
                 style="height:40px; margin-top:10px;"
@@ -159,5 +159,5 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                 Сохранить
             </button>
         </form>
-    ) as VNode;
+    );
 }

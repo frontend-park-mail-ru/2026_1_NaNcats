@@ -112,13 +112,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     let orderStatusCtl: OrderStatusModalController | null = null;
 
     /** Форматированные итоговые суммы по текущим позициям. */
-    const computeTotals = (): {
-        cartItemsTotal: string;
-        deliveryFee: string;
-        serviceFee: string;
-        grandTotal: string;
-        hasItems: boolean;
-    } => {
+    const computeTotals = () => {
         const cartTotal = itemsTotalRub(itemsSig());
         const grand = cartTotal > 0 ? cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB : 0;
         return {
@@ -130,19 +124,19 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         };
     };
 
-    const overlayClass = (baseClass: string, openSig: () => boolean): (() => string) =>
-        (): string => (openSig() ? `${baseClass} modal-overlay_active` : baseClass);
+    const overlayClass = (baseClass: string, openSig: () => boolean) =>
+        () => (openSig() ? `${baseClass} modal-overlay_active` : baseClass);
 
-    const handleSelectAddress = (addr: Address): void => {
+    const handleSelectAddress = (addr: Address) => {
         selectedAddressSig.set(addr);
     };
 
-    const handleSelectCard = (card: Card | null): void => {
+    const handleSelectCard = (card: Card | null) => {
         selectedCardSig.set(card);
     };
 
     // Закрывает модалку выбора адреса и через паузу открывает модалку карты в AddressPicker.
-    const handleAddNewAddress = (): void => {
+    const handleAddNewAddress = () => {
         addressOpenSig.set(false);
         setTimeout(() => {
             void pickerCtl?.openMapModal();
@@ -150,7 +144,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     };
 
     // Актуальный список адресов читаем напрямую из addressStore.
-    const handlePickerSelect = (): void => {
+    const handlePickerSelect = () => {
         const fresh = addressStore.getState().saved;
         addressesSig.set(fresh);
         if (fresh.length > 0) {
@@ -159,7 +153,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     };
 
     // Гарантирует, что у всех позиций корзины назначен владелец-плательщик; null если не получилось.
-    const ensureAssignedItems = async (): Promise<CartItem[] | null> => {
+    const ensureAssignedItems = async () => {
         const cart = cartStore.getState();
         const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
 
@@ -201,7 +195,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         return null;
     };
 
-    const handlePayClick = async (): Promise<void> => {
+    const handlePayClick = async () => {
         errorSig.set('');
 
         const address = selectedAddressSig.peek();
@@ -308,14 +302,14 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                             <h2 class="checkout-card__title">Условия доставки</h2>
                         </div>
                         <Show
-                            when={(): boolean => selectedAddressSig() !== null}
+                            when={() => selectedAddressSig() !== null}
                             fallback={
                                 <div class="checkout-warning">
                                     ⚠️ Необходимо добавить или выбрать адрес доставки
                                     <button
                                         class="button button_primary mt-10"
                                         style="height: 40px; width: 200px;"
-                                        onClick={(): void => addressOpenSig.set(true)}
+                                        onClick={() => addressOpenSig.set(true)}
                                     >
                                         Выбрать адрес
                                     </button>
@@ -325,7 +319,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                             <div class="address-display">
                                 <div class="address-display__icon">🏠</div>
                                 <div class="address-display__text">
-                                    {(): string => {
+                                    {() => {
                                         const a = selectedAddressSig();
                                         if (!a) return '';
                                         const base = a.location.address_text;
@@ -335,7 +329,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                 <button
                                     class="button button_ghost"
                                     style="height: 30px; margin: 0; padding: 0 10px;"
-                                    onClick={(): void => addressOpenSig.set(true)}
+                                    onClick={() => addressOpenSig.set(true)}
                                 >
                                     Изменить
                                 </button>
@@ -349,7 +343,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                         <button
                             class="button button_secondary mt-20"
                             style="width: 100%;"
-                            onClick={(): void => cartOpenSig.set(true)}
+                            onClick={() => cartOpenSig.set(true)}
                         >
                             Посмотреть состав заказа
                         </button>
@@ -364,7 +358,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                         <div class="payment-display">
                             <div class="payment-display__icon">💳</div>
                             <div class="payment-display__text">
-                                {(): string => {
+                                {() => {
                                     const c = selectedCardSig();
                                     return c ? `**${c.last4}` : 'Стандартная оплата (новая карта)';
                                 }}
@@ -372,7 +366,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                             <button
                                 class="button button_ghost"
                                 style="height: 30px; margin: 0; padding: 0 10px;"
-                                onClick={(): void => paymentOpenSig.set(true)}
+                                onClick={() => paymentOpenSig.set(true)}
                             >
                                 Изменить
                             </button>
@@ -383,34 +377,34 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                         <h2 class="checkout-card__title">Что в цене</h2>
                         <div class="summary-row">
                             <span>Товары в заказе</span>
-                            <span>{(): string => `${computeTotals().cartItemsTotal} ₽`}</span>
+                            <span>{() => `${computeTotals().cartItemsTotal} ₽`}</span>
                         </div>
                         <div class="summary-row">
                             <span>Доставка</span>
-                            <span>{(): string => `${computeTotals().deliveryFee} ₽`}</span>
+                            <span>{() => `${computeTotals().deliveryFee} ₽`}</span>
                         </div>
                         <div class="summary-row">
                             <span>Сервисный сбор</span>
-                            <span>{(): string => `${computeTotals().serviceFee} ₽`}</span>
+                            <span>{() => `${computeTotals().serviceFee} ₽`}</span>
                         </div>
 
                         <div class="checkout-total-row mt-20">
                             <button
                                 class="button button_primary"
                                 style="width: auto; padding: 0 40px; margin: 0;"
-                                disabled={(): boolean => {
+                                disabled={() => {
                                     if (payProcessingSig()) return true;
                                     if (selectedAddressSig() === null) return true;
                                     return !computeTotals().hasItems;
                                 }}
-                                onClick={(): void => {
+                                onClick={() => {
                                     void handlePayClick();
                                 }}
                             >
-                                {(): string => (payProcessingSig() ? 'Оформляем...' : 'Оплатить')}
+                                {() => (payProcessingSig() ? 'Оформляем...' : 'Оплатить')}
                             </button>
                             <div class="checkout-total-price">
-                                {(): string => `${computeTotals().grandTotal} ₽`}
+                                {() => `${computeTotals().grandTotal} ₽`}
                             </div>
                         </div>
                         <div
@@ -427,18 +421,18 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 <div class="checkout-modal">
                     <div
                         class="checkout-modal__close"
-                        onClick={(): void => cartOpenSig.set(false)}
+                        onClick={() => cartOpenSig.set(false)}
                     >
                         &times;
                     </div>
                     <h2 class="checkout-modal__title">Состав заказа</h2>
                     <div class="checkout-modal__content" style="max-height: 400px; overflow-y: auto;">
                         <Show
-                            when={(): boolean => itemsSig().length > 0}
+                            when={() => itemsSig().length > 0}
                             fallback={<p>Корзина пуста</p>}
                         >
-                            <For each={itemsSig} key={(i): string | number => i.dish_id}>
-                                {(item): VNode => (
+                            <For each={itemsSig} key={(i) => i.dish_id}>
+                                {(item) => (
                                     <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
                                         <img
                                             src={item.image_url}
@@ -468,7 +462,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 <div class="checkout-modal" style="width: 500px;">
                     <div
                         class="checkout-modal__close"
-                        onClick={(): void => addressOpenSig.set(false)}
+                        onClick={() => addressOpenSig.set(false)}
                     >
                         &times;
                     </div>
@@ -476,13 +470,13 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     <div class="checkout-modal__content">
                         <div class="selection-list">
                             <Show
-                                when={(): boolean => addressesSig().length > 0}
+                                when={() => addressesSig().length > 0}
                                 fallback={<p class="empty-text">У вас нет сохраненных адресов.</p>}
                             >
-                                <For each={addressesSig} key={(a): string => a.id}>
-                                    {(addr): VNode => (
+                                <For each={addressesSig} key={(a) => a.id}>
+                                    {(addr) => (
                                         <div
-                                            class={(): string => {
+                                            class={() => {
                                                 const isActive =
                                                     selectedAddressSig()?.id === addr.id;
                                                 return isActive
@@ -490,7 +484,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                                     : 'selection-item';
                                             }}
                                             data-id={addr.id}
-                                            onClick={(): void => handleSelectAddress(addr)}
+                                            onClick={() => handleSelectAddress(addr)}
                                         >
                                             <div style="font-weight: 600;">
                                                 {addr.location.address_text}
@@ -517,7 +511,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 <div class="checkout-modal" style="width: 400px;">
                     <div
                         class="checkout-modal__close"
-                        onClick={(): void => paymentOpenSig.set(false)}
+                        onClick={() => paymentOpenSig.set(false)}
                     >
                         &times;
                     </div>
@@ -525,31 +519,31 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     <div class="checkout-modal__content">
                         <div class="selection-list">
                             <div
-                                class={(): string => {
+                                class={() => {
                                     const noCard = selectedCardSig() === null;
                                     return noCard
                                         ? 'selection-item selection-item_active'
                                         : 'selection-item';
                                 }}
                                 data-id=""
-                                onClick={(): void => handleSelectCard(null)}
+                                onClick={() => handleSelectCard(null)}
                             >
                                 <div style="font-weight: 600;">💳 Стандартная оплата</div>
                                 <div style="font-size: 12px; color: #777;">
                                     Ввести реквизиты новой карты
                                 </div>
                             </div>
-                            <For each={cardsSig} key={(c): string => c.id}>
-                                {(card): VNode => (
+                            <For each={cardsSig} key={(c) => c.id}>
+                                {(card) => (
                                     <div
-                                        class={(): string => {
+                                        class={() => {
                                             const isActive = selectedCardSig()?.id === card.id;
                                             return isActive
                                                 ? 'selection-item selection-item_active'
                                                 : 'selection-item';
                                         }}
                                         data-id={card.id}
-                                        onClick={(): void => handleSelectCard(card)}
+                                        onClick={() => handleSelectCard(card)}
                                     >
                                         <div style="font-weight: 600;">{`💳 **${card.last4}`}</div>
                                         <div style="font-size: 12px; color: #777;">
@@ -567,15 +561,15 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 hideInput
                 skipDetails={false}
                 onSelect={handlePickerSelect}
-                controllerRef={(ctl: AddressPickerController | null): void => {
+                controllerRef={(ctl: AddressPickerController | null) => {
                     pickerCtl = ctl;
                 }}
             />
             <OrderStatusModal
-                controllerRef={(ctl: OrderStatusModalController | null): void => {
+                controllerRef={(ctl: OrderStatusModalController | null) => {
                     orderStatusCtl = ctl;
                 }}
             />
         </div>
-    ) as VNode;
+    );
 }

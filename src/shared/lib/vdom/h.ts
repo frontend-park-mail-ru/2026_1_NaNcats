@@ -12,7 +12,6 @@ import type {
     Key,
     NormalizedChild,
     RawProps,
-    Ref,
     VNode,
     VNodeChild,
     VNodeProps,
@@ -103,7 +102,7 @@ export function h<P extends VNodeProps = VNodeProps>(
         key = raw.key;
     }
 
-    const ref: Ref<Element> | undefined = raw.ref;
+    const ref = raw.ref;
 
     const cleanProps: Record<string, unknown> = {};
     for (const propName in raw) {

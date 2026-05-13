@@ -32,7 +32,7 @@ export function computed<T>(fn: () => T): () => T {
     const initial = runWithOwner(node, fn);
     cache = signal<T>(initial);
 
-    return (): T => {
+    return () => {
         const listener = getListener();
         if (listener) {
             return cache!();

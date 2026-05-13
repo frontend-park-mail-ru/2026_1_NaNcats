@@ -6,7 +6,6 @@
  */
 
 import { pushModal } from '@shared/lib/portal';
-import type { VNode } from '@shared/lib/vdom';
 
 /** Тип всплывающего окна: alert (только OK) или confirm (OK и Отмена). */
 type PopupType = 'alert' | 'confirm';
@@ -50,29 +49,29 @@ export class Popup {
             let settled = false;
             let closeEntry: (() => void) | null = null;
 
-            const finish = (result: boolean): void => {
+            const finish = (result: boolean) => {
                 if (settled) return;
                 settled = true;
                 if (closeEntry) closeEntry();
                 resolve(result);
             };
 
-            const handleOverlayClick = (event: Event): void => {
+            const handleOverlayClick = (event: Event) => {
                 if (event.target !== event.currentTarget) return;
                 finish(false);
             };
 
-            const handleOk = (event: Event): void => {
+            const handleOk = (event: Event) => {
                 event.stopPropagation();
                 finish(true);
             };
 
-            const handleCancel = (event: Event): void => {
+            const handleCancel = (event: Event) => {
                 event.stopPropagation();
                 finish(false);
             };
 
-            const popupVNode: VNode = (
+            const popupVNode = (
                 <div
                     class="modal-overlay modal-overlay_active"
                     style="z-index: 9999;"
@@ -105,7 +104,7 @@ export class Popup {
                         </div>
                     </div>
                 </div>
-            ) as VNode;
+            );
 
             const result = pushModal(popupVNode, () => {
                 // закрытие извне (чужим popModal по id): резолвим в false, если ещё не разрешили

@@ -146,7 +146,7 @@ export async function load(): Promise<RestaurantPageProps> {
 }
 
 // Анимация полёта картинки блюда к иконке корзины; молча выходит, если узлы не найдены.
-const flyDishToCart = (dishId: number): void => {
+const flyDishToCart = (dishId: number) => {
     const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
     const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as
         | HTMLElement
@@ -187,17 +187,17 @@ const flyDishToCart = (dishId: number): void => {
         },
     );
 
-    animation.onfinish = (): void => {
+    animation.onfinish = () => {
         clone.remove();
     };
 };
 
 // Прокручивает к карточке блюда и подсвечивает; подсветка снимается на первое действие пользователя.
-const highlightAndScroll = (card: HTMLElement): void => {
+const highlightAndScroll = (card: HTMLElement) => {
     card.scrollIntoView({ behavior: 'smooth', block: 'center' });
     card.classList.add('dish-card_highlighted');
 
-    const dismiss = (): void => {
+    const dismiss = () => {
         card.classList.remove('dish-card_highlighted');
         document.removeEventListener('pointerdown', dismiss, true);
         document.removeEventListener('wheel', dismiss, true);
@@ -212,7 +212,7 @@ const highlightAndScroll = (card: HTMLElement): void => {
 
 // HTML-разметка модалки отзывов.
 const buildReviewsModalHtml = (reviews: Review[]): string => {
-    const stars = (n: number): string => '★'.repeat(n) + '☆'.repeat(5 - n);
+    const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
     const list = reviews.length
         ? reviews
@@ -264,7 +264,7 @@ const buildReviewsModalHtml = (reviews: Review[]): string => {
 };
 
 export function RestaurantPage(props: RestaurantPageProps): VNode {
-    const restaurantId = ((): number => {
+    const restaurantId = (() => {
         const raw = getQueryParam('id');
         return raw ? parseInt(raw, 10) : 0;
     })();
@@ -284,7 +284,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     let searchInputEl: HTMLInputElement | null = null;
 
     // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
-    const fetchNextPage = async (): Promise<void> => {
+    const fetchNextPage = async () => {
         if (isFetching() || !hasMore() || !restaurantId) return;
         isFetching.set(true);
         try {
@@ -306,7 +306,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
-    const scrollToDishById = async (dishId: string): Promise<void> => {
+    const scrollToDishById = async (dishId: string) => {
         for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
             const card = document.querySelector(
                 `.dish-card[data-dish-id="${dishId}"]`,
@@ -327,7 +327,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Добавление блюда в корзину; неавторизованного редиректит на /login, при смене ресторана спрашивает подтверждение.
-    const handleAdd = async (dish: DishView): Promise<void> => {
+    const handleAdd = async (dish: DishView) => {
         if (!userStore.getState().user) {
             void router.go(ROUTES.login);
             return;
@@ -356,7 +356,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Поиск блюд внутри ресторана; пустой запрос восстанавливает полный список.
-    const runDishSearch = async (q: string): Promise<void> => {
+    const runDishSearch = async (q: string) => {
         if (!q) {
             sections.set(buildSections(allDishes()));
             return;
@@ -381,7 +381,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
     };
 
-    const handleSearchInput = (e: Event): void => {
+    const handleSearchInput = (e: Event) => {
         const target = e.target as HTMLInputElement;
         const q = target.value.trim();
         searchValue.set(target.value);
@@ -393,7 +393,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }, SEARCH_DEBOUNCE_MS);
     };
 
-    const handleSearchClear = (): void => {
+    const handleSearchClear = () => {
         searchValue.set('');
         // Чистим .value напрямую: проп value прокидывается через setAttribute, текущее содержимое не трогает.
         if (searchInputEl !== null) {
@@ -406,29 +406,29 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         sections.set(buildSections(allDishes()));
     };
 
-    const scrollToSection = (idx: number): void => {
+    const scrollToSection = (idx: number) => {
         const target = document.getElementById(`dish-section-${idx}`);
         if (!target) return;
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const openMenuDrawer = (): void => {
+    const openMenuDrawer = () => {
         menuOpen.set(true);
         cartOpen.set(false);
     };
 
-    const openCartSheet = (): void => {
+    const openCartSheet = () => {
         cartOpen.set(true);
         menuOpen.set(false);
     };
 
-    const closePanels = (): void => {
+    const closePanels = () => {
         menuOpen.set(false);
         cartOpen.set(false);
     };
 
     // Закрывает модалку отзывов: снимает класс и удаляет оверлей после transition.
-    const closeReviews = (): void => {
+    const closeReviews = () => {
         const overlay = document.querySelector('.js-reviews-overlay');
         if (!overlay) return;
         overlay.classList.remove('reviews-overlay_open');
@@ -436,13 +436,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Интерактивный выбор оценки звёздами; зафиксированное значение лежит в data-rating контейнера.
-    const setupStarPicker = (overlay: HTMLElement): void => {
+    const setupStarPicker = (overlay: HTMLElement) => {
         const picker = overlay.querySelector('.js-star-picker') as HTMLElement | null;
         if (!picker) return;
 
         const stars = picker.querySelectorAll('.js-star');
 
-        const highlight = (n: number): void => {
+        const highlight = (n: number) => {
             stars.forEach((s, i) => {
                 s.classList.toggle('star-picker__star_active', i < n);
             });
@@ -461,7 +461,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Форма отправки отзыва: валидирует имя, оценку, комментарий; при успехе закрывает модалку.
-    const setupReviewForm = (overlay: HTMLElement): void => {
+    const setupReviewForm = (overlay: HTMLElement) => {
         const submitBtn = overlay.querySelector('.js-review-submit') as HTMLButtonElement | null;
         if (!submitBtn) return;
 
@@ -508,7 +508,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Открывает модалку отзывов: грузит отзывы, вставляет оверлей, навешивает обработчики и форму.
-    const openReviews = async (): Promise<void> => {
+    const openReviews = async () => {
         let reviews: Review[] = [];
         try {
             reviews = await restaurantApi.getReviews(restaurantId);
@@ -536,7 +536,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Подгружает следующую страницу блюд при приближении к низу.
-    const handleScroll = (): void => {
+    const handleScroll = () => {
         if (isFetching() || !hasMore() || !restaurantId) return;
         const doc = document.documentElement;
         const distance = doc.scrollHeight - doc.scrollTop - doc.clientHeight;
@@ -545,14 +545,14 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Escape закрывает мобильные панели и модалку отзывов.
-    const handleKeyDown = (e: KeyboardEvent): void => {
+    const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key !== 'Escape') return;
         closePanels();
         closeReviews();
     };
 
     // При росте ширины окна закрываем открытые мобильные панели.
-    const handleResize = (): void => {
+    const handleResize = () => {
         const width = window.innerWidth;
         if (width > TABLET_BREAKPOINT) {
             closePanels();
@@ -589,7 +589,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
 
     return (
         <div
-            class={(): string => {
+            class={() => {
                 const classes = ['page-wrapper', 'restaurant-details-page'];
                 if (menuOpen()) classes.push('restaurant-details-page_drawer-menu');
                 if (cartOpen()) classes.push('restaurant-details-page_sheet-cart');
@@ -691,22 +691,22 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div class="categories-list">
                             <For
                                 each={sections}
-                                key={(s: DishSection, i: number): string =>
+                                key={(s, i) =>
                                     `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`
                                 }
                             >
-                                {(sec: DishSection, idx: number): VNode => (
+                                {(sec, idx) => (
                                     <div
                                         class="category-item"
                                         tabindex="0"
                                         role="button"
-                                        onClick={(): void => {
+                                        onClick={() => {
                                             scrollToSection(idx);
                                             if (window.innerWidth <= MOBILE_BREAKPOINT) {
                                                 closePanels();
                                             }
                                         }}
-                                        onKeyDown={(e: Event): void => {
+                                        onKeyDown={(e: Event) => {
                                             const ke = e as KeyboardEvent;
                                             if (ke.key !== 'Enter' && ke.key !== ' ') return;
                                             ke.preventDefault();
@@ -767,14 +767,14 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                     placeholder="Поиск по меню ресторана"
                                     autocomplete="off"
                                     onInput={handleSearchInput}
-                                    ref={(el: Element | null): void => {
+                                    ref={(el: Element | null) => {
                                         searchInputEl = el as HTMLInputElement | null;
                                     }}
                                 />
                                 <button
                                     type="button"
                                     class="restaurant-search__clear"
-                                    style={(): string =>
+                                    style={() =>
                                         searchValue().trim() ? 'display: flex' : 'display: none'
                                     }
                                     onClick={handleSearchClear}
@@ -787,7 +787,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <button
                             type="button"
                             class="reviews-btn"
-                            onClick={(): void => {
+                            onClick={() => {
                                 void openReviews();
                             }}
                         >
@@ -811,11 +811,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div>
                             <For
                                 each={sections}
-                                key={(s: DishSection, i: number): string =>
+                                key={(s, i) =>
                                     `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`
                                 }
                             >
-                                {(sec: DishSection, idx: number): VNode => (
+                                {(sec, idx) => (
                                     <>
                                         <h2
                                             class="restaurant-section-title"
@@ -825,10 +825,10 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         </h2>
                                         <div class="res-grid">
                                             <For
-                                                each={(): readonly DishView[] => sec.dishes}
-                                                key={(d: DishView): number => d.id}
+                                                each={() => sec.dishes}
+                                                key={(d) => d.id}
                                             >
-                                                {(d: DishView): VNode => (
+                                                {(d) => (
                                                     <div class="dish-card" data-dish-id={d.id}>
                                                         <img
                                                             class="dish-card__img"
@@ -852,7 +852,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                             data-name={d.name}
                                                             data-price={d.price}
                                                             data-image={d.image_url}
-                                                            onClick={(): void => {
+                                                            onClick={() => {
                                                                 void handleAdd(d);
                                                             }}
                                                         >
@@ -878,5 +878,5 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 </aside>
             </div>
         </div>
-    ) as VNode;
+    );
 }

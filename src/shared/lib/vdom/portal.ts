@@ -14,7 +14,7 @@ import type { VNode, VNodeChild } from './types';
  * @returns VNode со специальным типом-маркером, готовый для render или patch.
  */
 export function createPortal(target: Element | string, children: VNodeChild): VNode {
-    const resolved: Element | null = typeof target === 'string' ? document.querySelector(target) : target;
+    const resolved = typeof target === 'string' ? document.querySelector(target) : target;
     if (!resolved) {
         throw new Error(`vdom.createPortal: целевой элемент не найден по селектору "${String(target)}"`);
     }

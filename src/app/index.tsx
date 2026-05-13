@@ -17,7 +17,7 @@ window.router = router;
  * Порядок важен: сначала CSRF-токен (до него изменяющие запросы небезопасны),
  * затем сервис-воркер и слежение за сетью, в конце render и первый переход роутера.
  */
-const init = async (): Promise<void> => {
+const init = async () => {
     await initCsrf();
     initServiceWorker();
     initOnlineStatus();

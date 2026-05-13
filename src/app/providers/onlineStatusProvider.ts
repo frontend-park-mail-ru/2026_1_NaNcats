@@ -5,4 +5,4 @@
  * и AuthLayout). Функция оставлена для будущих cross-cutting подписок на
  * window online/offline.
  */
-export const initOnlineStatus = (): void => {};
+export const initOnlineStatus = () => {};

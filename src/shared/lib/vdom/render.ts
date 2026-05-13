@@ -228,7 +228,7 @@ export function mount(vnode: VNode, parent: Node, anchor: Node | null): Node | N
         const SVG_NS = 'http://www.w3.org/2000/svg';
         const parentNs = (parent as Element).namespaceURI;
         const inSvg = type === 'svg' || parentNs === SVG_NS;
-        const el: Element = inSvg ? document.createElementNS(SVG_NS, type) : document.createElement(type);
+        const el = inSvg ? document.createElementNS(SVG_NS, type) : document.createElement(type);
         setProps(el as HTMLElement, vnode.props);
         for (const child of vnode.children) {
             mountChild(child, el, null);

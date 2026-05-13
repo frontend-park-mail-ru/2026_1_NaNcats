@@ -74,7 +74,7 @@ export class Modal {
     open(content: ModalContent): void {
         if (this.pushResult) return;
 
-        const overlayClassName: string = [
+        const overlayClassName = [
             'modal-overlay',
             'modal-overlay_active',
             this.options.overlayClassName,
@@ -84,18 +84,18 @@ export class Modal {
 
         const closeOnOverlayClick = this.options.closeOnOverlayClick !== false;
 
-        const handleOverlayClick = (event: Event): void => {
+        const handleOverlayClick = (event: Event) => {
             const mouseEvent = event as MouseEvent;
             if (!closeOnOverlayClick) return;
             if (mouseEvent.target !== mouseEvent.currentTarget) return;
             this.close();
         };
 
-        const overlayVNode: VNode = (
+        const overlayVNode = (
             <div class={overlayClassName} onClick={handleOverlayClick}>
                 {this.renderContent(content)}
             </div>
-        ) as VNode;
+        );
 
         this.pushResult = pushModal(overlayVNode, () => {
             this.pushResult = null;
@@ -132,22 +132,22 @@ export class Modal {
             return content;
         }
         if (typeof content === 'string') {
-            const html: string = content;
+            const html = content;
             return (
                 <div
-                    ref={(el: Element | null): void => {
+                    ref={(el: Element | null) => {
                         if (el) (el as HTMLElement).innerHTML = html;
                     }}
                 />
-            ) as VNode;
+            );
         }
-        const node: HTMLElement = content;
+        const node = content;
         return (
             <div
-                ref={(el: Element | null): void => {
+                ref={(el: Element | null) => {
                     if (el) el.appendChild(node);
                 }}
             />
-        ) as VNode;
+        );
     }
 }

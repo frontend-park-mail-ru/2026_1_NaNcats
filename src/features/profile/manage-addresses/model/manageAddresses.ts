@@ -6,7 +6,7 @@ import { addressApi, addressStore } from '@entities/address';
  *
  * @param id Идентификатор удаляемого адреса.
  */
-export const removeAddress = async (id: string): Promise<void> => {
+export const removeAddress = async (id: string) => {
     await addressApi.remove(id);
     await addressStore.loadSaved();
 };

@@ -20,5 +20,5 @@ export function NotFoundPage(): VNode {
                 Вернуться на главную
             </Link>
         </div>
-    ) as VNode;
+    );
 }

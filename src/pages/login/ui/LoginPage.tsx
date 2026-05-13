@@ -22,7 +22,7 @@ export function LoginPage(): VNode {
                         </p>
                     </div>
                     <LoginForm
-                        onSuccess={(): void => {
+                        onSuccess={() => {
                             void router.go(ROUTES.home);
                         }}
                     />
@@ -32,5 +32,5 @@ export function LoginPage(): VNode {
                 </div>
             </div>
         </div>
-    ) as VNode;
+    );
 }

@@ -26,5 +26,5 @@ export function PageLoadingSkeleton(): VNode {
                 <div class="page-loading-skeleton__tile" />
             </div>
         </div>
-    ) as VNode;
+    );
 }

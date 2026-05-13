@@ -26,7 +26,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
     const courierComment = signal<string>(initial.courier_comment ?? '');
     const submitting = signal<boolean>(false);
 
-    const handleSubmit = async (event: Event): Promise<void> => {
+    const handleSubmit = async (event: Event) => {
         event.preventDefault();
         if (submitting.peek()) return;
 
@@ -56,7 +56,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
         <form
             id="address-full-form"
             class="address-form"
-            onSubmit={(e: Event): void => {
+            onSubmit={(e: Event) => {
                 void handleSubmit(e);
             }}
         >
@@ -81,7 +81,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                         class="input-field"
                         type="text"
                         value={apartment.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             apartment.set((e.target as HTMLInputElement).value);
                         }}
                     />
@@ -94,7 +94,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                         class="input-field"
                         type="text"
                         value={entrance.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             entrance.set((e.target as HTMLInputElement).value);
                         }}
                     />
@@ -107,7 +107,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                         class="input-field"
                         type="text"
                         value={floor.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             floor.set((e.target as HTMLInputElement).value);
                         }}
                     />
@@ -120,7 +120,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                         class="input-field"
                         type="text"
                         value={doorCode.peek()}
-                        onInput={(e: Event): void => {
+                        onInput={(e: Event) => {
                             doorCode.set((e.target as HTMLInputElement).value);
                         }}
                     />
@@ -135,7 +135,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                     class="input-field"
                     type="text"
                     value={courierComment.peek()}
-                    onInput={(e: Event): void => {
+                    onInput={(e: Event) => {
                         courierComment.set((e.target as HTMLInputElement).value);
                     }}
                 />
@@ -145,5 +145,5 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                 Сохранить
             </button>
         </form>
-    ) as VNode;
+    );
 }

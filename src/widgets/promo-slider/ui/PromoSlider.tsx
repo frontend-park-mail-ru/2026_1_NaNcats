@@ -40,7 +40,7 @@ export function PromoSlider(props: PromoSliderProps = {}): VNode {
     const index = signal<number>(startIndex);
 
     // Циклический сдвиг слайда; +SLIDES.length для корректной работы с дельтой -1.
-    const go = (delta: number): void => {
+    const go = (delta: number) => {
         index.set((prev) => (prev + delta + SLIDES.length) % SLIDES.length);
     };
 
@@ -56,24 +56,24 @@ export function PromoSlider(props: PromoSliderProps = {}): VNode {
     return (
         <div class="auth-image-side promo-slider">
             <img
-                src={(): string => SLIDES[index()].img}
+                src={() => SLIDES[index()].img}
                 alt="Food"
                 class="promo-image"
             />
             <div class="promo-text">
-                <h2 class="promo-text__title">{(): string => SLIDES[index()].title}</h2>
-                <p>{(): string => SLIDES[index()].text}</p>
+                <h2 class="promo-text__title">{() => SLIDES[index()].title}</h2>
+                <p>{() => SLIDES[index()].text}</p>
             </div>
             <div class="promo-nav">
                 <div
                     class="promo-nav__arrow promo-nav__arrow_prev js-nav-prev"
-                    onClick={(): void => go(-1)}
+                    onClick={() => go(-1)}
                 />
                 <div
                     class="promo-nav__arrow promo-nav__arrow_next js-nav-next"
-                    onClick={(): void => go(1)}
+                    onClick={() => go(1)}
                 />
             </div>
         </div>
-    ) as VNode;
+    );
 }

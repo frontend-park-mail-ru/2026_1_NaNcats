@@ -44,7 +44,7 @@ export interface WordleProps {
 }
 
 /** Пустая матрица цветов плиток размером MAX_ROWS x WORD_LENGTH. */
-function createEmptyColors(): TileColorOrEmpty[][] {
+function createEmptyColors() {
     return Array.from({ length: MAX_ROWS }, () => Array<TileColorOrEmpty>(WORD_LENGTH).fill(null));
 }
 
@@ -66,7 +66,7 @@ export function Wordle(props: WordleProps): VNode {
     let wordsLoaded = false;
     let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const startNewGame = (): void => {
+    const startNewGame = () => {
         grid.set(createEmptyGrid());
         tileColors.set(createEmptyColors());
         keyStates.set({});
@@ -76,7 +76,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Лениво подгружает словарь (один раз) и сбрасывает партию.
-    const ensureWordsAndReset = async (): Promise<void> => {
+    const ensureWordsAndReset = async () => {
         if (!wordsLoaded) {
             const words = await import('../lib/words');
             targetWord = words.DAILY_WORD;
@@ -86,7 +86,7 @@ export function Wordle(props: WordleProps): VNode {
         startNewGame();
     };
 
-    const writeLetter = (row: number, col: number, letter: string): void => {
+    const writeLetter = (row: number, col: number, letter: string) => {
         const prev = grid();
         const next = prev.map((rowArr, r) => {
             if (r !== row) return rowArr;
@@ -95,7 +95,7 @@ export function Wordle(props: WordleProps): VNode {
         grid.set(next);
     };
 
-    const writeRowColors = (row: number, colors: readonly TileColor[]): void => {
+    const writeRowColors = (row: number, colors: readonly TileColor[]) => {
         const prev = tileColors();
         const next: TileColorOrEmpty[][] = prev.map((rowArr, r) => {
             if (r !== row) return rowArr.slice();
@@ -105,7 +105,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Обновляет подсветку клавиатуры по результату догадки; из `correct` кнопку не понижаем.
-    const updateKeyStates = (colors: readonly TileColor[], guess: string): void => {
+    const updateKeyStates = (colors: readonly TileColor[], guess: string) => {
         const prev = keyStates();
         const next: Record<string, TileColor | undefined> = { ...prev };
         for (let i = 0; i < WORD_LENGTH; i += 1) {
@@ -121,7 +121,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Показывает тост и прячет его через TOAST_DURATION_MS; активный таймер заменяется новым.
-    const showToast = (msg: string): void => {
+    const showToast = (msg: string) => {
         toastText.set(msg);
         toastVisible.set(true);
         if (toastTimer !== null) {
@@ -133,10 +133,10 @@ export function Wordle(props: WordleProps): VNode {
         }, TOAST_DURATION_MS);
     };
 
-    const finishWin = (): void => {
+    const finishWin = () => {
         isGameOver.set(true);
         setTimeout(() => {
-            void (async (): Promise<void> => {
+            void (async () => {
                 await Popup.alert('Победа! Вы отгадали слово дня 🎉');
                 props.onWin?.();
                 props.onClose();
@@ -145,11 +145,11 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Завершение после исчерпания попыток: показывает слово, закрывает модалку, сбрасывает партию.
-    const finishLose = (): void => {
+    const finishLose = () => {
         isGameOver.set(true);
         const word = targetWord;
         setTimeout(() => {
-            void (async (): Promise<void> => {
+            void (async () => {
                 await Popup.alert(`Игра окончена! Загаданное слово было: ${word}`);
                 props.onClose();
                 startNewGame();
@@ -158,7 +158,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Проверка догадки текущего ряда: валидация по словарю, раскраска, победа/поражение.
-    const checkGuess = (): void => {
+    const checkGuess = () => {
         const row = currentRow();
         const guess = grid()[row].join('');
         if (!validWords.has(guess.toLowerCase())) {
@@ -183,7 +183,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Ввод символа или служебной клавиши (BACKSPACE, ENTER) в текущий ряд.
-    const handleInput = (key: string): void => {
+    const handleInput = (key: string) => {
         if (isGameOver()) return;
 
         if (key === 'BACKSPACE') {
@@ -214,7 +214,7 @@ export function Wordle(props: WordleProps): VNode {
 
     // Физическая клавиатура: игнорируем при закрытой модалке или законченной игре;
     // буквы проходят через isValidLetter (отсекает латиницу и спецсимволы).
-    const handleKeyDown = (event: Event): void => {
+    const handleKeyDown = (event: Event) => {
         if (!props.open()) return;
         if (isGameOver()) return;
         const ke = event as KeyboardEvent;
@@ -231,7 +231,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Закрывает модалку, только если клик пришёл по самой подложке, а не по содержимому.
-    const handleOverlayClick = (event: Event): void => {
+    const handleOverlayClick = (event: Event) => {
         const target = event.target as HTMLElement | null;
         if (target && target.id === 'wordle-modal') {
             props.onClose();
@@ -259,10 +259,10 @@ export function Wordle(props: WordleProps): VNode {
         });
     });
 
-    const modalClass = (): string =>
+    const modalClass = () =>
         props.open() ? 'modal-overlay modal-overlay_active' : 'modal-overlay';
 
-    const tileClass = (row: number, col: number): string => {
+    const tileClass = (row: number, col: number) => {
         const letter = grid()[row][col];
         const color = tileColors()[row][col];
         const parts = ['wordle-tile'];
@@ -272,7 +272,7 @@ export function Wordle(props: WordleProps): VNode {
     };
 
     // Класс кнопки клавиатуры: служебные клавиши шире, подсветка из keyStates.
-    const keyClass = (key: string): string => {
+    const keyClass = (key: string) => {
         const parts = ['wordle-keyboard__key'];
         if (key.length > 1) parts.push('wordle-keyboard__key_wide');
         const state = keyStates()[key];
@@ -280,7 +280,7 @@ export function Wordle(props: WordleProps): VNode {
         return parts.join(' ');
     };
 
-    const toastClass = (): string =>
+    const toastClass = () =>
         toastVisible() ? 'wordle-toast wordle-toast_show js-wordle-toast' : 'wordle-toast js-wordle-toast';
 
     const rowIndexes: readonly number[] = Array.from({ length: MAX_ROWS }, (_, i) => i);
@@ -291,7 +291,7 @@ export function Wordle(props: WordleProps): VNode {
             <div class="address-modal wordle-modal" style="width: 500px; position: relative;">
                 <div
                     class="address-modal__close js-close-wordle"
-                    onClick={(): void => props.onClose()}
+                    onClick={() => props.onClose()}
                 >
                     ×
                 </div>
@@ -304,17 +304,17 @@ export function Wordle(props: WordleProps): VNode {
                 <div class={toastClass}>{toastText}</div>
 
                 <div class="wordle-board js-wordle-board">
-                    <For each={(): readonly number[] => rowIndexes} key={(r): number => r}>
-                        {(r): VNode => (
+                    <For each={() => rowIndexes} key={(r) => r}>
+                        {(r) => (
                             <div class="wordle-row">
-                                <For each={(): readonly number[] => colIndexes} key={(c): number => c}>
-                                    {(c): VNode => (
+                                <For each={() => colIndexes} key={(c) => c}>
+                                    {(c) => (
                                         <div
-                                            class={(): string => tileClass(r, c)}
+                                            class={() => tileClass(r, c)}
                                             data-row={r}
                                             data-col={c}
                                         >
-                                            {(): string => grid()[r][c]}
+                                            {() => grid()[r][c]}
                                         </div>
                                     )}
                                 </For>
@@ -325,18 +325,18 @@ export function Wordle(props: WordleProps): VNode {
 
                 <div class="wordle-keyboard js-wordle-keyboard">
                     <For
-                        each={(): readonly (readonly string[])[] => KEYBOARD_LAYOUT}
-                        key={(_, idx): number => idx}
+                        each={() => KEYBOARD_LAYOUT}
+                        key={(_, idx) => idx}
                     >
-                        {(row): VNode => (
+                        {(row) => (
                             <div class="wordle-keyboard__row">
-                                <For each={(): readonly string[] => row} key={(key): string => key}>
-                                    {(key): VNode => (
+                                <For each={() => row} key={(key) => key}>
+                                    {(key) => (
                                         <button
                                             type="button"
-                                            class={(): string => keyClass(key)}
+                                            class={() => keyClass(key)}
                                             data-key={key}
-                                            onClick={(): void => handleInput(key)}
+                                            onClick={() => handleInput(key)}
                                         >
                                             {key === 'BACKSPACE' ? '⌫' : key}
                                         </button>
@@ -348,5 +348,5 @@ export function Wordle(props: WordleProps): VNode {
                 </div>
             </div>
         </div>
-    ) as VNode;
+    );
 }
