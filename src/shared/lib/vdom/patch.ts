@@ -62,7 +62,7 @@ function replaceVNode(prev: VNode, next: VNode, container: Node): void {
         if (Array.isArray(dom)) return dom.length > 0 ? dom[dom.length - 1] : null;
         return dom;
     })();
-    const parent = (firstPrevDom?.parentNode) ?? container;
+    const parent = firstPrevDom?.parentNode ?? container;
     const anchorAfter = lastPrevDom ? lastPrevDom.nextSibling : null;
     unmount(prev);
     mount(next, parent, anchorAfter);
@@ -82,7 +82,7 @@ function patchSame(prev: VNode, next: VNode, container: Node): void {
 
     if (type === Fragment) {
         next.__dom = prev.__dom ?? [];
-        const parent = (firstDom(prev)?.parentNode) ?? container;
+        const parent = firstDom(prev)?.parentNode ?? container;
         const scanFrom = firstDom(prev);
         diffChildren(prev.children, next.children, parent, getAnchorAfter(prev), scanFrom);
         next.__dom = collectFragmentDom(next.children, parent, scanFrom);
@@ -138,11 +138,7 @@ function patchSame(prev: VNode, next: VNode, container: Node): void {
         } else if (prevInner && renderedInner) {
             const parent = parentOf(prevInner) ?? container;
             const dom = prevInner.__dom;
-            const lastNode = Array.isArray(dom)
-                ? dom.length > 0
-                    ? dom[dom.length - 1]
-                    : null
-                : dom ?? null;
+            const lastNode = Array.isArray(dom) ? (dom.length > 0 ? dom[dom.length - 1] : null) : (dom ?? null);
             const anchorAfter = lastNode ? lastNode.nextSibling : null;
             unmount(prevInner);
             mount(renderedInner, parent, anchorAfter);

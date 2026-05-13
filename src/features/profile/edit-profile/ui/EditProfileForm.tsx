@@ -136,8 +136,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                 <label class="info-label">Подписка</label>
                 <div class="subscription-status">Обычная</div>
                 <div class="subscription-text">
-                    Оформи подписку <span class="link-orange">Премиум</span> для дополнительных
-                    бонусов и привилегий
+                    Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий
                 </div>
             </div>
 
@@ -150,9 +149,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
             <button
                 type="submit"
                 id="save-profile-btn"
-                class={() =>
-                    isEditing() ? 'button button_primary' : 'button button_primary button_hidden'
-                }
+                class={() => (isEditing() ? 'button button_primary' : 'button button_primary button_hidden')}
                 style="height:40px; margin-top:10px;"
                 disabled={submitting}
             >

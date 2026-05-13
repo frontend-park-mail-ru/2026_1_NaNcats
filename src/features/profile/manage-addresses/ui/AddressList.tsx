@@ -39,10 +39,7 @@ export function AddressList(props: AddressListProps): VNode {
                         <div class="address-row" data-id={addr.id}>
                             <span class="address-row__text">{formatLine(addr)}</span>
                             <div class="address-row__actions">
-                                <div
-                                    class="edit-icon-orange edit-addr-btn"
-                                    onClick={() => props.onEdit?.(addr.id)}
-                                />
+                                <div class="edit-icon-orange edit-addr-btn" onClick={() => props.onEdit?.(addr.id)} />
                                 <div
                                     class="delete-icon-orange delete-addr-btn"
                                     onClick={() => {

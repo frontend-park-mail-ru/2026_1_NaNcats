@@ -9,14 +9,7 @@ import { For, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
 
-import {
-    MAX_ROWS,
-    WORD_LENGTH,
-    createEmptyGrid,
-    isValidLetter,
-    scoreGuess,
-    type TileColor,
-} from '../lib/wordleEngine';
+import { MAX_ROWS, WORD_LENGTH, createEmptyGrid, isValidLetter, scoreGuess, type TileColor } from '../lib/wordleEngine';
 
 /** Раскладка экранной клавиатуры (последний ряд с ENTER и BACKSPACE). */
 const KEYBOARD_LAYOUT: readonly (readonly string[])[] = [
@@ -259,8 +252,7 @@ export function Wordle(props: WordleProps): VNode {
         });
     });
 
-    const modalClass = () =>
-        props.open() ? 'modal-overlay modal-overlay_active' : 'modal-overlay';
+    const modalClass = () => (props.open() ? 'modal-overlay modal-overlay_active' : 'modal-overlay');
 
     const tileClass = (row: number, col: number) => {
         const letter = grid()[row][col];
@@ -289,10 +281,7 @@ export function Wordle(props: WordleProps): VNode {
     return (
         <div class={modalClass} id="wordle-modal" onClick={handleOverlayClick}>
             <div class="address-modal wordle-modal" style="width: 500px; position: relative;">
-                <div
-                    class="address-modal__close js-close-wordle"
-                    onClick={() => props.onClose()}
-                >
+                <div class="address-modal__close js-close-wordle" onClick={() => props.onClose()}>
                     ×
                 </div>
 
@@ -309,11 +298,7 @@ export function Wordle(props: WordleProps): VNode {
                             <div class="wordle-row">
                                 <For each={() => colIndexes} key={(c) => c}>
                                     {(c) => (
-                                        <div
-                                            class={() => tileClass(r, c)}
-                                            data-row={r}
-                                            data-col={c}
-                                        >
+                                        <div class={() => tileClass(r, c)} data-row={r} data-col={c}>
                                             {() => grid()[r][c]}
                                         </div>
                                     )}
@@ -324,10 +309,7 @@ export function Wordle(props: WordleProps): VNode {
                 </div>
 
                 <div class="wordle-keyboard js-wordle-keyboard">
-                    <For
-                        each={() => KEYBOARD_LAYOUT}
-                        key={(_, idx) => idx}
-                    >
+                    <For each={() => KEYBOARD_LAYOUT} key={(_, idx) => idx}>
                         {(row) => (
                             <div class="wordle-keyboard__row">
                                 <For each={() => row} key={(key) => key}>

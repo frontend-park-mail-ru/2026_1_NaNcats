@@ -56,8 +56,7 @@ export class Store<S extends object> {
      */
     setState(updater: Updater<S>): void {
         const prev = this.state.peek();
-        const next =
-            typeof updater === 'function' ? (updater as UpdaterFn<S>)(prev) : { ...prev, ...updater };
+        const next = typeof updater === 'function' ? (updater as UpdaterFn<S>)(prev) : { ...prev, ...updater };
 
         this.state.set(next);
     }

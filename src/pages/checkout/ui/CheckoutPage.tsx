@@ -124,8 +124,8 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         };
     };
 
-    const overlayClass = (baseClass: string, openSig: () => boolean) =>
-        () => (openSig() ? `${baseClass} modal-overlay_active` : baseClass);
+    const overlayClass = (baseClass: string, openSig: () => boolean) => () =>
+        openSig() ? `${baseClass} modal-overlay_active` : baseClass;
 
     const handleSelectAddress = (addr: Address) => {
         selectedAddressSig.set(addr);
@@ -165,11 +165,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             try {
                 await Promise.all(
                     unassignedItems.map((item) =>
-                        cartApi.reassignOwner(
-                            cart.cartId as string,
-                            item.dish_id,
-                            cart.adminId as number,
-                        ),
+                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as number),
                     ),
                 );
 
@@ -189,9 +185,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             }
         }
 
-        errorSig.set(
-            'В корзине есть позиции без плательщика. Назначьте владельца товарам перед оплатой.',
-        );
+        errorSig.set('В корзине есть позиции без плательщика. Назначьте владельца товарам перед оплатой.');
         return null;
     };
 
@@ -276,17 +270,10 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     };
 
     return (
-        <div
-            class="page-wrapper checkout-page"
-            style="background: var(--bg-main); overflow-y: auto;"
-        >
+        <div class="page-wrapper checkout-page" style="background: var(--bg-main); overflow-y: auto;">
             <header class="checkout-header">
                 <div class="checkout-header__container">
-                    <Link
-                        class="checkout-header__back router-link"
-                        to={ROUTES.home}
-                        style="text-decoration: none;"
-                    >
+                    <Link class="checkout-header__back router-link" to={ROUTES.home} style="text-decoration: none;">
                         <div class="back-icon-arrow" />
                         <span>Назад</span>
                     </Link>
@@ -403,14 +390,9 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                             >
                                 {() => (payProcessingSig() ? 'Оформляем...' : 'Оплатить')}
                             </button>
-                            <div class="checkout-total-price">
-                                {() => `${computeTotals().grandTotal} ₽`}
-                            </div>
+                            <div class="checkout-total-price">{() => `${computeTotals().grandTotal} ₽`}</div>
                         </div>
-                        <div
-                            class="error-msg"
-                            style="text-align: right; margin-top: 5px;"
-                        >
+                        <div class="error-msg" style="text-align: right; margin-top: 5px;">
                             {errorSig}
                         </div>
                     </div>
@@ -419,18 +401,12 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
             <div class={overlayClass('modal-overlay', cartOpenSig)}>
                 <div class="checkout-modal">
-                    <div
-                        class="checkout-modal__close"
-                        onClick={() => cartOpenSig.set(false)}
-                    >
+                    <div class="checkout-modal__close" onClick={() => cartOpenSig.set(false)}>
                         &times;
                     </div>
                     <h2 class="checkout-modal__title">Состав заказа</h2>
                     <div class="checkout-modal__content" style="max-height: 400px; overflow-y: auto;">
-                        <Show
-                            when={() => itemsSig().length > 0}
-                            fallback={<p>Корзина пуста</p>}
-                        >
+                        <Show when={() => itemsSig().length > 0} fallback={<p>Корзина пуста</p>}>
                             <For each={itemsSig} key={(i) => i.dish_id}>
                                 {(item) => (
                                     <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
@@ -440,9 +416,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                             onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
                                         />
                                         <div style="flex: 1;">
-                                            <div style="font-weight: 500; font-size: 14px;">
-                                                {item.name}
-                                            </div>
+                                            <div style="font-weight: 500; font-size: 14px;">{item.name}</div>
                                             <div style="color: #777; font-size: 12px;">
                                                 {`${item.quantity} шт. x ${(item.price / 1_000_000).toFixed(2)} ₽`}
                                             </div>
@@ -460,10 +434,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
             <div class={overlayClass('modal-overlay', addressOpenSig)}>
                 <div class="checkout-modal" style="width: 500px;">
-                    <div
-                        class="checkout-modal__close"
-                        onClick={() => addressOpenSig.set(false)}
-                    >
+                    <div class="checkout-modal__close" onClick={() => addressOpenSig.set(false)}>
                         &times;
                     </div>
                     <h2 class="checkout-modal__title">Выберите адрес</h2>
@@ -477,8 +448,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                     {(addr) => (
                                         <div
                                             class={() => {
-                                                const isActive =
-                                                    selectedAddressSig()?.id === addr.id;
+                                                const isActive = selectedAddressSig()?.id === addr.id;
                                                 return isActive
                                                     ? 'selection-item selection-item_active'
                                                     : 'selection-item';
@@ -486,9 +456,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                             data-id={addr.id}
                                             onClick={() => handleSelectAddress(addr)}
                                         >
-                                            <div style="font-weight: 600;">
-                                                {addr.location.address_text}
-                                            </div>
+                                            <div style="font-weight: 600;">{addr.location.address_text}</div>
                                             <div style="font-size: 12px; color: #777;">
                                                 {`Кв. ${addr.apartment || '-'}, эт. ${addr.floor || '-'}`}
                                             </div>
@@ -497,10 +465,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                 </For>
                             </Show>
                         </div>
-                        <button
-                            class="button button_primary mt-20"
-                            onClick={handleAddNewAddress}
-                        >
+                        <button class="button button_primary mt-20" onClick={handleAddNewAddress}>
                             Добавить новый адрес (Карта)
                         </button>
                     </div>
@@ -509,10 +474,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
             <div class={overlayClass('modal-overlay', paymentOpenSig)}>
                 <div class="checkout-modal" style="width: 400px;">
-                    <div
-                        class="checkout-modal__close"
-                        onClick={() => paymentOpenSig.set(false)}
-                    >
+                    <div class="checkout-modal__close" onClick={() => paymentOpenSig.set(false)}>
                         &times;
                     </div>
                     <h2 class="checkout-modal__title">Способ оплаты</h2>
@@ -521,34 +483,26 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                             <div
                                 class={() => {
                                     const noCard = selectedCardSig() === null;
-                                    return noCard
-                                        ? 'selection-item selection-item_active'
-                                        : 'selection-item';
+                                    return noCard ? 'selection-item selection-item_active' : 'selection-item';
                                 }}
                                 data-id=""
                                 onClick={() => handleSelectCard(null)}
                             >
                                 <div style="font-weight: 600;">💳 Стандартная оплата</div>
-                                <div style="font-size: 12px; color: #777;">
-                                    Ввести реквизиты новой карты
-                                </div>
+                                <div style="font-size: 12px; color: #777;">Ввести реквизиты новой карты</div>
                             </div>
                             <For each={cardsSig} key={(c) => c.id}>
                                 {(card) => (
                                     <div
                                         class={() => {
                                             const isActive = selectedCardSig()?.id === card.id;
-                                            return isActive
-                                                ? 'selection-item selection-item_active'
-                                                : 'selection-item';
+                                            return isActive ? 'selection-item selection-item_active' : 'selection-item';
                                         }}
                                         data-id={card.id}
                                         onClick={() => handleSelectCard(card)}
                                     >
                                         <div style="font-weight: 600;">{`💳 **${card.last4}`}</div>
-                                        <div style="font-size: 12px; color: #777;">
-                                            {card.card_type ?? ''}
-                                        </div>
+                                        <div style="font-size: 12px; color: #777;">{card.card_type ?? ''}</div>
                                     </div>
                                 )}
                             </For>

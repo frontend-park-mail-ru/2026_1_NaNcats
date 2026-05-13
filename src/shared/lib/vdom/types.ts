@@ -35,14 +35,7 @@ export type Key = string | number;
  * или число (станет Text-узлом), null/undefined/false/true (игнорируется при
  * нормализации) или вложенный массив.
  */
-export type VNodeChild =
-    | VNode
-    | string
-    | number
-    | boolean
-    | null
-    | undefined
-    | VNodeChild[];
+export type VNodeChild = VNode | string | number | boolean | null | undefined | VNodeChild[];
 
 /** Псевдоним для пропа children (по форме совпадает с VNodeChild). */
 export type ComponentChildren = VNodeChild;

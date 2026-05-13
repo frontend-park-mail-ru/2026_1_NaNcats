@@ -66,10 +66,7 @@ export function CardList(_props: CardListProps = {}): VNode {
 
     return (
         <div id="profile-cards-list" class="cards-list">
-            <Show
-                when={() => cards().length > 0}
-                fallback={<div class="empty-text">Нет привязанных карт</div>}
-            >
+            <Show when={() => cards().length > 0} fallback={<div class="empty-text">Нет привязанных карт</div>}>
                 <For each={cards} key={(c) => c.id}>
                     {(c) => {
                         const isOnlyOne = () => cards().length === 1;

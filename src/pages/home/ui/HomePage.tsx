@@ -115,9 +115,7 @@ export function HomePage(props: HomePageProps): VNode {
             results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch(() => []);
         } else {
             const COMBINED_LIMIT = 100;
-            const inCat = await restaurantApi
-                .listBrandsByCategory(cat, COMBINED_LIMIT, 0)
-                .catch(() => []);
+            const inCat = await restaurantApi.listBrandsByCategory(cat, COMBINED_LIMIT, 0).catch(() => []);
             const needle = q.toLowerCase();
             results = inCat.filter((r) => {
                 const name = (r.name ?? '').toLowerCase();
@@ -219,18 +217,8 @@ export function HomePage(props: HomePageProps): VNode {
                 </button>
             </div>
 
-            <button
-                type="button"
-                class="category-fab"
-                aria-label="Открыть категории"
-                onClick={openCategoriesDrawer}
-            >
-                <svg
-                    class="category-fab__icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
+            <button type="button" class="category-fab" aria-label="Открыть категории" onClick={openCategoriesDrawer}>
+                <svg class="category-fab__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         d="M7.2 3.5C5.55 3.5 4.2 4.85 4.2 6.5C4.2 8.15 5.55 9.5 7.2 9.5C8.85 9.5 10.2 8.15 10.2 6.5C10.2 4.85 8.85 3.5 7.2 3.5Z"
                         stroke="#FFC1C1"
@@ -248,12 +236,7 @@ export function HomePage(props: HomePageProps): VNode {
                         stroke-width="1.8"
                         stroke-linecap="round"
                     />
-                    <path
-                        d="M14.2 9.2H19.6"
-                        stroke="#FFC1C1"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                    />
+                    <path d="M14.2 9.2H19.6" stroke="#FFC1C1" stroke-width="1.8" stroke-linecap="round" />
                     <path
                         d="M16.9 9.2L16.5 19.2C16.47 20.06 17.15 20.8 18.01 20.8C18.87 20.8 19.55 20.08 19.52 19.22L19.1 9.2"
                         stroke="#FFC1C1"
@@ -263,18 +246,8 @@ export function HomePage(props: HomePageProps): VNode {
                 </svg>
             </button>
 
-            <button
-                type="button"
-                class="cart-fab"
-                aria-label="Открыть корзину"
-                onClick={openCartSheet}
-            >
-                <svg
-                    class="cart-fab__icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
+            <button type="button" class="cart-fab" aria-label="Открыть корзину" onClick={openCartSheet}>
+                <svg class="cart-fab__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         d="M4 5H5.4C6.1 5 6.42 5.27 6.58 5.86L6.94 7.2M6.94 7.2H18.6C19.58 7.2 20.18 8.02 19.92 8.96L18.84 12.86C18.64 13.58 17.98 14.08 17.24 14.08H9.18C8.38 14.08 7.69 13.54 7.5 12.76L6.94 7.2Z"
                         stroke="#FFC1C1"
@@ -315,9 +288,7 @@ export function HomePage(props: HomePageProps): VNode {
                         <div class="categories-list">
                             <div
                                 class={() =>
-                                    activeCategory() === ''
-                                        ? 'category-item category-item_active'
-                                        : 'category-item'
+                                    activeCategory() === '' ? 'category-item category-item_active' : 'category-item'
                                 }
                                 tabindex="0"
                                 role="button"
@@ -369,9 +340,7 @@ export function HomePage(props: HomePageProps): VNode {
                     <div class="sheet">
                         <div class="sheet__header">
                             <h1 class="sheet__title">
-                                {() =>
-                                    buildTitle(props.categories, activeCategory(), searchQuery())
-                                }
+                                {() => buildTitle(props.categories, activeCategory(), searchQuery())}
                             </h1>
                         </div>
 
@@ -382,10 +351,7 @@ export function HomePage(props: HomePageProps): VNode {
                         </Show>
 
                         <div class="res-grid">
-                            <For
-                                each={restaurants}
-                                key={(r) => r.id}
-                            >
+                            <For each={restaurants} key={(r) => r.id}>
                                 {(r) => (
                                     <div
                                         class="res-card"
@@ -403,9 +369,7 @@ export function HomePage(props: HomePageProps): VNode {
                                         />
                                         <div class="res-card__info">
                                             <span class="res-card__name">{r.name}</span>
-                                            <span class="res-card__desc">
-                                                {r.description ?? 'Вкусная еда'}
-                                            </span>
+                                            <span class="res-card__desc">{r.description ?? 'Вкусная еда'}</span>
                                         </div>
                                     </div>
                                 )}
@@ -415,9 +379,7 @@ export function HomePage(props: HomePageProps): VNode {
                         <Show when={() => restaurants().length === 0}>
                             <div class="res-empty" style="display: flex">
                                 <p class="res-empty__text">Ничего не найдено 😔</p>
-                                <p class="res-empty__hint">
-                                    Попробуйте изменить запрос или выбрать другую категорию
-                                </p>
+                                <p class="res-empty__hint">Попробуйте изменить запрос или выбрать другую категорию</p>
                             </div>
                         </Show>
                     </div>

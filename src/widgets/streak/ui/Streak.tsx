@@ -69,11 +69,7 @@ export function Streak(props: StreakProps = {}): VNode {
                         </span>
                     </span>
                 </div>
-                <div
-                    class="streak-widget__track js-streak-track"
-                    role="list"
-                    aria-label="Прогресс по неделям"
-                >
+                <div class="streak-widget__track js-streak-track" role="list" aria-label="Прогресс по неделям">
                     <For each={dots} key={(dot) => dot.week}>
                         {(dot) => (
                             <span

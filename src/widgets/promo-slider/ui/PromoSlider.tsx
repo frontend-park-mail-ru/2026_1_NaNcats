@@ -36,7 +36,7 @@ export interface PromoSliderProps {
 
 /** Промо-карусель: индекс слайда в сигнале, листание стрелками и по таймеру. */
 export function PromoSlider(props: PromoSliderProps = {}): VNode {
-    const startIndex = ((props.initialIndex ?? 0) % SLIDES.length + SLIDES.length) % SLIDES.length;
+    const startIndex = (((props.initialIndex ?? 0) % SLIDES.length) + SLIDES.length) % SLIDES.length;
     const index = signal<number>(startIndex);
 
     // Циклический сдвиг слайда; +SLIDES.length для корректной работы с дельтой -1.
@@ -55,24 +55,14 @@ export function PromoSlider(props: PromoSliderProps = {}): VNode {
 
     return (
         <div class="auth-image-side promo-slider">
-            <img
-                src={() => SLIDES[index()].img}
-                alt="Food"
-                class="promo-image"
-            />
+            <img src={() => SLIDES[index()].img} alt="Food" class="promo-image" />
             <div class="promo-text">
                 <h2 class="promo-text__title">{() => SLIDES[index()].title}</h2>
                 <p>{() => SLIDES[index()].text}</p>
             </div>
             <div class="promo-nav">
-                <div
-                    class="promo-nav__arrow promo-nav__arrow_prev js-nav-prev"
-                    onClick={() => go(-1)}
-                />
-                <div
-                    class="promo-nav__arrow promo-nav__arrow_next js-nav-next"
-                    onClick={() => go(1)}
-                />
+                <div class="promo-nav__arrow promo-nav__arrow_prev js-nav-prev" onClick={() => go(-1)} />
+                <div class="promo-nav__arrow promo-nav__arrow_next js-nav-next" onClick={() => go(1)} />
             </div>
         </div>
     );

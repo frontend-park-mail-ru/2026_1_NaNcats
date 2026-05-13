@@ -27,9 +27,7 @@ export function RootLayout(): VNode {
             <Header
                 user={user}
                 hideSearch={() => router.currentRoute().path !== ROUTES.home}
-                mode={() =>
-                    router.currentRoute().path === ROUTES.home ? 'default' : 'back'
-                }
+                mode={() => (router.currentRoute().path === ROUTES.home ? 'default' : 'back')}
                 onLogin={() => {
                     void router.go(ROUTES.login);
                 }}

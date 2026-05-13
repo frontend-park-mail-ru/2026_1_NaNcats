@@ -26,10 +26,7 @@ function ActiveRoute() {
 
 export function Outlet(): VNode {
     return (
-        <Suspense
-            pending={() => router.currentRoute().status === 'pending'}
-            fallback={<PageLoadingSkeleton />}
-        >
+        <Suspense pending={() => router.currentRoute().status === 'pending'} fallback={<PageLoadingSkeleton />}>
             <ActiveRoute />
         </Suspense>
     ) as VNode;

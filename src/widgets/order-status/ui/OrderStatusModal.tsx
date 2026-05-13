@@ -161,9 +161,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         return o === null ? -1 : activeStepIndex(o.status);
     });
 
-    const steps = computed<readonly ProgressStep[]>(() =>
-        order() === null ? [] : PROGRESS_STEPS,
-    );
+    const steps = computed<readonly ProgressStep[]>(() => (order() === null ? [] : PROGRESS_STEPS));
 
     const statusText = computed(() => {
         const o = order();
@@ -313,20 +311,13 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     return (
         <div
-            class={() =>
-                isActive() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
-            }
+            class={() => (isActive() ? 'modal-overlay modal-overlay_active' : 'modal-overlay')}
             id="order-status-modal"
             onClick={handleOverlayClick}
         >
             <Show when={order}>
                 <div class="order-status-modal">
-                    <button
-                        type="button"
-                        class="order-status-modal__close"
-                        aria-label="Закрыть"
-                        onClick={close}
-                    >
+                    <button type="button" class="order-status-modal__close" aria-label="Закрыть" onClick={close}>
                         ×
                     </button>
 
@@ -350,10 +341,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 <span class="order-status-modal__star">★</span>
                                 <span>
                                     {() => String(order()?.restaurant.rating ?? 0)} (
-                                    {() =>
-                                        formatReviews(order()?.restaurant.reviews_count ?? 0)
-                                    }
-                                    )
+                                    {() => formatReviews(order()?.restaurant.reviews_count ?? 0)})
                                 </span>
                             </div>
                         </div>
@@ -366,19 +354,12 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 : 'order-status-modal__progress'
                         }
                     >
-                        <div class="order-status-modal__progress-text">
-                            {statusText}
-                        </div>
+                        <div class="order-status-modal__progress-text">{statusText}</div>
                         <div class="order-status-modal__progress-track">
-                            <For
-                                each={steps}
-                                key={(s) => s.key}
-                            >
+                            <For each={steps} key={(s) => s.key}>
                                 {(step, idx) => {
                                     // Computed по idx этого шага: пересчитываются при смене статуса заказа.
-                                    const reached = computed(
-                                        () => idx <= currentStepIdx() && currentStepIdx() >= 0,
-                                    );
+                                    const reached = computed(() => idx <= currentStepIdx() && currentStepIdx() >= 0);
                                     const current = computed(() => idx === currentStepIdx());
                                     return (
                                         <>
@@ -413,11 +394,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                             </For>
                         </div>
                         <Show when={showPaymentButton}>
-                            <button
-                                type="button"
-                                class="order-status-modal__pay-btn"
-                                onClick={handlePay}
-                            >
+                            <button type="button" class="order-status-modal__pay-btn" onClick={handlePay}>
                                 Оплатить
                             </button>
                         </Show>
@@ -439,9 +416,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                             </button>
                         </Show>
                         <Show when={() => errorText() !== ''}>
-                            <div class="order-status-modal__error">
-                                {errorText}
-                            </div>
+                            <div class="order-status-modal__error">{errorText}</div>
                         </Show>
                     </div>
 
@@ -450,10 +425,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                     <div class="order-status-modal__section-title">Состав заказа</div>
 
                     <div class="order-status-modal__items">
-                        <For
-                            each={() => order()?.items ?? []}
-                            key={(it) => `${String(it.dish_id)}-${it.name}`}
-                        >
+                        <For each={() => order()?.items ?? []} key={(it) => `${String(it.dish_id)}-${it.name}`}>
                             {(item) => (
                                 <div class="order-status-modal__item">
                                     <div class="order-status-modal__item-left">
@@ -464,12 +436,9 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                             onError={handleImageError}
                                         />
                                         <div class="order-status-modal__item-info">
-                                            <div class="order-status-modal__item-name">
-                                                {item.name}
-                                            </div>
+                                            <div class="order-status-modal__item-name">{item.name}</div>
                                             <div class="order-status-modal__item-meta">
-                                                {String(item.quantity)} шт. x{' '}
-                                                {(item.price / 1_000_000).toFixed(0)}₽
+                                                {String(item.quantity)} шт. x {(item.price / 1_000_000).toFixed(0)}₽
                                             </div>
                                         </div>
                                     </div>

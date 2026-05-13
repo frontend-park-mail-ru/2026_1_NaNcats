@@ -7,15 +7,7 @@
  * <div>{count() * 2}</div> вычисляется один раз при mount.
  */
 
-import type {
-    Component,
-    Key,
-    NormalizedChild,
-    RawProps,
-    VNode,
-    VNodeChild,
-    VNodeProps,
-} from './types';
+import type { Component, Key, NormalizedChild, RawProps, VNode, VNodeChild, VNodeProps } from './types';
 
 /**
  * Маркер фрагмента: значение VNode.type для узла-обёртки, который сам по себе

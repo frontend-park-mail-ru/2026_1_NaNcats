@@ -22,13 +22,7 @@ export interface LinkProps {
 
 /** true, если это обычный левый клик без модификаторов (модификаторные клики оставляем браузеру). */
 function isPlainLeftClick(event: MouseEvent) {
-    return (
-        event.button === 0 &&
-        !event.metaKey &&
-        !event.ctrlKey &&
-        !event.shiftKey &&
-        !event.altKey
-    );
+    return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
 export function Link(props: LinkProps): VNode {

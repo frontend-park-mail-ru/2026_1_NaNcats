@@ -72,15 +72,8 @@ export class Popup {
             };
 
             const popupVNode = (
-                <div
-                    class="modal-overlay modal-overlay_active"
-                    style="z-index: 9999;"
-                    onClick={handleOverlayClick}
-                >
-                    <div
-                        class="address-modal"
-                        style="width: 400px; padding: 30px; text-align: center; gap: 20px;"
-                    >
+                <div class="modal-overlay modal-overlay_active" style="z-index: 9999;" onClick={handleOverlayClick}>
+                    <div class="address-modal" style="width: 400px; padding: 30px; text-align: center; gap: 20px;">
                         <h3 style="margin: 0; font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 500; color: #0E1117;">
                             {message}
                         </h3>

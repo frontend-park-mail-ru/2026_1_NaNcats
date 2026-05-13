@@ -40,12 +40,7 @@ export type ModalContent = HTMLElement | string | VNode;
 function isVNode(value: unknown): value is VNode {
     if (typeof value !== 'object' || value === null) return false;
     const candidate = value as Record<string, unknown>;
-    return (
-        'type' in candidate &&
-        'props' in candidate &&
-        'children' in candidate &&
-        Array.isArray(candidate.children)
-    );
+    return 'type' in candidate && 'props' in candidate && 'children' in candidate && Array.isArray(candidate.children);
 }
 
 /**
@@ -74,11 +69,7 @@ export class Modal {
     open(content: ModalContent): void {
         if (this.pushResult) return;
 
-        const overlayClassName = [
-            'modal-overlay',
-            'modal-overlay_active',
-            this.options.overlayClassName,
-        ]
+        const overlayClassName = ['modal-overlay', 'modal-overlay_active', this.options.overlayClassName]
             .filter((cls): cls is string => Boolean(cls))
             .join(' ');
 

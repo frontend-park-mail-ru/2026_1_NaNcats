@@ -166,12 +166,7 @@ function collectDomNodesAt(child: NormalizedChild, textNodes: Map<number, Text>,
  * @param parent Общий DOM-родитель.
  * @param fallbackAnchor Якорь для вставки в конце (если фрагмент-родитель имеет соседей).
  */
-function diffKeyed(
-    prevChildren: VNode[],
-    nextChildren: VNode[],
-    parent: Node,
-    fallbackAnchor: Node | null,
-): void {
+function diffKeyed(prevChildren: VNode[], nextChildren: VNode[], parent: Node, fallbackAnchor: Node | null): void {
     let prevStart = 0;
     let prevEnd = prevChildren.length - 1;
     let nextStart = 0;
@@ -196,8 +191,7 @@ function diffKeyed(
     }
 
     if (prevStart > prevEnd) {
-        const anchor =
-            nextEnd + 1 < nextChildren.length ? firstDom(nextChildren[nextEnd + 1]) : fallbackAnchor;
+        const anchor = nextEnd + 1 < nextChildren.length ? firstDom(nextChildren[nextEnd + 1]) : fallbackAnchor;
         while (nextStart <= nextEnd) {
             mount(nextChildren[nextStart], parent, anchor);
             nextStart += 1;
@@ -220,15 +214,13 @@ function diffKeyed(
     }
 
     const used = new Set<number>();
-    const anchor =
-        nextEnd + 1 < nextChildren.length ? firstDom(nextChildren[nextEnd + 1]) : fallbackAnchor;
+    const anchor = nextEnd + 1 < nextChildren.length ? firstDom(nextChildren[nextEnd + 1]) : fallbackAnchor;
 
     for (let i = nextEnd; i >= nextStart; i -= 1) {
         const nextChild = nextChildren[i];
         const key = nextChild.key;
         const prevIndex = key !== undefined ? keyToPrevIndex.get(key) : undefined;
-        const nextAnchor =
-            i + 1 < nextChildren.length ? firstDom(nextChildren[i + 1]) : anchor;
+        const nextAnchor = i + 1 < nextChildren.length ? firstDom(nextChildren[i + 1]) : anchor;
 
         if (prevIndex === undefined) {
             mount(nextChild, parent, nextAnchor);

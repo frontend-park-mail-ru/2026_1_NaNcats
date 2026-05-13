@@ -72,11 +72,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             Очистить
                         </button>
                     </Show>
-                    <button
-                        type="button"
-                        class="cart-close-btn js-close-panels"
-                        aria-label="Закрыть корзину"
-                    >
+                    <button type="button" class="cart-close-btn js-close-panels" aria-label="Закрыть корзину">
                         ×
                     </button>
                 </div>

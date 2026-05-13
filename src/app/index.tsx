@@ -22,7 +22,7 @@ const init = async () => {
     initServiceWorker();
     initOnlineStatus();
     const root = document.getElementById('root') as HTMLElement;
-    render(<App /> as VNode, root);
+    render((<App />) as VNode, root);
     await router.start();
 };
 

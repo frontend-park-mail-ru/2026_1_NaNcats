@@ -42,8 +42,7 @@ const TERMINAL_STATUSES = new Set<string>(['finished', 'cancelled', 'failed']);
 
 const DEFAULT_AVATAR_URL = 'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp';
 
-const decorate = (orders: Order[]): OrderRowView[] =>
-    orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
+const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
 /** Loader: грузит пользователя, адреса, карты, заказы; редиректит на /login без авторизации. */
 export async function load(): Promise<ProfilePageProps> {
@@ -57,11 +56,7 @@ export async function load(): Promise<ProfilePageProps> {
         void router.go(ROUTES.login);
         return Promise.reject(new Error('not authenticated'));
     }
-    const [, , ordersRes] = await Promise.allSettled([
-        addressStore.loadSaved(),
-        cardStore.load(),
-        orderApi.list(),
-    ]);
+    const [, , ordersRes] = await Promise.allSettled([addressStore.loadSaved(), cardStore.load(), orderApi.list()]);
     const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
     return { user, orders: decorate(orders) };
 }
@@ -144,9 +139,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     const handleAddCard = () => {
-        void bindNewCard().catch(() =>
-            Popup.alert('Не удалось начать привязку карты. Попробуйте позже.'),
-        );
+        void bindNewCard().catch(() => Popup.alert('Не удалось начать привязку карты. Попробуйте позже.'));
     };
 
     const handleOpenWordle = () => {
@@ -191,10 +184,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 alt="avatar"
                                 onerror={`this.src='${DEFAULT_AVATAR_URL}'`}
                             />
-                            <div
-                                class="profile-avatar__overlay"
-                                onClick={handleAvatarPickClick}
-                            >
+                            <div class="profile-avatar__overlay" onClick={handleAvatarPickClick}>
                                 📷
                             </div>
                             <Show
@@ -227,18 +217,13 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         </div>
                         <div class="profile-name-card">
                             <div class="profile-user-info">
-                                <span class="profile-input profile-input_name">
-                                    {() => userSig()?.name ?? ''}
-                                </span>
+                                <span class="profile-input profile-input_name">{() => userSig()?.name ?? ''}</span>
                             </div>
                         </div>
                     </div>
 
                     <div class="profile-card profile-card_details">
-                        <EditProfileForm
-                            name={props.user.name}
-                            email={props.user.email}
-                        />
+                        <EditProfileForm name={props.user.name} email={props.user.email} />
                     </div>
 
                     <div class="profile-card profile-card_row">
@@ -332,18 +317,12 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                             />
                                             <div class="order-row__date">{order.created_at ?? ''}</div>
                                             <div class="order-row__info">
-                                                <div class="order-row__name">
-                                                    {order.restaurant_name ?? 'Заказ'}
-                                                </div>
+                                                <div class="order-row__name">{order.restaurant_name ?? 'Заказ'}</div>
                                                 <div
                                                     class={`order-row__status order-row__status_${order._badge.className}`}
                                                 >
-                                                    <span class="order-row__status-icon">
-                                                        {order._badge.icon}
-                                                    </span>
-                                                    <span class="order-row__status-label">
-                                                        {order._badge.label}
-                                                    </span>
+                                                    <span class="order-row__status-icon">{order._badge.icon}</span>
+                                                    <span class="order-row__status-label">{order._badge.label}</span>
                                                 </div>
                                             </div>
                                             <div class="order-row__price">
@@ -365,11 +344,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                     pickerCtl = ctl;
                 }}
             />
-            <Wordle
-                open={wordleOpen}
-                onClose={handleWordleClose}
-                onWin={handleWordleWin}
-            />
+            <Wordle open={wordleOpen} onClose={handleWordleClose} onWin={handleWordleWin} />
             <OrderStatusModal
                 controllerRef={(ctl: OrderStatusModalController | null) => {
                     orderStatusCtl = ctl;

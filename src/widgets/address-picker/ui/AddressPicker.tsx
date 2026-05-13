@@ -76,8 +76,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
 
     const isAuthenticated = () => userStore.getState().user !== null;
 
-    const savedAddressTexts = () =>
-        addressStore.getState().saved.map((a) => a.location.address_text);
+    const savedAddressTexts = () => addressStore.getState().saved.map((a) => a.location.address_text);
 
     // Значение инпута пишем напрямую: VDOM прокидывает `value` через
     // setAttribute, который меняет дефолтное значение, а не текущее.
@@ -98,11 +97,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     };
 
     // Завершает выбор адреса: обновляет инпут, вызывает pickAddress, дёргает onSelect.
-    const finalize = async (
-        text: string,
-        coords: Coordinates,
-        details?: Record<string, string | undefined>,
-    ) => {
+    const finalize = async (text: string, coords: Coordinates, details?: Record<string, string | undefined>) => {
         setInlineInputValue(text);
         try {
             await pickAddress({ text, coords, details, addressId: editingAddressId });
@@ -198,9 +193,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
 
         if (query.length === 0) {
             openMapButtonVisible.set(false);
-            inlineSuggestions.set(
-                savedAddressTexts().map((text) => ({ text, geocodeOnClick: false })),
-            );
+            inlineSuggestions.set(savedAddressTexts().map((text) => ({ text, geocodeOnClick: false })));
             return;
         }
 
@@ -352,13 +345,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     }}
                 >
                     <div class="search-bar__icon search-bar__icon_address">
-                        <svg
-                            width="10"
-                            height="12"
-                            viewBox="0 0 10 12"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
+                        <svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path
                                 d="M4.73067 11.118C5.984 10.0273 6.97467 8.91822 7.70267 7.79067C8.43067 6.66311 8.79467 5.68755 8.79467 4.864C8.79467 3.64444 8.40867 2.63778 7.63667 1.844C6.86378 1.05067 5.89512 0.654 4.73067 0.654C3.56623 0.654 2.59756 1.05067 1.82467 1.844C1.05178 2.63733 0.665782 3.644 0.666671 4.864C0.666671 5.68711 1.03067 6.66267 1.75867 7.79067C2.48667 8.91867 3.47734 10.0278 4.73067 11.118Z"
                                 stroke="black"
@@ -379,17 +366,11 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                         }}
                     />
                     <div
-                        class={() =>
-                            dropdownOpen()
-                                ? 'address-dropdown address-dropdown_active'
-                                : 'address-dropdown'
-                        }
+                        class={() => (dropdownOpen() ? 'address-dropdown address-dropdown_active' : 'address-dropdown')}
                     >
                         <div
                             class="address-dropdown__map-button-wrapper"
-                            style={() =>
-                                openMapButtonVisible() ? 'display: block' : 'display: none'
-                            }
+                            style={() => (openMapButtonVisible() ? 'display: block' : 'display: none')}
                             onClick={() => {
                                 void openMapModal();
                             }}
@@ -397,10 +378,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                             <div class="address-dropdown__map-button">Указать на карте</div>
                         </div>
                         <div class="address-dropdown__suggestions">
-                            <For
-                                each={inlineSuggestions}
-                                key={(s) => s.text}
-                            >
+                            <For each={inlineSuggestions} key={(s) => s.text}>
                                 {(s) => (
                                     <div
                                         class="address-dropdown__item"
@@ -417,11 +395,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                 </div>
             </Show>
 
-            <div
-                class={() =>
-                    mapModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
-                }
-            >
+            <div class={() => (mapModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay')}>
                 <div class="address-modal">
                     <div class="address-modal__close" onClick={closeMapModal}>
                         ×
@@ -452,10 +426,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                         : 'address-modal__suggestions'
                                 }
                             >
-                                <For
-                                    each={modalSuggestions}
-                                    key={(text) => text}
-                                >
+                                <For each={modalSuggestions} key={(text) => text}>
                                     {(text) => (
                                         <div
                                             class="modal-suggestion-item"
@@ -474,11 +445,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                 </For>
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            class="button button_modal-ok"
-                            onClick={handleConfirmMap}
-                        >
+                        <button type="button" class="button button_modal-ok" onClick={handleConfirmMap}>
                             ОК
                         </button>
                     </div>
@@ -494,11 +461,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                 </div>
             </div>
 
-            <div
-                class={() =>
-                    detailsModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay'
-                }
-            >
+            <div class={() => (detailsModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay')}>
                 <div class="address-modal" style="width: 500px;">
                     <div class="address-modal__close" onClick={closeDetailsModal}>
                         ×

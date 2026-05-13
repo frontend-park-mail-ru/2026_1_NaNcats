@@ -12,11 +12,7 @@ export function NotFoundPage(): VNode {
         >
             <h1>404 - Страница не найдена</h1>
             <p>К сожалению, такой страницы не существует.</p>
-            <Link
-                to={ROUTES.home}
-                class="router-link button button_primary"
-                style="width: auto; padding: 10px 20px;"
-            >
+            <Link to={ROUTES.home} class="router-link button button_primary" style="width: auto; padding: 10px 20px;">
                 Вернуться на главную
             </Link>
         </div>

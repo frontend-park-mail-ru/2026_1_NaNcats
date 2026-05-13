@@ -9,13 +9,7 @@ import { getQueryParam } from '@shared/lib/url/searchParams';
 import { onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
-import {
-    restaurantApi,
-    type Dish,
-    type DishSearchHit,
-    type Restaurant,
-    type Review,
-} from '@entities/restaurant';
+import { restaurantApi, type Dish, type DishSearchHit, type Restaurant, type Review } from '@entities/restaurant';
 import { cartStore, fromMicros } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { addToCart } from '@features/cart/add-to-cart';
@@ -148,9 +142,7 @@ export async function load(): Promise<RestaurantPageProps> {
 // Анимация полёта картинки блюда к иконке корзины; молча выходит, если узлы не найдены.
 const flyDishToCart = (dishId: number) => {
     const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
-    const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as
-        | HTMLElement
-        | undefined;
+    const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
     const cartIcon = document.querySelector('.cart-fab') as HTMLElement | null;
 
     if (!dishImgToAnimate || !cartIcon) return;
@@ -308,9 +300,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
     const scrollToDishById = async (dishId: string) => {
         for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
-            const card = document.querySelector(
-                `.dish-card[data-dish-id="${dishId}"]`,
-            ) as HTMLElement | null;
+            const card = document.querySelector(`.dish-card[data-dish-id="${dishId}"]`) as HTMLElement | null;
             if (card) {
                 highlightAndScroll(card);
                 return;
@@ -342,10 +332,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                     image_url: dish.image_url,
                 },
                 restaurantId,
-                () =>
-                    Popup.confirm(
-                        'В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?',
-                    ),
+                () => Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?'),
             );
             flyDishToCart(dish.id);
         } catch (e) {
@@ -362,11 +349,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             return;
         }
         try {
-            const dishes: DishSearchHit[] = await restaurantApi.searchDishesInRestaurant(
-                restaurantId,
-                q,
-                50,
-            );
+            const dishes: DishSearchHit[] = await restaurantApi.searchDishesInRestaurant(restaurantId, q, 50);
             const view: DishView[] = dishes.map((d) => ({
                 id: typeof d.id === 'string' ? parseInt(d.id, 10) : d.id,
                 name: d.name,
@@ -466,15 +449,10 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         if (!submitBtn) return;
 
         submitBtn.addEventListener('click', async () => {
-            const author = (
-                overlay.querySelector('.js-review-author') as HTMLInputElement | null
-            )?.value.trim();
-            const comment = (
-                overlay.querySelector('.js-review-comment') as HTMLTextAreaElement | null
-            )?.value.trim();
+            const author = (overlay.querySelector('.js-review-author') as HTMLInputElement | null)?.value.trim();
+            const comment = (overlay.querySelector('.js-review-comment') as HTMLTextAreaElement | null)?.value.trim();
             const rating = parseInt(
-                (overlay.querySelector('.js-star-picker') as HTMLElement | null)?.dataset.rating ??
-                    '0',
+                (overlay.querySelector('.js-star-picker') as HTMLElement | null)?.dataset.rating ?? '0',
                 10,
             );
             const errorEl = overlay.querySelector('.js-review-error') as HTMLElement | null;
@@ -596,18 +574,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 return classes.join(' ');
             }}
         >
-            <button
-                type="button"
-                class="menu-fab"
-                aria-label="Открыть меню ресторана"
-                onClick={openMenuDrawer}
-            >
-                <svg
-                    class="menu-fab__icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
+            <button type="button" class="menu-fab" aria-label="Открыть меню ресторана" onClick={openMenuDrawer}>
+                <svg class="menu-fab__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         d="M7.2 3.5C5.55 3.5 4.2 4.85 4.2 6.5C4.2 8.15 5.55 9.5 7.2 9.5C8.85 9.5 10.2 8.15 10.2 6.5C10.2 4.85 8.85 3.5 7.2 3.5Z"
                         stroke="#FFC1C1"
@@ -625,12 +593,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         stroke-width="1.8"
                         stroke-linecap="round"
                     />
-                    <path
-                        d="M14.2 9.2H19.6"
-                        stroke="#FFC1C1"
-                        stroke-width="1.8"
-                        stroke-linecap="round"
-                    />
+                    <path d="M14.2 9.2H19.6" stroke="#FFC1C1" stroke-width="1.8" stroke-linecap="round" />
                     <path
                         d="M16.9 9.2L16.5 19.2C16.47 20.06 17.15 20.8 18.01 20.8C18.87 20.8 19.55 20.08 19.52 19.22L19.1 9.2"
                         stroke="#FFC1C1"
@@ -640,18 +603,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 </svg>
             </button>
 
-            <button
-                type="button"
-                class="cart-fab"
-                aria-label="Открыть корзину"
-                onClick={openCartSheet}
-            >
-                <svg
-                    class="cart-fab__icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
+            <button type="button" class="cart-fab" aria-label="Открыть корзину" onClick={openCartSheet}>
+                <svg class="cart-fab__icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
                         d="M4 5H5.4C6.1 5 6.42 5.27 6.58 5.86L6.94 7.2M6.94 7.2H18.6C19.58 7.2 20.18 8.02 19.92 8.96L18.84 12.86C18.64 13.58 17.98 14.08 17.24 14.08H9.18C8.38 14.08 7.69 13.54 7.5 12.76L6.94 7.2Z"
                         stroke="#FFC1C1"
@@ -691,9 +644,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div class="categories-list">
                             <For
                                 each={sections}
-                                key={(s, i) =>
-                                    `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`
-                                }
+                                key={(s, i) => `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`}
                             >
                                 {(sec, idx) => (
                                     <div
@@ -725,9 +676,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 <main class="center-column">
                     <div class="sheet">
                         <div class="sheet__header restaurant-sheet-header">
-                            <h1 class="sheet__title restaurant-sheet-title">
-                                {props.restaurant.name}
-                            </h1>
+                            <h1 class="sheet__title restaurant-sheet-title">{props.restaurant.name}</h1>
                         </div>
 
                         <div class="restaurant-hero">
@@ -747,13 +696,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                     fill="none"
                                     xmlns="http://www.w3.org/2000/svg"
                                 >
-                                    <circle
-                                        cx="11"
-                                        cy="11"
-                                        r="7"
-                                        stroke="#7D7D7D"
-                                        stroke-width="1.8"
-                                    />
+                                    <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8" />
                                     <path
                                         d="M16.5 16.5L21 21"
                                         stroke="#7D7D7D"
@@ -774,9 +717,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                 <button
                                     type="button"
                                     class="restaurant-search__clear"
-                                    style={() =>
-                                        searchValue().trim() ? 'display: flex' : 'display: none'
-                                    }
+                                    style={() => (searchValue().trim() ? 'display: flex' : 'display: none')}
                                     onClick={handleSearchClear}
                                 >
                                     ×
@@ -811,23 +752,15 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div>
                             <For
                                 each={sections}
-                                key={(s, i) =>
-                                    `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`
-                                }
+                                key={(s, i) => `${i}-${s.name}-${s.dishes.length}-${s.dishes[0]?.id ?? 0}`}
                             >
                                 {(sec, idx) => (
                                     <>
-                                        <h2
-                                            class="restaurant-section-title"
-                                            id={`dish-section-${idx}`}
-                                        >
+                                        <h2 class="restaurant-section-title" id={`dish-section-${idx}`}>
                                             {sec.name}
                                         </h2>
                                         <div class="res-grid">
-                                            <For
-                                                each={() => sec.dishes}
-                                                key={(d) => d.id}
-                                            >
+                                            <For each={() => sec.dishes} key={(d) => d.id}>
                                                 {(d) => (
                                                     <div class="dish-card" data-dish-id={d.id}>
                                                         <img
