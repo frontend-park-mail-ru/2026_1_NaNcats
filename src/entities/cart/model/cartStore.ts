@@ -1,7 +1,11 @@
 import { Store } from '@shared/lib/store';
 import { ApiError } from '@shared/api/http';
+import { Popup } from '@shared/ui/popup';
+import { ROUTES } from '@shared/config/routes';
+import { userStore } from '@entities/user';
 import { cartApi } from '../api/cartApi';
-import type { CartConfirmer, CartSnapshot, CartState, DishToAdd } from './types';
+import { connectCartSocket, type CartSocket } from '../api/cartSocket';
+import type { CartConfirmer, CartInvite, CartSnapshot, CartState, CartWsEvent, DishToAdd } from './types';
 
 /**
  * Проверяет, является ли ошибка ответом 409 с кодом `MULTIPLE_RESTAURANTS`.
@@ -42,6 +46,11 @@ const isCartLockedError = (e: unknown): boolean => {
  * (`refresh`), чтобы локальное состояние совпадало с серверным.
  */
 class CartStore extends Store<CartState> {
+    /** Активный WebSocket-канал совместной корзины или `null`. */
+    private realtimeSocket: CartSocket | null = null;
+    /** Идентификатор корзины, для которой открыт {@link realtimeSocket}. */
+    private realtimeCartId: string | null = null;
+
     constructor() {
         super({
             cartId: null,
@@ -92,6 +101,15 @@ class CartStore extends Store<CartState> {
             let snapshot = await this.ensureLoaded();
 
             if (snapshot.items.length > 0 && snapshot.restaurantId !== 0 && snapshot.restaurantId !== restaurantId) {
+                // Совместную корзину очистить может только организатор, да и
+                // сбрасывать чужие блюда неуместно. Поэтому просто сообщаем,
+                // что рестораны смешивать нельзя.
+                if (snapshot.mode === 'shared') {
+                    throw new Error(
+                        'совместная корзина собрана для другого ресторана, смешивать рестораны в ней нельзя',
+                    );
+                }
+
                 const ok = confirmer ? await confirmer() : false;
                 if (!ok) {
                     this.setState({ status: 'idle' });
@@ -117,13 +135,13 @@ class CartStore extends Store<CartState> {
     }
 
     /**
-     * Внутренний путь добавления блюда: инкрементирует количество, если
-     * позиция уже есть в корзине, иначе создаёт новую.
+     * Добавляет блюдо в корзину. Количество уже имеющейся позиции наращивает
+     * сам бэкенд, поэтому отдельного обновления количества здесь нет.
      *
-     * Обрабатывает два специфичных кода ошибки бэкенда:
-     * `CART_LOCKED` (текущая корзина заблокирована: пересоздаётся новая) и
-     * `MULTIPLE_RESTAURANTS` (конфликт ресторанов после гонки: запрашивается
-     * подтверждение и корзина пересоздаётся).
+     * Обрабатывает два кода ошибки бэкенда: `CART_LOCKED` (корзина ушла в
+     * оплату) и `MULTIPLE_RESTAURANTS` (в корзине блюдо из другого ресторана).
+     * В обоих случаях корзина пересоздаётся, для конфликта ресторанов сначала
+     * запрашивается подтверждение.
      *
      * @param snapshot Текущий снимок корзины.
      * @param dish Блюдо к добавлению.
@@ -136,18 +154,8 @@ class CartStore extends Store<CartState> {
         restaurantId: number,
         confirmer?: CartConfirmer,
     ): Promise<void> {
-        const existing = snapshot.items.find((i) => i.dish_id === dish.id);
-
         try {
-            if (existing) {
-                const currentCartId = snapshot.cartId;
-                if (!currentCartId) {
-                    throw new Error('cartStore.addDish: cart_id is missing for quantity update');
-                }
-                await cartApi.updateQuantity(currentCartId, dish.id, existing.quantity + 1);
-            } else {
-                await cartApi.addItem(snapshot.cartId, dish.id, 1);
-            }
+            await cartApi.addItem(snapshot.cartId, dish.id, 1);
         } catch (e) {
             if (isCartLockedError(e)) {
                 const fresh = await this.refresh();
@@ -197,7 +205,12 @@ class CartStore extends Store<CartState> {
                 throw new Error('cartStore.changeQuantity: cart_id is missing');
             }
 
-            const target = state.items.find((i) => i.dish_id === dishId);
+            // У блюда в совместной корзине бывает по позиции на участника,
+            // поэтому трогаем только позицию текущего пользователя.
+            const myId = userStore.getState().user?.id ?? null;
+            const target = state.items.find(
+                (i) => i.dish_id === dishId && (i.owner_user_id ?? null) === myId,
+            );
             if (!target) {
                 this.setState({ status: 'idle' });
                 return;
@@ -229,6 +242,7 @@ class CartStore extends Store<CartState> {
             const state = await this.ensureLoaded();
 
             if (!state.cartId) {
+                this.disconnectRealtime();
                 this.setState({
                     cartId: null,
                     items: [],
@@ -272,6 +286,7 @@ class CartStore extends Store<CartState> {
             status,
             error: undefined,
         });
+        this.syncRealtime(snapshot);
     }
 
     /**
@@ -303,6 +318,187 @@ class CartStore extends Store<CartState> {
         const fresh = await cartApi.load();
         this.applySnapshot(fresh, 'idle');
         return this.getState();
+    }
+
+    /**
+     * Открывает или закрывает WebSocket-канал живых обновлений в зависимости
+     * от снимка корзины. Канал нужен только для совместной (`shared`) корзины:
+     * для соло-режима соединение закрывается. Повторный вызов с тем же
+     * `cartId` соединение не пересоздаёт.
+     *
+     * @param snapshot Снимок корзины, к которому подстраивается канал.
+     */
+    private syncRealtime(snapshot: CartSnapshot): void {
+        const shouldConnect = snapshot.mode === 'shared' && snapshot.cartId !== null;
+
+        if (!shouldConnect) {
+            this.disconnectRealtime();
+            return;
+        }
+        if (this.realtimeCartId === snapshot.cartId) {
+            return;
+        }
+
+        this.disconnectRealtime();
+        this.realtimeCartId = snapshot.cartId;
+        this.realtimeSocket = connectCartSocket(snapshot.cartId as string, {
+            onEvent: (event) => this.handleRealtimeEvent(event),
+        });
+    }
+
+    /**
+     * Обрабатывает событие WebSocket-канала: перечитывает корзину целиком,
+     * так как дельты бэкенд не присылает. Событие `CartLocked` означает, что
+     * организатор оформил совместный заказ.
+     *
+     * @param event Распарсенное событие изменения корзины.
+     */
+    private handleRealtimeEvent(event: CartWsEvent): void {
+        if (event.event_type === 'CartLocked') {
+            this.notifyGuestOrderPlaced();
+        }
+        void this.refresh().catch((e) => console.error('cartStore: realtime refresh failed', e));
+    }
+
+    /**
+     * Уводит гостя совместной корзины на страницу профиля, чтобы он оплатил
+     * свою часть оформленного заказа. Пометку в sessionStorage читает профиль
+     * и сразу открывает нужный заказ. Организатору это не нужно: он и так
+     * видит модалку статуса после оформления.
+     */
+    private notifyGuestOrderPlaced(): void {
+        const state = this.getState();
+        const me = userStore.getState().user;
+        const isGuest = me !== null && state.adminId !== null && me.id !== state.adminId;
+        if (!isGuest) return;
+
+        try {
+            sessionStorage.setItem('nancats:open_pending_split_order', '1');
+        } catch (e) {
+            console.warn('cartStore: sessionStorage unavailable', e);
+        }
+
+        void Popup.alert('Организатор оформил совместный заказ. Откроем его, чтобы вы оплатили свою часть.').then(
+            () => {
+                window.location.assign(ROUTES.profile);
+            },
+        );
+    }
+
+    /**
+     * Закрывает активный WebSocket-канал совместной корзины, если он открыт.
+     */
+    private disconnectRealtime(): void {
+        if (this.realtimeSocket) {
+            this.realtimeSocket.close();
+            this.realtimeSocket = null;
+        }
+        this.realtimeCartId = null;
+    }
+
+    /**
+     * Генерирует приглашение в совместную корзину и переводит её в режим
+     * `shared`. Доступно только администратору корзины.
+     *
+     * @returns Токен приглашения и срок его действия.
+     * @throws Error, если корзина ещё не создана, либо ApiError при отказе бэкенда.
+     */
+    async generateInvite(): Promise<CartInvite> {
+        const state = await this.ensureLoaded();
+        if (!state.cartId) {
+            throw new Error('Корзина пуста: добавьте блюдо, прежде чем приглашать друзей');
+        }
+
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            const invite = await cartApi.generateInvite(state.cartId);
+            // Бэкенд переводит корзину в shared-режим - перечитываем снимок.
+            await this.refresh();
+            return { token: invite.token ?? '', expiresAt: invite.expires_at ?? '' };
+        } catch (e) {
+            console.error('cartStore.generateInvite', e);
+            this.setState({ status: 'error', error: 'invite failed' });
+            throw e;
+        }
+    }
+
+    /**
+     * Присоединяет текущего пользователя к совместной корзине по токену
+     * приглашения и загружает её снимок.
+     *
+     * @param token Токен приглашения.
+     * @throws ApiError, если приглашение недействительно или просрочено.
+     */
+    async joinByToken(token: string): Promise<void> {
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            await cartApi.joinCart(token);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.joinByToken', e);
+            this.setState({ status: 'error', error: 'join failed' });
+            throw e;
+        }
+    }
+
+    /**
+     * Удаляет участника из совместной корзины. Доступно только
+     * администратору; блюда удалённого участника становятся ничейными.
+     *
+     * @param targetUserId Идентификатор удаляемого участника.
+     */
+    async kickMember(targetUserId: number): Promise<void> {
+        const state = this.getState();
+        if (!state.cartId) return;
+
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            await cartApi.kickMember(state.cartId, targetUserId);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.kickMember', e);
+            this.setState({ status: 'error', error: 'kick failed' });
+            throw e;
+        }
+    }
+
+    /**
+     * Закрывает совместную корзину и возвращает её в соло-режим. Доступно
+     * только администратору; гости и их блюда удаляются.
+     */
+    async closeShared(): Promise<void> {
+        const state = this.getState();
+        if (!state.cartId) return;
+
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            await cartApi.closeSharedCart(state.cartId);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.closeShared', e);
+            this.setState({ status: 'error', error: 'close failed' });
+            throw e;
+        }
+    }
+
+    /**
+     * Сбрасывает корзину в пустое состояние и закрывает канал живых
+     * обновлений. Вызывается при выходе пользователя из аккаунта.
+     */
+    reset(): void {
+        this.disconnectRealtime();
+        this.setState({
+            cartId: null,
+            items: [],
+            restaurantId: 0,
+            mode: 'solo',
+            roomStatus: '',
+            adminId: null,
+            members: [],
+            totalCost: 0,
+            status: 'idle',
+            error: undefined,
+        });
     }
 }
 

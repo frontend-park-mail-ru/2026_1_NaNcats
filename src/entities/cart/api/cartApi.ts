@@ -88,8 +88,10 @@ export const cartApi = {
             'POST',
             '/cart/items',
             withCartId(cartId, {
-                dish_id: dishId,
-                quantity,
+                // Каталог ресторанов отдаёт id блюд строками, а cart-сервис
+                // ждёт int64: приводим к числу, иначе бэкенд вернёт 400.
+                dish_id: Number(dishId),
+                quantity: Number(quantity),
             }),
         );
     },
@@ -104,8 +106,8 @@ export const cartApi = {
     updateQuantity(cartId: string, dishId: number, quantity: number): Promise<void> {
         return httpClient.send('PUT', '/cart/items', {
             cart_id: cartId,
-            dish_id: dishId,
-            quantity,
+            dish_id: Number(dishId),
+            quantity: Number(quantity),
         });
     },
 
@@ -118,7 +120,7 @@ export const cartApi = {
     removeItem(cartId: string, dishId: number): Promise<void> {
         return httpClient.send('DELETE', '/cart/items', {
             cart_id: cartId,
-            dish_id: dishId,
+            dish_id: Number(dishId),
         });
     },
 
@@ -144,7 +146,7 @@ export const cartApi = {
     reassignOwner(cartId: string, dishId: number, newOwnerId: number | null): Promise<void> {
         return httpClient.send('PATCH', '/cart/items/owner', {
             cart_id: cartId,
-            dish_id: dishId,
+            dish_id: Number(dishId),
             new_owner_id: newOwnerId,
         });
     },
@@ -205,7 +207,11 @@ export const cartApi = {
      * @param quantity Новое количество единиц.
      */
     update(cartId: string, dishId: number, quantity: number): Promise<void> {
-        return httpClient.putJson('/cart/items', { cart_id: cartId, dish_id: dishId, quantity });
+        return httpClient.putJson('/cart/items', {
+            cart_id: cartId,
+            dish_id: Number(dishId),
+            quantity: Number(quantity),
+        });
     },
 
     /**
@@ -216,6 +222,6 @@ export const cartApi = {
      * @param dishId Идентификатор блюда.
      */
     remove(cartId: string, dishId: number): Promise<void> {
-        return httpClient.deleteJson('/cart/items', { cart_id: cartId, dish_id: dishId });
+        return httpClient.deleteJson('/cart/items', { cart_id: cartId, dish_id: Number(dishId) });
     },
 };

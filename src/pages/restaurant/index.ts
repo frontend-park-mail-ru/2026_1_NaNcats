@@ -1,1 +1,2 @@
-export { RestaurantPage } from './ui/RestaurantPage';
+export { RestaurantPage, load } from './ui/RestaurantPage';
+export type { RestaurantPageProps } from './ui/RestaurantPage';

@@ -1,1 +1,2 @@
-export { HomePage } from './ui/HomePage';
+export { HomePage, load } from './ui/HomePage';
+export type { HomePageProps } from './ui/HomePage';

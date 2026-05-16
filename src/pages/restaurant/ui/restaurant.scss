@@ -143,12 +143,51 @@
 
     &__add-btn {
       margin-top: auto;
+      height: 44px;
+      box-sizing: border-box;
       background: #ffe3e3;
       border-radius: 14px;
-      padding: 10px 14px;
+      padding: 0 14px;
       font-weight: 600;
       border: none;
       cursor: pointer;
+    }
+
+    &__counter {
+      margin-top: auto;
+      height: 44px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffe3e3;
+      border-radius: 14px;
+      padding: 5px;
+    }
+
+    &__counter-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text-dark, #0e1117);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: filter 0.15s;
+
+      &:hover {
+        filter: brightness(0.95);
+      }
+    }
+
+    &__counter-value {
+      font-weight: 700;
+      font-size: 15px;
     }
 
     &_highlighted {
@@ -246,6 +285,7 @@
   .header__back-btn {
     height: 36px;
     background: none;
+    width: 100px;
     padding: 10px 16px;
     border-radius: 12px;
     display: flex;
@@ -847,4 +887,10 @@
       transform: scale(0.9);
     }
   }
+}
+
+// анимация полета иконки блюда в корзину (при добавлении блюда в корзину)
+.fly-to-cart {
+  pointer-events: none;
+  will-change: transform, opacity;
 }

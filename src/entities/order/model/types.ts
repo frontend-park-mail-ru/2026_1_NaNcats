@@ -22,12 +22,13 @@ export interface OrderCreatePayload {
 
 /**
  * Ответ эндпоинта создания заказа.
+ *
+ * URL подтверждения оплаты сюда больше не приходит: бэкенд присылает его
+ * отдельным WebSocket-событием в {@link GatewayWsEvent.payment_url}.
  */
 export interface OrderCreateResponse {
     /** Идентификатор созданного заказа. */
     order_id: string;
-    /** URL страницы подтверждения оплаты, если она требуется. */
-    confirmation_url?: string;
 }
 
 /**
@@ -68,6 +69,33 @@ export interface OrderItem {
     price: number;
     /** Ссылка на изображение блюда. */
     image_url?: string;
+}
+
+/**
+ * Статус доли счёта одного участника совместного заказа.
+ *
+ * - `pending` - доля ещё не оплачена;
+ * - `paid` - доля оплачена;
+ * - `failed` - оплата доли не прошла;
+ * - `cancelled` - доля отменена.
+ */
+export type OrderSplitStatus = 'pending' | 'paid' | 'failed' | 'cancelled';
+
+/**
+ * Доля счёта (split) одного участника совместного заказа.
+ *
+ * При оформлении заказа в режиме «каждый платит за своё» бэкенд делит сумму
+ * на доли по владельцам позиций; каждый участник оплачивает свою долю.
+ */
+export interface OrderSplit {
+    /** Идентификатор доли счёта. */
+    split_id: string;
+    /** Идентификатор пользователя, который должен оплатить долю. */
+    user_id: number;
+    /** Сумма доли в микрорублях. */
+    amount: number;
+    /** Статус оплаты доли. */
+    status: string;
 }
 
 /**
@@ -112,6 +140,8 @@ export interface Order {
     restaurant_reviews_count?: number;
     /** Позиции заказа. */
     items?: OrderItem[];
+    /** Доли счёта участников (для совместного заказа). */
+    splits?: OrderSplit[];
     /** Сервисный сбор в микрорублях. */
     service_fee?: number;
     /** Стоимость доставки в микрорублях. */
@@ -143,6 +173,8 @@ export interface NormalizedOrder {
     restaurant: OrderRestaurant;
     /** Позиции заказа. */
     items: OrderItem[];
+    /** Доли счёта участников; пустой массив, если заказ не совместный. */
+    splits: OrderSplit[];
     /** Сервисный сбор в микрорублях. */
     service_fee: number;
     /** Стоимость доставки в микрорублях. */
@@ -165,6 +197,13 @@ export interface GatewayWsEvent {
     status: string;
     /** URL страницы подтверждения оплаты, если бэкенд её сгенерировал. */
     payment_url?: string;
+    /**
+     * Идентификатор пользователя, к которому относится событие оплаты.
+     * Нужен, чтобы в совместном заказе отличать свою долю счёта от чужой.
+     */
+    user_id?: number;
+    /** Идентификатор доли счёта, к которой относится событие оплаты. */
+    split_id?: string;
     /** Текст ошибки, если статус терминальный с ошибкой. */
     error?: string;
 }

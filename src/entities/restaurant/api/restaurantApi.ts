@@ -54,7 +54,9 @@ export const restaurantApi = {
             limit,
             offset,
         });
-        return data.dishes ?? [];
+        // Бэкенд отдаёт id блюда строкой; приводим к числу, чтобы тип Dish.id
+        // соответствовал рантайму и корзина сравнивала позиции корректно.
+        return (data.dishes ?? []).map((d) => ({ ...d, id: Number(d.id) }));
     },
 
     /**

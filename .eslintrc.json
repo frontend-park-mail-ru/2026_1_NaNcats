@@ -35,7 +35,7 @@
     },
     "overrides": [
         {
-            "files": ["src/pages/**/*.{ts,js}"],
+            "files": ["src/pages/**/*.{ts,tsx,js}"],
             "excludedFiles": ["src/pages/index.ts"],
             "rules": {
                 "no-restricted-imports": [
@@ -50,7 +50,7 @@
             }
         },
         {
-            "files": ["src/widgets/**/*.{ts,js}"],
+            "files": ["src/widgets/**/*.{ts,tsx,js}"],
             "excludedFiles": ["src/widgets/index.ts"],
             "rules": {
                 "no-restricted-imports": [
@@ -66,7 +66,7 @@
             }
         },
         {
-            "files": ["src/features/**/*.{ts,js}"],
+            "files": ["src/features/**/*.{ts,tsx,js}"],
             "excludedFiles": ["src/features/index.ts"],
             "rules": {
                 "no-restricted-imports": [
@@ -83,7 +83,7 @@
             }
         },
         {
-            "files": ["src/entities/**/*.{ts,js}"],
+            "files": ["src/entities/**/*.{ts,tsx,js}"],
             "excludedFiles": ["src/entities/index.ts"],
             "rules": {
                 "no-restricted-imports": [
@@ -101,7 +101,7 @@
             }
         },
         {
-            "files": ["src/shared/**/*.{ts,js}"],
+            "files": ["src/shared/**/*.{ts,tsx,js}"],
             "excludedFiles": ["src/shared/index.ts"],
             "rules": {
                 "no-restricted-imports": [

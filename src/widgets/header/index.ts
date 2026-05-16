@@ -1,2 +1,2 @@
 export { Header } from './ui/Header';
-export type { HeaderProps } from './ui/Header';
+export type { HeaderProps, HeaderMode } from './ui/Header';

@@ -2,18 +2,6 @@ import { httpClient } from '@shared/api/http';
 import type { Order, OrderCreatePayload, OrderCreateResponse } from '../model/types';
 
 /**
- * Ответ эндпоинта проверки статуса оплаты заказа.
- */
-export interface CheckPaymentResponse {
-    /** Идентификатор заказа. */
-    order_id: string;
-    /** Идентификатор платежа на стороне платёжного провайдера. */
-    payment_id?: string;
-    /** Статус платежа: `pending`, `succeeded`, `canceled`, `waiting_for_capture`. */
-    payment_status: string;
-}
-
-/**
  * REST-клиент для работы с заказами.
  */
 export const orderApi = {
@@ -25,7 +13,8 @@ export const orderApi = {
      *
      * @param payload Полезная нагрузка создания заказа.
      * @param idempotencyKey Ключ идемпотентности.
-     * @returns Идентификатор заказа и URL подтверждения оплаты, если она нужна.
+     * @returns Идентификатор созданного заказа. URL подтверждения оплаты
+     * приходит отдельным WebSocket-событием в `GatewayWsEvent.payment_url`.
      */
     create(payload: OrderCreatePayload, idempotencyKey: string): Promise<OrderCreateResponse> {
         return httpClient.postJson<OrderCreateResponse>('/orders', payload, idempotencyKey);
@@ -41,16 +30,6 @@ export const orderApi = {
     },
 
     /**
-     * Опрашивает статус оплаты заказа у платёжного провайдера.
-     *
-     * @param orderID Идентификатор заказа.
-     * @returns Ответ со статусом платежа.
-     */
-    checkPayment(orderID: string): Promise<CheckPaymentResponse> {
-        return httpClient.postJson<CheckPaymentResponse>(`/orders/${encodeURIComponent(orderID)}/check-payment`, {});
-    },
-
-    /**
      * Отменяет заказ.
      *
      * @param orderID Идентификатор заказа.
@@ -58,5 +37,22 @@ export const orderApi = {
      */
     cancel(orderID: string): Promise<{ status: string }> {
         return httpClient.postJson<{ status: string }>(`/orders/${encodeURIComponent(orderID)}/cancel`, {});
+    },
+
+    /**
+     * Запускает оплату доли счёта (split) в совместном заказе.
+     *
+     * Бэкенд перепривязывает долю на текущего пользователя и запускает по ней
+     * платёж: URL подтверждения оплаты приходит отдельным WebSocket-событием
+     * в `GatewayWsEvent.payment_url` для соответствующего `split_id`.
+     *
+     * @param splitID Идентификатор доли счёта.
+     * @param paymentMethodID Идентификатор привязанной карты или пустая строка
+     *   для оплаты новой картой.
+     */
+    payForSplit(splitID: string, paymentMethodID: string): Promise<{ message: string }> {
+        return httpClient.postJson<{ message: string }>(`/orders/splits/${encodeURIComponent(splitID)}/pay`, {
+            payment_method_id: paymentMethodID,
+        });
     },
 };
