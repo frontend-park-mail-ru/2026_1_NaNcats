@@ -2,7 +2,7 @@
 
 import './checkout.scss';
 
-import { Link, router } from '@app/router';
+import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { ApiError } from '@shared/api/http';
 import { userStore } from '@entities/user';
@@ -11,11 +11,12 @@ import { cardStore, type Card } from '@entities/card';
 import { cartApi, cartStore, fromMicros, toMicros, type CartItem } from '@entities/cart';
 import { orderApi, type Order } from '@entities/order';
 import { restaurantApi } from '@entities/restaurant';
+import { imageFallback } from '@shared/lib/img';
 import { AddressPicker, type AddressPickerController } from '@widgets/address-picker';
 import { OrderStatusModal, type OrderStatusModalController } from '@widgets/order-status';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
-import { signal } from '@shared/lib/signals';
+import { signal, useStoreSignal } from '@shared/lib/signals';
 
 /** Фиксированный сбор за доставку (рубли). */
 const DELIVERY_FEE_RUB = 360;
@@ -108,6 +109,11 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     const addressOpenSig = signal<boolean>(false);
     const paymentOpenSig = signal<boolean>(false);
 
+    // Совместная корзина: способ оплаты заказа. true - админ платит за всех,
+    // false - бэкенд делит счёт на доли по владельцам позиций.
+    const isSharedCartSig = useStoreSignal(cartStore, (s) => s.mode === 'shared');
+    const payForAllSig = signal<boolean>(true);
+
     let pickerCtl: AddressPickerController | null = null;
     let orderStatusCtl: OrderStatusModalController | null = null;
 
@@ -161,7 +167,12 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             return cart.items;
         }
 
-        if (cart.mode === 'solo' && cart.cartId && cart.adminId !== null) {
+        // Переназначить ничейные позиции (например, оставшиеся после кика
+        // гостя) на себя может только организатор корзины.
+        const me = userStore.getState().user;
+        const isAdmin = me !== null && cart.adminId !== null && me.id === cart.adminId;
+
+        if (isAdmin && cart.cartId && cart.adminId !== null) {
             try {
                 await Promise.all(
                     unassignedItems.map((item) =>
@@ -192,6 +203,15 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     const handlePayClick = async () => {
         errorSig.set('');
 
+        // В совместной корзине заказ оформляет только организатор: бэкенд
+        // блокирует корзину от имени админа, гостю запрос вернёт 403.
+        const cartState = cartStore.getState();
+        const me = userStore.getState().user;
+        if (cartState.mode === 'shared' && (me === null || me.id !== cartState.adminId)) {
+            errorSig.set('Оформить заказ может только организатор совместной корзины.');
+            return;
+        }
+
         const address = selectedAddressSig.peek();
         if (!address) {
             errorSig.set('Пожалуйста, выберите адрес доставки');
@@ -217,6 +237,9 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         const card = selectedCardSig.peek();
 
         try {
+            // Для соло-корзины разделение счёта не имеет смысла: всегда pay_for_all.
+            const payForAll = currentCart.mode === 'shared' ? payForAllSig.peek() : true;
+
             const result = await orderApi.create(
                 {
                     address_id: address.id,
@@ -226,7 +249,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     delivery_cost: toMicros(DELIVERY_FEE_RUB),
                     service_fee: toMicros(SERVICE_FEE_RUB),
                     total_cost: toMicros(grand),
-                    pay_for_all: true,
+                    pay_for_all: payForAll,
                 },
                 idempotencyKey,
             );
@@ -271,14 +294,8 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
     return (
         <div class="page-wrapper checkout-page" style="background: var(--bg-main); overflow-y: auto;">
-            <header class="checkout-header">
-                <div class="checkout-header__container">
-                    <Link class="checkout-header__back router-link" to={ROUTES.home} style="text-decoration: none;">
-                        <div class="back-icon-arrow" />
-                        <span>Назад</span>
-                    </Link>
-                </div>
-            </header>
+            {/* Свой хедер не рендерим: глобальный Header из RootLayout уже
+                показывает логотип и кнопку «Назад» (mode='back'). */}
 
             <div class="checkout-content">
                 <main class="checkout-main">
@@ -360,6 +377,36 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                         </div>
                     </div>
 
+                    <Show when={isSharedCartSig}>
+                        <div class="checkout-card mt-20">
+                            <h2 class="checkout-card__title">Кто оплачивает</h2>
+                            <div class="selection-list mt-10">
+                                <div
+                                    class={() =>
+                                        payForAllSig() ? 'selection-item selection-item_active' : 'selection-item'
+                                    }
+                                    onClick={() => payForAllSig.set(true)}
+                                >
+                                    <div style="font-weight: 600;">💰 Я оплачу весь заказ</div>
+                                    <div style="font-size: 12px; color: #777;">
+                                        Полная сумма спишется с вашей карты.
+                                    </div>
+                                </div>
+                                <div
+                                    class={() =>
+                                        payForAllSig() ? 'selection-item' : 'selection-item selection-item_active'
+                                    }
+                                    onClick={() => payForAllSig.set(false)}
+                                >
+                                    <div style="font-weight: 600;">🧾 Каждый платит за свои блюда</div>
+                                    <div style="font-size: 12px; color: #777;">
+                                        Счёт разделится по участникам, каждый оплатит свою часть в истории заказов.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Show>
+
                     <div class="checkout-card mt-20">
                         <h2 class="checkout-card__title">Что в цене</h2>
                         <div class="summary-row">
@@ -407,13 +454,15 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     <h2 class="checkout-modal__title">Состав заказа</h2>
                     <div class="checkout-modal__content" style="max-height: 400px; overflow-y: auto;">
                         <Show when={() => itemsSig().length > 0} fallback={<p>Корзина пуста</p>}>
-                            <For each={itemsSig} key={(i) => i.dish_id}>
+                            <For each={itemsSig} key={(i) => `${i.dish_id}:${i.owner_user_id ?? 0}`}>
                                 {(item) => (
                                     <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
                                         <img
                                             src={item.image_url}
                                             style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;"
-                                            onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
+                                            onError={imageFallback(
+                                                'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
+                                            )}
                                         />
                                         <div style="flex: 1;">
                                             <div style="font-weight: 500; font-size: 14px;">{item.name}</div>

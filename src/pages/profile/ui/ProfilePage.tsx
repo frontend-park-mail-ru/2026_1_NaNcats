@@ -26,6 +26,7 @@ import { OrderStatusModal, type OrderStatusModalController } from '@widgets/orde
 import { For, onCleanup, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
+import { imageFallback } from '@shared/lib/img';
 
 /** Заказ с предвычисленным бейджем статуса. */
 interface OrderRowView extends Order {
@@ -40,9 +41,43 @@ export interface ProfilePageProps {
 /** Терминальные статусы заказа: обновления стрима больше не нужны. */
 const TERMINAL_STATUSES = new Set<string>(['finished', 'cancelled', 'failed']);
 
+/** Статусы заказа, известные UI; прочие сигналы WS-канала пропускаются. */
+const KNOWN_ORDER_STATUSES = new Set<string>([
+    'created',
+    'cart_locked',
+    'payment_ready',
+    'paid',
+    'in_progress',
+    'waiting',
+    'delivering',
+    'finished',
+    'cancelled',
+    'failed',
+]);
+
 const DEFAULT_AVATAR_URL = 'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp';
+/** Запасная картинка для заказа, если у ресторана не пришёл логотип. */
+const ORDER_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
 const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
+
+/**
+ * Подсказка о доле счёта текущего пользователя в совместном заказе. Возвращает
+ * `null`, если заказ не разделённый или пользователь в нём не плательщик.
+ *
+ * @param order Заказ из истории.
+ * @param myId Идентификатор текущего пользователя.
+ * @returns Текст и css-модификатор подсказки либо `null`.
+ */
+function splitOwnerHint(order: Order, myId: number | null): { text: string; cls: string } | null {
+    const splits = order.splits ?? [];
+    if (splits.length <= 1 || myId === null) return null;
+    const mine = splits.find((s) => s.user_id === myId);
+    if (!mine) return null;
+    if (mine.status === 'paid') return { text: '✓ Ваша часть оплачена', cls: 'paid' };
+    if (mine.status === 'pending') return { text: '⏳ Ваша часть не оплачена', cls: 'pending' };
+    return null;
+}
 
 /** Loader: грузит пользователя, адреса, карты, заказы; редиректит на /login без авторизации. */
 export async function load(): Promise<ProfilePageProps> {
@@ -77,6 +112,9 @@ export function ProfilePage(props: ProfilePageProps): VNode {
 
     // Подменяет статус строки заказа; закрывает трекер при терминальном статусе.
     const applyStatusUpdate = (orderId: string, rawStatus: string) => {
+        // Сигналы, не относящиеся к статусу заказа, пропускаем.
+        if (!KNOWN_ORDER_STATUSES.has(rawStatus)) return;
+
         const current = ordersSig.peek();
         const idx = current.findIndex((o) => o.order_id === orderId);
         if (idx < 0) return;
@@ -162,8 +200,33 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         orderStatusCtl.open(order, { subscribe: !isTerminal });
     };
 
+    // Если гостя привели на профиль после оформления совместного заказа
+    // (флаг ставит cartStore), сразу открываем заказ с его неоплаченной долей.
+    const autoOpenPendingSplitOrder = () => {
+        let shouldOpen = false;
+        try {
+            shouldOpen = sessionStorage.getItem('nancats:open_pending_split_order') === '1';
+            if (shouldOpen) sessionStorage.removeItem('nancats:open_pending_split_order');
+        } catch (e) {
+            console.warn('profile: sessionStorage unavailable', e);
+        }
+        if (!shouldOpen || !orderStatusCtl) return;
+
+        const myId = props.user.id;
+        const target = ordersSig.peek().find((o) => {
+            const splits = o.splits ?? [];
+            if (splits.length <= 1) return false;
+            const mine = splits.find((s) => s.user_id === myId);
+            return mine !== undefined && mine.status === 'pending';
+        });
+        if (target) {
+            orderStatusCtl.open(target, { subscribe: !TERMINAL_STATUSES.has(target.status) });
+        }
+    };
+
     onMount(() => {
         subscribeActiveOrders();
+        autoOpenPendingSplitOrder();
     });
 
     onCleanup(() => {
@@ -182,7 +245,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 class="profile-avatar__img"
                                 src={() => userSig()?.avatar_url ?? DEFAULT_AVATAR_URL}
                                 alt="avatar"
-                                onerror={`this.src='${DEFAULT_AVATAR_URL}'`}
+                                onError={imageFallback(DEFAULT_AVATAR_URL)}
                             />
                             <div class="profile-avatar__overlay" onClick={handleAvatarPickClick}>
                                 📷
@@ -311,9 +374,9 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                         >
                                             <img
                                                 class="order-row__img"
-                                                src={order.restaurant_image_url ?? ''}
+                                                src={order.restaurant_image_url || ORDER_FALLBACK_IMAGE}
                                                 alt="order"
-                                                onerror="this.src='https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp'"
+                                                onError={imageFallback(ORDER_FALLBACK_IMAGE)}
                                             />
                                             <div class="order-row__date">{order.created_at ?? ''}</div>
                                             <div class="order-row__info">
@@ -324,6 +387,17 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                     <span class="order-row__status-icon">{order._badge.icon}</span>
                                                     <span class="order-row__status-label">{order._badge.label}</span>
                                                 </div>
+                                                {(() => {
+                                                    // Для совместного заказа: оплачена ли доля пользователя.
+                                                    const hint = splitOwnerHint(order, props.user.id);
+                                                    return hint ? (
+                                                        <div
+                                                            class={`order-row__split-hint order-row__split-hint_${hint.cls}`}
+                                                        >
+                                                            {hint.text}
+                                                        </div>
+                                                    ) : null;
+                                                })()}
                                             </div>
                                             <div class="order-row__price">
                                                 {((order.total_cost ?? 0) / 1_000_000).toFixed(2)}₽

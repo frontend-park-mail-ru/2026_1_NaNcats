@@ -112,21 +112,11 @@
   }
 
   &__progress-track {
+    align-self: stretch;
     display: flex;
     align-items: center;
-    gap: 20px;
-  }
-
-  &__progress-dot {
-    width: 3px;
-    height: 3px;
-    background: #0e1117;
-    border-radius: 50%;
-    flex-shrink: 0;
-
-    &_active {
-      background: #f7958c;
-    }
+    justify-content: space-between;
+    padding: 4px 8px;
   }
 
   &__progress-step {
@@ -345,6 +335,121 @@
     font-weight: 700;
     line-height: 20px;
     text-align: center;
+  }
+
+  &__splits {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__split-summary {
+    align-self: stretch;
+    margin-bottom: 8px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.35;
+
+    &_warn {
+      background: #fff4e0;
+      color: #a06a00;
+    }
+    &_done {
+      background: #e7f6ec;
+      color: #2e9b4f;
+    }
+    &_info {
+      background: #f0f0f0;
+      color: #555;
+    }
+  }
+
+  &__split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: #f7f7f7;
+
+    &_mine {
+      box-shadow: inset 3px 0 0 var(--accent-orange, #fda522);
+    }
+    &_paid {
+      background: #e7f6ec;
+    }
+  }
+
+  &__split-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  &__split-payer {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  &__split-status {
+    font-size: 12px;
+    font-weight: 600;
+    color: #a06a00;
+
+    &_paid {
+      color: #2e9b4f;
+    }
+    &_failed {
+      color: #c04040;
+    }
+    &_cancelled {
+      color: #888;
+    }
+  }
+
+  &__split-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  &__split-amount {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  &__split-pay {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent-orange, #fda522);
+    color: white;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+      filter 0.15s,
+      transform 0.05s;
+
+    &:hover {
+      filter: brightness(0.95);
+    }
+    &:active {
+      transform: scale(0.97);
+    }
+  }
+
+  &__split-wait {
+    font-size: 13px;
+    font-weight: 600;
+    color: #a06a00;
   }
 }
 

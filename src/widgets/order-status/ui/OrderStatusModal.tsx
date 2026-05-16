@@ -10,10 +10,12 @@ import {
     type GatewayWsEvent,
     type NormalizedOrder,
     type Order,
+    type OrderSplit,
     type OrderTracker,
     type OrderUiStatus,
 } from '@entities/order';
-import { computed, onCleanup, signal } from '@shared/lib/signals';
+import { userStore } from '@entities/user';
+import { computed, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
@@ -82,6 +84,23 @@ const PAYMENT_SETTLED_RAW_STATUSES = new Set<string>([
     'failed',
 ]);
 
+/** Сырые статусы, при которых заказ уже полностью оплачен (все доли счёта). */
+const ORDER_PAID_RAW_STATUSES = new Set<string>(['paid', 'in_progress', 'waiting', 'delivering', 'finished']);
+
+/** Все статусы заказа, которые отдаёт бэкенд. */
+const KNOWN_RAW_STATUSES = new Set<string>([
+    'created',
+    'cart_locked',
+    'payment_ready',
+    'paid',
+    'in_progress',
+    'waiting',
+    'delivering',
+    'finished',
+    'cancelled',
+    'failed',
+]);
+
 /** URL дефолтной иконки блюда/ресторана, используется при ошибке загрузки. */
 const DEFAULT_IMAGE_URL = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
@@ -120,6 +139,32 @@ function formatReviews(count: number) {
     return String(count);
 }
 
+/** Подпись статуса доли счёта для UI. */
+const SPLIT_STATUS_TEXT: Record<string, string> = {
+    pending: 'Ожидает оплаты',
+    paid: 'Оплачено',
+    failed: 'Ошибка оплаты',
+    cancelled: 'Отменено',
+};
+
+/** Человекочитаемая подпись статуса доли счёта. */
+function splitStatusText(status: string) {
+    return SPLIT_STATUS_TEXT[status] ?? status;
+}
+
+/** Значок статуса доли счёта: оплачено / ожидание / неудача. */
+function splitStatusIcon(status: string) {
+    if (status === 'paid') return '✓';
+    if (status === 'failed' || status === 'cancelled') return '✕';
+    return '⏳';
+}
+
+/** Подпись участника-плательщика доли относительно текущего пользователя. */
+function splitPayerLabel(split: OrderSplit, currentUserId: number | null) {
+    if (currentUserId !== null && split.user_id === currentUserId) return 'Ваша часть';
+    return `Участник #${split.user_id}`;
+}
+
 // Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
 // нормализованного объекта (чтобы UI-статус согласовался с raw), текст ошибки.
 function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
@@ -134,6 +179,8 @@ function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
         restaurant_rating: current.restaurant.rating,
         restaurant_reviews_count: current.restaurant.reviews_count,
         items: current.items,
+        // WS-событие не содержит доли счёта, переносим их сами.
+        splits: current.splits,
         service_fee: current.service_fee,
         delivery_cost: current.delivery_cost,
         eta_minutes: current.eta_minutes,
@@ -141,6 +188,10 @@ function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
     };
     const next = normalizeOrder(merged);
     next.error = event.error;
+    // Раз заказ ушёл дальше оплаты, все доли счёта уже оплачены.
+    if (ORDER_PAID_RAW_STATUSES.has(next.raw_status)) {
+        next.splits = next.splits.map((s) => (s.status === 'paid' ? s : { ...s, status: 'paid' }));
+    }
     return next;
 }
 
@@ -152,8 +203,51 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const isActive = signal<boolean>(false);
     /** Ожидание подтверждения оплаты после клика по "Оплатить". */
     const processing = signal<boolean>(false);
+    /** id доли счёта, по которой запрошена оплата и ожидается ссылка; '' - нет. */
+    const splitWaiting = signal<string>('');
+
+    /** Текущий пользователь: нужен, чтобы отличать свою долю счёта от чужой. */
+    const currentUser = useStoreSignal(userStore, (s) => s.user);
+    const myId = () => currentUser()?.id ?? null;
 
     const errorText = computed(() => order()?.error ?? '');
+
+    /** Доли счёта показываем только для разделённого заказа (больше одной доли). */
+    const splits = computed<readonly OrderSplit[]>(() => {
+        const list = order()?.splits ?? [];
+        return list.length > 1 ? list : [];
+    });
+
+    /** Доля счёта текущего пользователя в разделённом заказе либо null. */
+    const mySplit = computed<OrderSplit | null>(() => {
+        const id = myId();
+        if (id === null) return null;
+        return splits().find((s) => s.user_id === id) ?? null;
+    });
+
+    /**
+     * Подпись над списком долей: статус оплаты текущего пользователя и сколько
+     * участников уже заплатили.
+     */
+    const splitSummary = computed<{ kind: 'warn' | 'done' | 'info'; text: string } | null>(() => {
+        const list = splits();
+        if (list.length === 0) return null;
+        const mine = mySplit();
+        if (mine !== null && mine.status === 'pending') {
+            return { kind: 'warn', text: `Вы ещё не оплатили свою часть: ${formatRubles(mine.amount)}₽` };
+        }
+        const paidCount = list.filter((s) => s.status === 'paid').length;
+        if (paidCount === list.length) {
+            return { kind: 'done', text: 'Счёт оплачен полностью.' };
+        }
+        if (mine !== null && mine.status === 'paid') {
+            return {
+                kind: 'done',
+                text: `Вы оплатили свою часть. Оплачено ${paidCount} из ${list.length}, ждём остальных.`,
+            };
+        }
+        return { kind: 'info', text: `Оплачено ${paidCount} из ${list.length} участников.` };
+    });
 
     /** Индекс активного шага прогресс-бара; шаги читают его реактивно. */
     const currentStepIdx = computed(() => {
@@ -222,11 +316,63 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const applyEvent = (event: GatewayWsEvent) => {
         const current = order();
         if (current === null) return;
-        const next = mergeEvent(current, event);
+
+        // Сигнал об оплате одной доли: помечаем оплаченной её, общий статус
+        // заказа не трогаем.
+        if (event.status === 'split_paid') {
+            if (event.split_id === undefined || event.split_id === '') return;
+            const updatedSplits = current.splits.map((s) =>
+                s.split_id === event.split_id ? { ...s, status: 'paid' } : s,
+            );
+            if (event.split_id === splitWaiting()) splitWaiting.set('');
+            order.set({ ...current, splits: updatedSplits });
+            return;
+        }
+
+        // События без понятного статуса заказа пропускаем (кроме тех, что
+        // несут текст ошибки).
+        if (!KNOWN_RAW_STATUSES.has(event.status) && (event.error === undefined || event.error === '')) {
+            return;
+        }
+
+        // В совместном заказе по одному WS-каналу прилетают события оплаты
+        // всех участников. Чужую ссылку на оплату отбрасываем: на экране
+        // должна оставаться только своя доля счёта.
+        const foreignPayment =
+            event.payment_url !== undefined &&
+            event.user_id !== undefined &&
+            event.user_id !== 0 &&
+            myId() !== null &&
+            event.user_id !== myId();
+        const scoped: GatewayWsEvent = foreignPayment ? { ...event, payment_url: undefined } : event;
+
+        if (scoped.payment_url !== undefined) {
+            splitWaiting.set('');
+        }
+
+        const next = mergeEvent(current, scoped);
         if (PAYMENT_SETTLED_RAW_STATUSES.has(next.raw_status)) {
             endPaymentProcessing();
         }
         order.set(next);
+    };
+
+    // Запускает оплату своей доли счёта: бэкенд создаёт по ней платёж, а
+    // ссылку на оплату пришлёт WS-событием, после чего покажется кнопка
+    // "Оплатить".
+    const handlePaySplit = async (split: OrderSplit) => {
+        if (splitWaiting() !== '') return;
+        splitWaiting.set(split.split_id);
+        try {
+            await orderApi.payForSplit(split.split_id, '');
+        } catch (e) {
+            splitWaiting.set('');
+            const current = order();
+            if (current !== null) {
+                const msg = e instanceof Error && e.message ? e.message : 'Не удалось начать оплату доли';
+                order.set({ ...current, error: msg });
+            }
+        }
     };
 
     const subscribeToOrder = (orderId: string) => {
@@ -239,6 +385,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         const normalized = normalizeOrder(rawOrder);
         disconnectTracker();
         endPaymentProcessing();
+        splitWaiting.set('');
         onCloseCallback = options.onClose ?? null;
         order.set(normalized);
         isActive.set(true);
@@ -251,6 +398,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const close = () => {
         disconnectTracker();
         endPaymentProcessing();
+        splitWaiting.set('');
         isActive.set(false);
         const cb = onCloseCallback;
         onCloseCallback = null;
@@ -362,33 +510,22 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                     const reached = computed(() => idx <= currentStepIdx() && currentStepIdx() >= 0);
                                     const current = computed(() => idx === currentStepIdx());
                                     return (
-                                        <>
-                                            <Show when={() => idx > 0}>
-                                                <div
-                                                    class={() =>
-                                                        reached()
-                                                            ? 'order-status-modal__progress-dot order-status-modal__progress-dot_active'
-                                                            : 'order-status-modal__progress-dot'
-                                                    }
-                                                />
-                                            </Show>
+                                        <div
+                                            class={() => {
+                                                const base = 'order-status-modal__progress-step';
+                                                const reachedCls = reached()
+                                                    ? ' order-status-modal__progress-step_active'
+                                                    : '';
+                                                const currentCls = current()
+                                                    ? ' order-status-modal__progress-step_current'
+                                                    : '';
+                                                return `${base}${reachedCls}${currentCls}`;
+                                            }}
+                                        >
                                             <div
-                                                class={() => {
-                                                    const base = 'order-status-modal__progress-step';
-                                                    const reachedCls = reached()
-                                                        ? ' order-status-modal__progress-step_active'
-                                                        : '';
-                                                    const currentCls = current()
-                                                        ? ' order-status-modal__progress-step_current'
-                                                        : '';
-                                                    return `${base}${reachedCls}${currentCls}`;
-                                                }}
-                                            >
-                                                <div
-                                                    class={`order-status-modal__progress-icon order-status-modal__progress-icon_${step.key}`}
-                                                />
-                                            </div>
-                                        </>
+                                                class={`order-status-modal__progress-icon order-status-modal__progress-icon_${step.key}`}
+                                            />
+                                        </div>
                                     );
                                 }}
                             </For>
@@ -420,12 +557,98 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                         </Show>
                     </div>
 
+                    <Show when={() => splits().length > 0}>
+                        <div class="order-status-modal__divider" />
+                        <div class="order-status-modal__section-title">Разделение счёта</div>
+                        <Show when={() => splitSummary() !== null}>
+                            <div
+                                class={() =>
+                                    `order-status-modal__split-summary order-status-modal__split-summary_${
+                                        splitSummary()?.kind ?? 'info'
+                                    }`
+                                }
+                            >
+                                {() => splitSummary()?.text ?? ''}
+                            </div>
+                        </Show>
+                        <div class="order-status-modal__splits">
+                            <For each={splits} key={(s) => s.split_id}>
+                                {(split) => {
+                                    const splitId = split.split_id;
+                                    // For не перевызывает children при смене статуса доли,
+                                    // поэтому актуальную долю читаем из сигнала splits.
+                                    const liveSplit = computed<OrderSplit>(
+                                        () => splits().find((s) => s.split_id === splitId) ?? split,
+                                    );
+                                    const isMine = computed(
+                                        () => myId() !== null && liveSplit().user_id === myId(),
+                                    );
+                                    const waiting = computed(() => splitWaiting() === splitId);
+                                    // Платить можно любую неоплаченную долю: и свою, и чужую.
+                                    const canPay = computed(
+                                        () => liveSplit().status === 'pending' && splitWaiting() === '',
+                                    );
+                                    return (
+                                        <div
+                                            class={() => {
+                                                const cls = ['order-status-modal__split'];
+                                                if (isMine()) cls.push('order-status-modal__split_mine');
+                                                if (liveSplit().status === 'paid') {
+                                                    cls.push('order-status-modal__split_paid');
+                                                }
+                                                return cls.join(' ');
+                                            }}
+                                        >
+                                            <div class="order-status-modal__split-info">
+                                                <div class="order-status-modal__split-payer">
+                                                    {() => splitPayerLabel(liveSplit(), myId())}
+                                                </div>
+                                                <div
+                                                    class={() =>
+                                                        `order-status-modal__split-status order-status-modal__split-status_${
+                                                            liveSplit().status
+                                                        }`
+                                                    }
+                                                >
+                                                    {() =>
+                                                        `${splitStatusIcon(liveSplit().status)} ${splitStatusText(
+                                                            liveSplit().status,
+                                                        )}`
+                                                    }
+                                                </div>
+                                            </div>
+                                            <div class="order-status-modal__split-right">
+                                                <div class="order-status-modal__split-amount">
+                                                    {() => `${formatRubles(liveSplit().amount)}₽`}
+                                                </div>
+                                                <Show when={canPay}>
+                                                    <button
+                                                        type="button"
+                                                        class="order-status-modal__split-pay"
+                                                        onClick={() => {
+                                                            void handlePaySplit(liveSplit());
+                                                        }}
+                                                    >
+                                                        {() => (isMine() ? 'Оплатить' : 'Оплатить за участника')}
+                                                    </button>
+                                                </Show>
+                                                <Show when={waiting}>
+                                                    <span class="order-status-modal__split-wait">Готовим…</span>
+                                                </Show>
+                                            </div>
+                                        </div>
+                                    );
+                                }}
+                            </For>
+                        </div>
+                    </Show>
+
                     <div class="order-status-modal__divider" />
 
                     <div class="order-status-modal__section-title">Состав заказа</div>
 
                     <div class="order-status-modal__items">
-                        <For each={() => order()?.items ?? []} key={(it) => `${String(it.dish_id)}-${it.name}`}>
+                        <For each={() => order()?.items ?? []} key={(_it, idx) => idx}>
                             {(item) => (
                                 <div class="order-status-modal__item">
                                     <div class="order-status-modal__item-left">

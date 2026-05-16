@@ -1,4 +1,4 @@
-import { useStoreSignal } from '@shared/lib/signals';
+import { computed, useStoreSignal } from '@shared/lib/signals';
 import { Show, For } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
@@ -69,8 +69,12 @@ export function CardList(_props: CardListProps = {}): VNode {
             <Show when={() => cards().length > 0} fallback={<div class="empty-text">Нет привязанных карт</div>}>
                 <For each={cards} key={(c) => c.id}>
                     {(c) => {
+                        // For не перевызывает children при перезагрузке списка,
+                        // поэтому актуальный флаг is_default читаем из сигнала
+                        // cards на каждом тике, а не из захваченного снимка c.
+                        const liveCard = computed(() => cards().find((x) => x.id === c.id) ?? c);
                         const isOnlyOne = () => cards().length === 1;
-                        const isActive = () => isOnlyOne() || c.is_default;
+                        const isActive = () => isOnlyOne() || liveCard().is_default;
                         const brand = c.issuer_name || 'Карта';
                         const themeCls = themeFor(c.issuer_name);
                         const sys = cardTypeLabel(c.card_type);

@@ -11,7 +11,8 @@
  * <Show when={isActive()}>.
  */
 
-import { createOwner, disposeOwner, effect, runWithOwner } from '@shared/lib/signals';
+import { createOwner, disposeOwner, effect, resetOwner, runWithOwner } from '@shared/lib/signals';
+import type { Owner } from '@shared/lib/signals';
 
 import { DynamicType, Fragment, normalizeChildren } from './h';
 import { mount, unmount } from './render';
@@ -77,6 +78,12 @@ export function Show<T = unknown>(props: ShowProps<T>): VNode {
             parent.insertBefore(showAnchor, anchor);
 
             const ownerNode = createOwner(null);
+            // Отдельный owner для содержимого ветки, дочерний к ownerNode.
+            // Содержимое НЕЛЬЗЯ вешать на owner effect-а: при каждом
+            // перезапуске effect-а (resetOwner) его дочерние owner'ы
+            // уничтожаются, и реактивные подписки внутри ветки умирали бы,
+            // даже когда сама ветка не менялась.
+            const branchOwner: Owner = runWithOwner(ownerNode, () => createOwner(null));
 
             let currentVNode: VNode | null = null;
             let currentBranchTruthy: boolean | null = null;
@@ -86,10 +93,13 @@ export function Show<T = unknown>(props: ShowProps<T>): VNode {
                     unmount(currentVNode);
                     currentVNode = null;
                 }
+                // Сбрасываем owner ветки: снимаем реактивные подписки и
+                // cleanup-колбэки прошлого содержимого перед монтированием нового.
+                resetOwner(branchOwner);
                 const branch = truthy ? props.children : props.fallback;
                 const branchNode = toBranchVNode(branch ?? null);
                 if (branchNode) {
-                    mount(branchNode, parent, showAnchor);
+                    runWithOwner(branchOwner, () => mount(branchNode, parent, showAnchor));
                     currentVNode = branchNode;
                 }
                 currentBranchTruthy = truthy;

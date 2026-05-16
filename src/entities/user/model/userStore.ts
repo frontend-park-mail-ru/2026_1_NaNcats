@@ -4,6 +4,22 @@ import { userApi } from '../api/userApi';
 import type { User, UserState } from './types';
 
 /**
+ * Добавляет к URL аватара уникальный query-параметр.
+ *
+ * Бэкенд после загрузки нового аватара может вернуть тот же путь в S3 (файл
+ * перезаписывается на месте), и браузер показал бы старое изображение из
+ * кеша. Уникальный параметр заставляет перезапросить картинку.
+ *
+ * @param url Ссылка на аватар.
+ * @returns Ссылка с cache-busting параметром.
+ */
+function bustCache(url: string): string {
+    if (!url) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}v=${Date.now()}`;
+}
+
+/**
  * Стор текущего пользователя.
  *
  * Хранит профиль и поддерживает локальное состояние в актуальном виде после
@@ -66,6 +82,7 @@ class UserStore extends Store<UserState> {
         const updated = await userApi.uploadAvatar(file);
         const existing = this.getState().user;
         const merged: User = existing ? { ...existing, ...updated } : updated;
+        merged.avatar_url = bustCache(merged.avatar_url);
         this.setState({ user: merged });
         return merged;
     }
@@ -80,6 +97,7 @@ class UserStore extends Store<UserState> {
         const updated = await userApi.deleteAvatar();
         const existing = this.getState().user;
         const merged: User = existing ? { ...existing, ...updated } : updated;
+        merged.avatar_url = bustCache(merged.avatar_url);
         this.setState({ user: merged });
         return merged;
     }

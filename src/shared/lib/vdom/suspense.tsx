@@ -10,7 +10,8 @@
  *   </Suspense>
  */
 
-import { createOwner, disposeOwner, effect, runWithOwner } from '@shared/lib/signals';
+import { createOwner, disposeOwner, effect, resetOwner, runWithOwner } from '@shared/lib/signals';
+import type { Owner } from '@shared/lib/signals';
 
 import { DynamicType, Fragment, normalizeChildren } from './h';
 import { mount, unmount } from './render';
@@ -73,6 +74,10 @@ export function Suspense(props: SuspenseProps): VNode {
             parent.insertBefore(suspenseAnchor, anchor);
 
             const ownerNode = createOwner(null);
+            // Owner содержимого ветки, дочерний к ownerNode, а не к owner-у
+            // effect-а: перезапуск effect-а (resetOwner) не должен уничтожать
+            // реактивные подписки внутри ветки, когда ветка не менялась.
+            const branchOwner: Owner = runWithOwner(ownerNode, () => createOwner(null));
 
             let currentVNode: VNode | null = null;
             let currentPending: boolean | null = null;
@@ -82,10 +87,11 @@ export function Suspense(props: SuspenseProps): VNode {
                     unmount(currentVNode);
                     currentVNode = null;
                 }
+                resetOwner(branchOwner);
                 const branch = pending ? props.fallback : props.children;
                 const branchNode = toBranchVNode(branch ?? null);
                 if (branchNode) {
-                    mount(branchNode, parent, suspenseAnchor);
+                    runWithOwner(branchOwner, () => mount(branchNode, parent, suspenseAnchor));
                     currentVNode = branchNode;
                 }
                 currentPending = pending;

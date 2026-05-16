@@ -109,7 +109,10 @@ export function For<T>(props: ForProps<T>): VNode {
             let entries: Array<ForEntry<T>> = [];
 
             const buildEntry = (item: T, index: number, key: Key) => {
-                const itemOwner = createOwner(null);
+                // Owner элемента вешаем на outerOwner, а не на owner effect-а
+                // реконсиляции: иначе его перезапуск (resetOwner) уничтожал бы
+                // реактивные подписки внутри сохранённых элементов списка.
+                const itemOwner = runWithOwner(outerOwner, () => createOwner(null));
                 let raw: VNodeChild;
                 try {
                     raw = runWithOwner(itemOwner, () => props.children(item, index));

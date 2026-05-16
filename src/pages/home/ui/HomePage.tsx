@@ -14,6 +14,7 @@ import { addressStore } from '@entities/address';
 import { cartStore } from '@entities/cart';
 import { CartWidget } from '@widgets/cart-widget';
 import { Streak } from '@widgets/streak';
+import { imageFallback } from '@shared/lib/img';
 
 export interface HomePageProps {
     /** Рестораны первой страницы выдачи. */
@@ -33,6 +34,44 @@ const TABLET_BREAKPOINT = 1200;
 /** Ниже этой ширины работают мобильные шторки. */
 const MOBILE_BREAKPOINT = 900;
 
+/** Ключ sessionStorage для токена приглашения, отложенного до входа в аккаунт. */
+const INVITE_STORAGE_KEY = 'pending_cart_invite';
+
+/**
+ * Обрабатывает переход по ссылке-приглашению в совместную корзину
+ * (`/?cart_invite=TOKEN`).
+ *
+ * Для авторизованного пользователя сразу присоединяет его к корзине. Для
+ * неавторизованного откладывает токен в `sessionStorage`: после входа главная
+ * страница загрузится повторно и присоединение произойдёт автоматически.
+ * Параметр всегда снимается из URL, чтобы перезагрузка не повторяла вход.
+ *
+ * @param isAuth Признак того, что пользователь авторизован.
+ */
+async function handleCartInvite(isAuth: boolean): Promise<void> {
+    const fromUrl = getQueryParam('cart_invite')?.trim() ?? '';
+    const pending = (sessionStorage.getItem(INVITE_STORAGE_KEY) ?? '').trim();
+    const token = fromUrl || pending;
+    if (!token) return;
+
+    if (fromUrl) {
+        window.history.replaceState({}, '', ROUTES.home);
+    }
+
+    if (!isAuth) {
+        sessionStorage.setItem(INVITE_STORAGE_KEY, token);
+        return;
+    }
+
+    try {
+        await cartStore.joinByToken(token);
+    } catch (e) {
+        console.warn('home: join shared cart failed', e);
+    } finally {
+        sessionStorage.removeItem(INVITE_STORAGE_KEY);
+    }
+}
+
 /** Loader: грузит пользователя (и корзину/адреса для авторизованного), первую страницу ресторанов и категории. */
 export async function load(): Promise<HomePageProps> {
     try {
@@ -49,6 +88,8 @@ export async function load(): Promise<HomePageProps> {
         tasks.push(addressStore.loadSaved());
     }
     await Promise.all(tasks);
+
+    await handleCartInvite(isAuth);
 
     const initialQuery = getQueryParam('q')?.trim() ?? '';
 
@@ -365,7 +406,9 @@ export function HomePage(props: HomePageProps): VNode {
                                             class="res-card__rect"
                                             src={r.logo_url}
                                             alt={r.name}
-                                            onerror={`this.src='https://placehold.co/400x225/png?text=${encodeURIComponent(r.name)}'`}
+                                            onError={imageFallback(
+                                                `https://placehold.co/400x225/png?text=${encodeURIComponent(r.name)}`,
+                                            )}
                                         />
                                         <div class="res-card__info">
                                             <span class="res-card__name">{r.name}</span>

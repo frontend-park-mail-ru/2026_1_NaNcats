@@ -11,15 +11,14 @@ import './layout.scss';
 import { Outlet } from '@app/router';
 import { ModalRoot } from '@shared/lib/portal';
 import { OfflineBanner } from '@shared/ui/offline-banner';
+import { Logo } from '@shared/ui/logo';
 import type { VNode } from '@shared/lib/vdom';
 
 export function AuthLayout(): VNode {
     return (
         <div class="auth-layout">
             <div class="auth-logo" view-transition-name="app-logo">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="12" cy="12" r="10" />
-                </svg>
+                <Logo width={150} height={78} />
             </div>
             <main class="auth-main">
                 <Outlet />

@@ -192,7 +192,11 @@
   color: #0e1117;
 }
 
-.button_secondary {
+/* Скоупим под .checkout-page: глобальный .button_secondary стилизуется в
+   components.scss. Без скоупа этот блок (его scss подгружается при заходе на
+   чекаут) перебивал бы глобальную кнопку на всех страницах из-за порядка
+   инъекции стилей - например, красная кнопка «Очистить» в корзине розовела. */
+.checkout-page .button_secondary {
   background: var(--accent-pink);
   color: white;
   border-radius: 16px;
