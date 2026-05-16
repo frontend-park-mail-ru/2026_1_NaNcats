@@ -1,0 +1,80 @@
+/**
+ * Стили универсального скелетона страницы.
+ *
+ * Глобальный scope (не CSS Modules): класс `.page-loading-skeleton`
+ * используется одним компонентом, конфликт имён не ожидается. Палитра серая
+ * и нейтральная, чтобы скелетон не отвлекал от появляющегося контента.
+ * Анимация `page-loading-skeleton-pulse` мягко меняет прозрачность плиток
+ * и заголовка, давая визуальный сигнал, что страница ещё загружается.
+ */
+
+.page-loading-skeleton {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  &__header {
+    width: 60%;
+    max-width: 360px;
+    height: 28px;
+    border-radius: 8px;
+    background: #e5e5e5;
+    animation: page-loading-skeleton-pulse 1.4s ease-in-out infinite;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__tile {
+    height: 160px;
+    border-radius: 12px;
+    background: #ececec;
+    animation: page-loading-skeleton-pulse 1.4s ease-in-out infinite;
+
+    &:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+
+    &:nth-child(3) {
+      animation-delay: 0.2s;
+    }
+
+    &:nth-child(4) {
+      animation-delay: 0.3s;
+    }
+
+    &:nth-child(5) {
+      animation-delay: 0.4s;
+    }
+
+    &:nth-child(6) {
+      animation-delay: 0.5s;
+    }
+  }
+}
+
+@keyframes page-loading-skeleton-pulse {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}

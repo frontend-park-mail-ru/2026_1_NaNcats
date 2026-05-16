@@ -1,0 +1,165 @@
+/**
+ * Стили layout-shell-ов RootLayout и AuthLayout.
+ *
+ * body имеет height:100vh и overflow:hidden (см. styles/base.scss). Между body и
+ * страницей теперь два уровня (#root, .root-layout), поэтому ограничение по высоте
+ * возвращаем здесь: shell на всю высоту окна, Header в своём размере, main забирает
+ * остаток и становится скролл-контейнером.
+ */
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.root-layout,
+.auth-layout {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header держит свою естественную высоту: запрещаем flex-сжатие, чтобы шапка не
+   ужималась под содержимое main. */
+.root-layout > header,
+.auth-layout > header,
+.root-layout > .root-header,
+.auth-layout > .auth-logo {
+  flex-shrink: 0;
+}
+
+/* Логотип над формой входа/регистрации нужен только в мобильной вёрстке: на
+   десктопе брендинг несёт промо-блок сбоку, отдельный логотип сверху не нужен и
+   лишь сдвигал бы форму вниз. Брейкпоинт 768px совпадает с auth.scss, где
+   прячется промо-блок. */
+.auth-logo {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 24px 0 8px;
+}
+
+@media (max-width: 768px) {
+  .auth-logo {
+    display: flex;
+  }
+}
+
+/* Логотип кликабельный, ведёт на главную. На главной остаётся в обычном flex-потоке
+   шапки (стили в home.scss рассчитывают на flex); на страницах с mode=back
+   .logo-container_centered вырывает его из потока в центр. */
+.logo-container {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+  /* view-transition-name это CSS-свойство: только оно подключает узел к
+       shared-element-морфу при document.startViewTransition. */
+  view-transition-name: app-logo;
+}
+
+.logo-container:hover {
+  opacity: 0.8;
+}
+
+/* Перебивает home.scss .logo-container { position: relative } за счёт большей
+   специфичности. Без этого left/top сдвигали бы логотип относительно его flex-места. */
+.header > .logo-container_centered {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+/* View Transitions для морфа логотипа: растягиваем длительность группы с дефолтных
+   0.25s и убираем crossfade old/new (old и new pixel-wise одинаковы, фейд только рябит). */
+::view-transition-group(app-logo) {
+  animation-duration: 0.4s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Дефолтный root-view-transition нам не нужен (контент меняет Outlet), даём ему
+   короткую длительность, чтобы общий tail не превышал 0.4s. */
+::view-transition-group(root) {
+  animation-duration: 0.4s;
+}
+
+::view-transition-old(app-logo),
+::view-transition-new(app-logo) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* Кнопка "Назад" слева. Стили продублированы из restaurant.scss, чтобы работали
+   на всех страницах с mode='back'. */
+.header__back-btn {
+  height: 36px;
+  background: none;
+  width: 100px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+  border: none;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.header__back-btn:hover {
+  background-color: rgb(210, 209, 209);
+}
+
+.header__back-btn:active {
+  background-color: rgb(159, 159, 159);
+}
+
+.back-btn__text {
+  color: #000000;
+  font-weight: 500;
+}
+
+.back-btn__icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+
+.root-main,
+.auth-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* .page-wrapper рассчитан на 100vh, но под Header он выпирает за viewport:
+   переключаем на 100% от родительского main. */
+.root-main > .page-wrapper {
+  height: 100%;
+}
+
+/* На мобилке отдаём скролл документу, как и в base.scss: нужно для страниц без
+   внутреннего скролл-контейнера (профиль, login, register). */
+@media (max-width: 900px) {
+  #root {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .root-layout,
+  .auth-layout {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .root-main,
+  .auth-main {
+    overflow: visible;
+  }
+}

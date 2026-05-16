@@ -10,6 +10,8 @@ export type {
     OrderRawStatus,
     OrderUiStatus,
     OrderItem,
+    OrderSplit,
+    OrderSplitStatus,
     OrderRestaurant,
     NormalizedOrder,
     GatewayWsEvent,

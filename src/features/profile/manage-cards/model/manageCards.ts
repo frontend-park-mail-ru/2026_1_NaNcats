@@ -5,7 +5,7 @@ import { cardApi, cardStore } from '@entities/card';
  * на страницу подтверждения и переводит пользователя на неё. Если URL не
  * получен, переход не выполняется.
  */
-export const bindNewCard = async (): Promise<void> => {
+export const bindNewCard = async () => {
     const { confirmation_url } = await cardApi.bind();
     if (confirmation_url) {
         window.location.href = confirmation_url;
@@ -17,11 +17,11 @@ export const bindNewCard = async (): Promise<void> => {
  *
  * @param id Идентификатор удаляемой карты.
  */
-export const removeCard = (id: string): Promise<void> => cardStore.remove(id);
+export const removeCard = (id: string) => cardStore.remove(id);
 
 /**
  * Делает указанную карту картой по умолчанию через хранилище.
  *
  * @param id Идентификатор карты, назначаемой по умолчанию.
  */
-export const setDefaultCard = (id: string): Promise<void> => cardStore.setDefault(id);
+export const setDefaultCard = (id: string) => cardStore.setDefault(id);

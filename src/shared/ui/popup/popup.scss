@@ -1,0 +1,14 @@
+/* Контейнер диалога Popup.
+ *
+ * Раньше Popup переиспользовал класс .address-modal, чьи стили живут в
+ * addressPicker.scss и подгружаются только вместе с виджетом AddressPicker.
+ * На страницах без него у попапа не было фона. Свой класс с импортом scss
+ * прямо в Popup.tsx гарантирует белый фон на любой странице. */
+.popup-box {
+  background: var(--white, #fff);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}

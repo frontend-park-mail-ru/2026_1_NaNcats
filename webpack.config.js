@@ -17,7 +17,7 @@ module.exports = (env, argv) => {
     mode: isProduction ? 'production' : 'development',
     
     entry: {
-      app: './src/app/index.ts',
+      app: './src/app/index.tsx',
       sw: './src/sw.ts' 
     },
 
@@ -33,7 +33,7 @@ module.exports = (env, argv) => {
     },
 
     resolve: {
-      extensions: ['.ts', '.js', '.json'],
+      extensions: ['.tsx', '.ts', '.js', '.json'],
       alias: {
         '@app': path.resolve(__dirname, 'src/app'),
         '@pages': path.resolve(__dirname, 'src/pages'),
@@ -51,7 +51,7 @@ module.exports = (env, argv) => {
           use: ['style-loader', 'css-loader', 'sass-loader'],
         },
         {
-          test: /\.(js|ts)$/,
+          test: /\.(js|ts|tsx)$/,
           use: 'babel-loader',
           exclude: /node_modules/,
         },

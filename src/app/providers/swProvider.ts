@@ -1,12 +1,10 @@
 /**
  * Регистрирует сервис-воркер `/sw.js` после события `load`.
  *
- * Регистрация пропускается на `localhost`, чтобы воркер не мешал отладке и не
- * подменял свежие ассеты закэшированными, а также при отсутствии поддержки
- * Service Worker API в браузере. Ошибки регистрации не пробрасываются:
- * приложение продолжает работать без офлайн-кэша.
+ * Пропускается на localhost (чтобы воркер не подменял свежие ассеты при отладке)
+ * и при отсутствии Service Worker API. Ошибки регистрации не пробрасываются.
  */
-export const initServiceWorker = (): void => {
+export const initServiceWorker = () => {
     if (window.location.hostname === 'localhost') return;
     if (!('serviceWorker' in navigator)) return;
     window.addEventListener('load', () => {

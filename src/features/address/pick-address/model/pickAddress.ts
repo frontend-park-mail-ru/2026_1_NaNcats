@@ -25,7 +25,7 @@ export interface PickAddressInput {
  *
  * @param input Параметры выбора адреса.
  */
-export const pickAddress = async ({ text, coords, details, addressId }: PickAddressInput): Promise<void> => {
+export const pickAddress = async ({ text, coords, details, addressId }: PickAddressInput) => {
     addressStore.setCurrent({ text, coords });
 
     const { user } = userStore.getState();

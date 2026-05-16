@@ -15,7 +15,7 @@
 /// <reference lib="webworker" />
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE_NAME = 'foodcourt-cache-v1';
+const CACHE_NAME = 'foodcourt-cache-v2';
 
 /**
  * Обработчик `install`: предзагружает оболочку приложения.

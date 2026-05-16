@@ -83,6 +83,7 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
             reviews_count: raw.restaurant_reviews_count ?? 1000,
         },
         items,
+        splits: raw.splits ?? [],
         service_fee,
         delivery_cost,
         total_cost,
