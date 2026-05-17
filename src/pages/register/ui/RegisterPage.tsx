@@ -16,7 +16,7 @@ export function RegisterPage(): VNode {
                         <h1 class="auth-header__title">Регистрация</h1>
                         <p class="auth-header__subtitle">
                             Есть аккаунт?{' '}
-                            <Link to={ROUTES.login} class="router-link secondary-link">
+                            <Link to={ROUTES.login} class="secondary-link">
                                 Войти
                             </Link>
                         </p>

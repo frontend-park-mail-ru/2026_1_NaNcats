@@ -5,7 +5,7 @@ import '@pages/home/ui/home.scss';
 import type { User } from '@entities/user';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
-import { router } from '@app/router';
+import { router, Link } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { getQueryParam } from '@shared/lib/url/searchParams';
 import { effect, onCleanup, signal } from '@shared/lib/signals';
@@ -401,7 +401,7 @@ export function Header(props: HeaderProps): VNode {
                         </div>
                     </div>
                     <div class="user-menu-wrapper">
-                        <a href="/profile" class="user-profile router-link">
+                        <Link to={ROUTES.profile} class="user-profile">
                             <img
                                 src={() => props.user()?.avatar_url ?? ''}
                                 class="user-profile__avatar"
@@ -409,7 +409,7 @@ export function Header(props: HeaderProps): VNode {
                                     'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp',
                                 )}
                             />
-                        </a>
+                        </Link>
                         <div class="user-dropdown">
                             <button
                                 class="user-dropdown__logout"

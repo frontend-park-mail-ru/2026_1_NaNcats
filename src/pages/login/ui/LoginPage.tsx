@@ -16,7 +16,7 @@ export function LoginPage(): VNode {
                         <h1 class="auth-header__title">Вход</h1>
                         <p class="auth-header__subtitle">
                             Нет аккаунта?{' '}
-                            <Link to={ROUTES.register} class="router-link secondary-link">
+                            <Link to={ROUTES.register} class="secondary-link">
                                 Регистрация
                             </Link>
                         </p>
