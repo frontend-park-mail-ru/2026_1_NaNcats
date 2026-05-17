@@ -275,8 +275,21 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
             await cartStore.clear();
 
+            // В snapshot нет долей счёта, а для совместного заказа модалке
+            // нужна секция «Разделение счёта» с кнопкой оплаты. Подтягиваем
+            // только что созданный заказ из истории и берём из него splits.
+            let modalOrder: Order = orderSnapshot;
+            try {
+                const created = (await orderApi.list()).find((o) => o.order_id === result.order_id);
+                if (created) {
+                    modalOrder = { ...orderSnapshot, splits: created.splits };
+                }
+            } catch (e) {
+                console.warn('checkout: не удалось загрузить доли счёта заказа', e);
+            }
+
             if (orderStatusCtl) {
-                orderStatusCtl.open(orderSnapshot, {
+                orderStatusCtl.open(modalOrder, {
                     subscribe: true,
                     onClose: () => {
                         void router.go(ROUTES.home);
