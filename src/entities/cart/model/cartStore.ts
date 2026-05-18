@@ -232,6 +232,29 @@ class CartStore extends Store<CartState> {
     }
 
     /**
+     * Забирает ничейную позицию блюда текущему пользователю. После удаления
+     * участника его блюда остаются в корзине без владельца, и оформить заказ
+     * нельзя, пока у каждой позиции нет плательщика. Доступно администратору.
+     *
+     * @param dishId Идентификатор блюда.
+     */
+    async claimItem(dishId: number): Promise<void> {
+        const state = this.getState();
+        const me = userStore.getState().user;
+        if (!state.cartId || me === null) return;
+
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            await cartApi.reassignOwner(state.cartId, dishId, me.id);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.claimItem', e);
+            this.setState({ status: 'error', error: 'claim failed' });
+            throw e;
+        }
+    }
+
+    /**
      * Полностью очищает корзину. Если корзина ещё не создана на сервере,
      * сбрасывает только локальное состояние без сетевого запроса.
      */

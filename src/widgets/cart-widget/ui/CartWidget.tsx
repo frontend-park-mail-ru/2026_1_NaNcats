@@ -392,27 +392,49 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                         </Show>
                                     </div>
                                     <div class="cart-item__counter">
-                                        <button
-                                            type="button"
-                                            class="counter-btn"
-                                            disabled={() => !canModify()}
-                                            onClick={() => {
-                                                void cartStore.changeQuantity(dishId, -1);
-                                            }}
+                                        <Show
+                                            when={() => isShared() && currentItem().owner_user_id == null}
+                                            fallback={
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        class="counter-btn"
+                                                        disabled={() => !canModify()}
+                                                        onClick={() => {
+                                                            void cartStore.changeQuantity(dishId, -1);
+                                                        }}
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <span class="counter-value">{quantity}</span>
+                                                    <button
+                                                        type="button"
+                                                        class="counter-btn"
+                                                        disabled={() => !canModify()}
+                                                        onClick={() => {
+                                                            void cartStore.changeQuantity(dishId, 1);
+                                                        }}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </>
+                                            }
                                         >
-                                            −
-                                        </button>
-                                        <span class="counter-value">{quantity}</span>
-                                        <button
-                                            type="button"
-                                            class="counter-btn"
-                                            disabled={() => !canModify()}
-                                            onClick={() => {
-                                                void cartStore.changeQuantity(dishId, 1);
-                                            }}
-                                        >
-                                            +
-                                        </button>
+                                            {/* Позиция удалённого участника осталась без владельца.
+                                                Организатор может забрать её себе, иначе оформить
+                                                заказ нельзя. */}
+                                            <Show when={isAdmin}>
+                                                <button
+                                                    type="button"
+                                                    class="cart-item__claim"
+                                                    onClick={() => {
+                                                        void cartStore.claimItem(dishId);
+                                                    }}
+                                                >
+                                                    Забрать себе
+                                                </button>
+                                            </Show>
+                                        </Show>
                                     </div>
                                 </div>
                             );
