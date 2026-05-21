@@ -424,8 +424,12 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const handlePay = () => {
         const current = order();
         if (current === null || current.payment_url === undefined) return;
+        // Переходим на оплату в той же вкладке (а не window.open), чтобы не
+        // плодить вкладки: ЮKassa после оплаты вернёт пользователя на /profile.
+        // location.replace убирает страницу оформления из history, поэтому
+        // кнопка «назад» не вернёт ни на ЮKassu, ни на checkout.
         beginPaymentProcessing();
-        window.open(current.payment_url, '_blank', 'noopener');
+        window.location.replace(current.payment_url);
     };
 
     // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
