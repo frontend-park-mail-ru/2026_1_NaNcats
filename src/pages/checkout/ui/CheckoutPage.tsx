@@ -161,7 +161,15 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     // Гарантирует, что у всех позиций корзины назначен владелец-плательщик; null если не получилось.
     const ensureAssignedItems = async () => {
         const cart = cartStore.getState();
-        const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
+
+        // В solo-корзине владелец каждой позиции — сам пользователь, назначать
+        // некого. Ничейные позиции возможны только в shared-корзине (например,
+        // блюда, оставшиеся после кика гостя), поэтому проверку делаем лишь там.
+        if (cart.mode !== 'shared') {
+            return cart.items;
+        }
+
+        const unassignedItems = cart.items.filter((item) => item.owner_public_id == null);
 
         if (!unassignedItems.length) {
             return cart.items;
@@ -184,7 +192,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 const freshCart = cartStore.getState();
                 itemsSig.set(freshCart.items);
 
-                if (freshCart.items.some((item) => item.owner_user_id == null)) {
+                if (freshCart.items.some((item) => item.owner_public_id == null)) {
                     errorSig.set('В корзине остались позиции без владельца. Проверьте корзину.');
                     return null;
                 }
@@ -279,11 +287,13 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 orderStatusCtl.open(orderSnapshot, {
                     subscribe: true,
                     onClose: () => {
-                        void router.go(ROUTES.home);
+                        // replace, а не go: страница оформления уходит из
+                        // history, кнопка «назад» не вернёт на checkout.
+                        void router.replace(ROUTES.profile);
                     },
                 });
             } else {
-                void router.go(ROUTES.profile);
+                void router.replace(ROUTES.profile);
             }
         } catch (e) {
             const msg = e instanceof ApiError ? e.message : 'Ошибка соединения с сервером';

@@ -30,7 +30,7 @@ function bustCache(url: string): string {
  */
 class UserStore extends Store<UserState> {
     constructor() {
-        super({ user: null, status: 'idle' });
+        super({ user: null, status: 'idle', authResolved: false });
     }
 
     /**
@@ -42,10 +42,10 @@ class UserStore extends Store<UserState> {
         this.setState({ status: 'loading' });
         try {
             const user = await userApi.getMe();
-            this.setState({ user, status: 'idle' });
+            this.setState({ user, status: 'idle', authResolved: true });
         } catch (e) {
             console.error('userStore.loadCurrent', e);
-            this.setState({ status: 'error' });
+            this.setState({ status: 'error', authResolved: true });
         }
     }
 
@@ -115,7 +115,7 @@ class UserStore extends Store<UserState> {
         } catch (e) {
             if (!(e instanceof ApiError)) console.error('userStore.logout', e);
         }
-        this.setState({ user: null, status: 'idle' });
+        this.setState({ user: null, status: 'idle', authResolved: true });
     }
 }
 

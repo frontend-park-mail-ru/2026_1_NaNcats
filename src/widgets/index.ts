@@ -4,4 +4,5 @@ export { Wordle } from './wordle';
 export { Header } from './header';
 export { CartWidget } from './cart-widget';
 export { AddressPicker } from './address-picker';
+export { AddressSelect } from './address-select';
 export { OrderStatusModal } from './order-status';

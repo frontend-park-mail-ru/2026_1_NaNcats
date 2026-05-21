@@ -2,17 +2,18 @@
 // eslint-disable-next-line no-restricted-imports
 import '@pages/home/ui/home.scss';
 
-import type { User } from '@entities/user';
+import { userStore, type User } from '@entities/user';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { getQueryParam } from '@shared/lib/url/searchParams';
-import { effect, onCleanup, signal } from '@shared/lib/signals';
+import { effect, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Logo } from '@shared/ui/logo';
 import { imageFallback } from '@shared/lib/img';
+import { AddressSelect } from '@widgets/address-select';
 
 /** `default` - шапка с поиском и адресом, `back` - с кнопкой возврата. */
 export type HeaderMode = 'default' | 'back';
@@ -26,6 +27,8 @@ export interface HeaderProps {
     searchQuery?: string;
     /** Скрыть блок поиска. Аксессор-форма позволяет скрывать реактивно. */
     hideSearch?: boolean | (() => boolean);
+    /** Показать селект адреса доставки (между поиском и блоком авторизации). */
+    showAddressSelect?: boolean | (() => boolean);
     /** Колбэк нажатия кнопки входа. */
     onLogin?: () => void;
     /** Колбэк нажатия кнопки регистрации. */
@@ -53,6 +56,9 @@ export function Header(props: HeaderProps): VNode {
     const suggestOpen = signal<boolean>(false);
     const suggestResults = signal<SearchAllResult | null>(null);
     const mobileMenuOpen = signal<boolean>(false);
+    // До завершения первой проверки авторизации не показываем ни гостевые,
+    // ни пользовательские контролы, иначе кнопки «Войти/Регистрация» мигают.
+    const authResolved = useStoreSignal(userStore, (s) => s.authResolved);
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -290,6 +296,16 @@ export function Header(props: HeaderProps): VNode {
                     </div>
 
                     <Show
+                        when={() =>
+                            typeof props.showAddressSelect === 'function'
+                                ? props.showAddressSelect()
+                                : props.showAddressSelect === true
+                        }
+                    >
+                        <AddressSelect />
+                    </Show>
+
+                    <Show
                         when={() => {
                             if (!suggestOpen()) return false;
                             const r = suggestResults();
@@ -338,6 +354,7 @@ export function Header(props: HeaderProps): VNode {
             </Show>
 
             <div class="header__controls">
+                <Show when={authResolved}>
                 <Show
                     when={props.user}
                     fallback={
@@ -422,6 +439,7 @@ export function Header(props: HeaderProps): VNode {
                             </button>
                         </div>
                     </div>
+                </Show>
                 </Show>
             </div>
         </header>
