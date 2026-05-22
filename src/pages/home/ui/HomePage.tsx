@@ -328,6 +328,7 @@ export function HomePage(props: HomePageProps): VNode {
     const refreshGrid = async () => {
         const q = searchQuery();
         const cat = activeCategory();
+        const catName = cat ? (props.categories.find((c) => c.id === cat)?.name ?? cat) : cat;
 
         offset.set(0);
         hasMore.set(false);
@@ -341,10 +342,10 @@ export function HomePage(props: HomePageProps): VNode {
         } else if (q && !cat) {
             results = await restaurantApi.search(q, PAGE_SIZE).catch(() => []);
         } else if (!q && cat) {
-            results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch(() => []);
+            results = await restaurantApi.listBrandsByCategory(catName, PAGE_SIZE, 0).catch(() => []);
         } else {
             const COMBINED_LIMIT = 100;
-            const inCat = await restaurantApi.listBrandsByCategory(cat, COMBINED_LIMIT, 0).catch(() => []);
+            const inCat = await restaurantApi.listBrandsByCategory(catName, COMBINED_LIMIT, 0).catch(() => []);
             const needle = q.toLowerCase();
             results = inCat.filter((r) => {
                 const name = (r.name ?? '').toLowerCase();
