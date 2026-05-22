@@ -21,7 +21,7 @@ import { uploadAvatar, deleteAvatar } from '@features/profile/upload-avatar';
 import { EditProfileForm } from '@features/profile/edit-profile';
 import { AddressesModal } from '@features/profile/manage-addresses';
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
-import { PromoModal, MOCK_PROMOS } from '@features/profile/manage-promos';
+import { PromoModal, promosAccessor, ensureLoaded as ensurePromosLoaded } from '@features/profile/manage-promos';
 import { OrdersHistoryModal } from '@features/profile/orders-history';
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
@@ -66,9 +66,7 @@ const ORDER_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foo
 const STUB_BONUSES = 67;
 const STUB_BONUSES_EXPIRE = '01.04.2026';
 
-const RU_MONTHS_SHORT = [
-    'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-];
+const RU_MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
 const decorate = (orders: Order[]): OrderRowView[] => orders.map((o) => ({ ...o, _badge: statusBadge(o.status) }));
 
@@ -115,7 +113,12 @@ export async function load(): Promise<ProfilePageProps> {
         void router.go(ROUTES.login);
         return Promise.reject(new Error('not authenticated'));
     }
-    const [, , ordersRes] = await Promise.allSettled([addressStore.loadSaved(), cardStore.load(), orderApi.list()]);
+    const [, , ordersRes] = await Promise.allSettled([
+        addressStore.loadSaved(),
+        cardStore.load(),
+        orderApi.list(),
+        ensurePromosLoaded(),
+    ]);
     const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
     return { user, orders: decorate(orders) };
 }
@@ -266,9 +269,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     const openAddressesModal = () => {
         if (addressesModalInstance !== null && addressesModalInstance.isOpen()) return;
         addressesModalInstance = new Modal();
-        addressesModalInstance.open(
-            <AddressesModal onClose={() => addressesModalInstance?.close()} />,
-        );
+        addressesModalInstance.open(<AddressesModal onClose={() => addressesModalInstance?.close()} />);
     };
 
     const handleAddAddress = () => {
@@ -434,28 +435,22 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         </div>
                     </div>
 
-                    <div class="profile-card profile-card_bonuses">
-                        <div class="profile-card__bonus-value">{String(STUB_BONUSES)}</div>
-                        <div class="profile-card__bonus-body">
-                            <div class="profile-card__bonus-title">Мои бонусы:</div>
-                            <div class="card-subtext">
-                                Успей использовать {STUB_BONUSES} бонусов до их{' '}
-                                <span class="text-danger">сгорания {STUB_BONUSES_EXPIRE}</span>
-                            </div>
+                    <div class="profile-card profile-card_row">
+                        <div class="card-side-label">Бонусы</div>
+                        <div class="card-side-content card-subtext">
+                            <span class="profile-card__bonus-inline">{String(STUB_BONUSES)}</span> — успей использовать
+                            до <span class="text-danger">сгорания {STUB_BONUSES_EXPIRE}</span>
                         </div>
                     </div>
 
-                    <div class="profile-card profile-card_promo">
-                        <div class="profile-card__promo-info">
-                            <div class="profile-card__promo-label">Промокоды</div>
-                            <div class="profile-card__promo-count">
-                                <span class="profile-card__promo-count-num">{String(MOCK_PROMOS.length)}</span>
-                                <span class="profile-card__promo-count-text"> доступно</span>
-                            </div>
+                    <div class="profile-card profile-card_row">
+                        <div class="card-side-label">Промокоды</div>
+                        <div class="card-side-content profile-card__promo-row">
+                            <span class="card-subtext">{() => `${promosAccessor().length} доступно`}</span>
+                            <button type="button" class="profile-card__promo-button" onClick={openPromoModal}>
+                                Смотреть
+                            </button>
                         </div>
-                        <button type="button" class="profile-card__promo-button" onClick={openPromoModal}>
-                            Смотреть промокоды
-                        </button>
                     </div>
                 </aside>
 
@@ -543,15 +538,61 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 onClick={handleAddCard}
                             />
                         </div>
-                        <CardList />
+                        {(() => {
+                            const canScrollLeft = signal(false);
+                            const canScrollRight = signal(false);
+                            // Контейнер списка карт держим через ref из CardList,
+                            // без завязки на глобальный id.
+                            let listEl: HTMLElement | null = null;
+                            const updateArrows = () => {
+                                if (!listEl) return;
+                                canScrollLeft.set(listEl.scrollLeft > 0);
+                                canScrollRight.set(listEl.scrollLeft + listEl.clientWidth < listEl.scrollWidth - 1);
+                            };
+                            return (
+                                <div class="cards-row">
+                                    <Show when={canScrollLeft}>
+                                        <button
+                                            type="button"
+                                            class="cards-scroll-arrow"
+                                            aria-label="Прокрутить карты влево"
+                                            onClick={() => {
+                                                listEl?.scrollBy({ left: -120, behavior: 'smooth' });
+                                            }}
+                                        >
+                                            ‹
+                                        </button>
+                                    </Show>
+                                    <CardList
+                                        listRef={(el: HTMLElement | null) => {
+                                            listEl = el;
+                                            if (el) {
+                                                el.addEventListener('scroll', updateArrows);
+                                                requestAnimationFrame(updateArrows);
+                                            }
+                                        }}
+                                    />
+                                    <Show when={canScrollRight}>
+                                        <button
+                                            type="button"
+                                            class="cards-scroll-arrow"
+                                            aria-label="Прокрутить карты вправо"
+                                            onClick={() => {
+                                                listEl?.scrollBy({ left: 120, behavior: 'smooth' });
+                                            }}
+                                        >
+                                            ›
+                                        </button>
+                                    </Show>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     <div class="profile-card profile-card_main profile-card_orders">
                         <div class="orders-section-head">
                             <h2 class="section-title">История заказов</h2>
-                            <span class="orders-section-head__count">
-                                {() => `${ordersSig().length} заказов`}
-                            </span>
+                            <span class="orders-section-head__count">{() => `${ordersSig().length} заказов`}</span>
                         </div>
                         <Show
                             when={() => ordersSig().length > 0}
@@ -581,12 +622,8 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                 onError={imageFallback(ORDER_FALLBACK_IMAGE)}
                                             />
                                             <div class="order-card__body">
-                                                <div class="order-card__name">
-                                                    {order.restaurant_name ?? 'Заказ'}
-                                                </div>
-                                                <div class="order-card__date">
-                                                    {formatHumanDate(order.created_at)}
-                                                </div>
+                                                <div class="order-card__name">{order.restaurant_name ?? 'Заказ'}</div>
+                                                <div class="order-card__date">{formatHumanDate(order.created_at)}</div>
                                             </div>
                                             <div class="order-card__aside">
                                                 <div class="order-card__price">
@@ -601,9 +638,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                 {(() => {
                                                     const hint = splitOwnerHint(order, props.user.id);
                                                     return hint ? (
-                                                        <div
-                                                            class={`order-card__split order-card__split_${hint.cls}`}
-                                                        >
+                                                        <div class={`order-card__split order-card__split_${hint.cls}`}>
                                                             {hint.text}
                                                         </div>
                                                     ) : null;
@@ -617,11 +652,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 <button type="button" class="orders-actions__primary" disabled>
                                     Повторить заказ
                                 </button>
-                                <button
-                                    type="button"
-                                    class="orders-actions__secondary"
-                                    onClick={openOrdersModal}
-                                >
+                                <button type="button" class="orders-actions__secondary" onClick={openOrdersModal}>
                                     Показать все заказы
                                     <span class="orders-actions__arrow" aria-hidden="true">
                                         →

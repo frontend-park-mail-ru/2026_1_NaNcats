@@ -8,6 +8,8 @@ import { removeCard, setDefaultCard } from '../model/manageCards';
 export interface CardListProps {
     /** Вызывается при инициировании добавления новой карты (используется снаружи компонента). */
     onAdd?: () => void;
+    /** Ref-колбэк прокручиваемого контейнера списка карт (для внешних стрелок прокрутки). */
+    listRef?: (el: HTMLElement | null) => void;
 }
 
 const ISSUER_THEMES: Record<string, string> = {
@@ -51,7 +53,7 @@ function cardTypeLabel(type?: string): { label: string; cls: string } {
 
 // Когда у пользователя одна карта, она всегда показывается активной,
 // независимо от is_default: переключать не из чего.
-export function CardList(_props: CardListProps = {}): VNode {
+export function CardList(props: CardListProps = {}): VNode {
     const cards = useStoreSignal(cardStore, (s) => s.cards);
 
     const handleDelete = async (id: string) => {
@@ -65,7 +67,12 @@ export function CardList(_props: CardListProps = {}): VNode {
     };
 
     return (
-        <div id="profile-cards-list" class="cards-list">
+        <div
+            class="cards-list"
+            ref={(el: Element | null) => {
+                props.listRef?.(el as HTMLElement | null);
+            }}
+        >
             <Show when={() => cards().length > 0} fallback={<div class="empty-text">Нет привязанных карт</div>}>
                 <For each={cards} key={(c) => c.id}>
                     {(c) => {

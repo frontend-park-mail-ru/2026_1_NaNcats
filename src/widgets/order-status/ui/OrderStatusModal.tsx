@@ -265,7 +265,8 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const showPaymentButton = computed(() => {
         if (processing()) return false;
         const o = order();
-        return o !== null && o.status === 'awaiting_payment' && o.payment_url !== undefined;
+        if (o === null) return false;
+        return o.status === 'awaiting_payment' || o.status === 'created';
     });
 
     const showCancelButton = computed(() => {
@@ -354,7 +355,17 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (PAYMENT_SETTLED_RAW_STATUSES.has(next.raw_status)) {
             endPaymentProcessing();
         }
+        // payment_ready без ссылки на оплату означает, что платёж не создался
+        // (например, карту отклонил банк). Снимаем "обрабатываем" сразу, чтобы
+        // не держать пользователя на спиннере до 60-секундного таймаута.
+        if (next.raw_status === 'payment_ready' && next.payment_url === undefined) {
+            endPaymentProcessing();
+        }
         order.set(next);
+
+        if (processing() && next.payment_url !== undefined) {
+            window.location.replace(next.payment_url);
+        }
     };
 
     // Запускает оплату своей доли счёта: бэкенд создаёт по ней платёж, а
@@ -423,13 +434,13 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const handlePay = () => {
         const current = order();
-        if (current === null || current.payment_url === undefined) return;
-        // Переходим на оплату в той же вкладке (а не window.open), чтобы не
-        // плодить вкладки: ЮKassa после оплаты вернёт пользователя на /profile.
-        // location.replace убирает страницу оформления из history, поэтому
-        // кнопка «назад» не вернёт ни на ЮKassu, ни на checkout.
-        beginPaymentProcessing();
-        window.location.replace(current.payment_url);
+        if (current === null) return;
+        if (current.payment_url !== undefined) {
+            beginPaymentProcessing();
+            window.location.replace(current.payment_url);
+        } else {
+            beginPaymentProcessing();
+        }
     };
 
     // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
@@ -584,9 +595,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                     const liveSplit = computed<OrderSplit>(
                                         () => splits().find((s) => s.split_id === splitId) ?? split,
                                     );
-                                    const isMine = computed(
-                                        () => myId() !== null && liveSplit().user_id === myId(),
-                                    );
+                                    const isMine = computed(() => myId() !== null && liveSplit().user_id === myId());
                                     const waiting = computed(() => splitWaiting() === splitId);
                                     // Платить можно любую неоплаченную долю: и свою, и чужую.
                                     const canPay = computed(

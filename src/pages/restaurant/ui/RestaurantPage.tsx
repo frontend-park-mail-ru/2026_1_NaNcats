@@ -13,8 +13,10 @@ import { restaurantApi, type Dish, type DishSearchHit, type Restaurant, type Rev
 import { cartStore, fromMicros } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { addToCart } from '@features/cart/add-to-cart';
+import { applyPromo, appliedCodeAccessor } from '@features/profile/manage-promos';
 import { CartWidget } from '@widgets/cart-widget';
 import { imageFallback } from '@shared/lib/img';
+import { httpClient } from '@shared/api/http';
 
 /** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
@@ -27,10 +29,18 @@ interface DishSection {
     dishes: DishView[];
 }
 
+/** Промокод, привязанный к ресторану, — для баннера на странице. */
+export interface RestaurantPromoBanner {
+    code: string;
+    title: string;
+}
+
 export interface RestaurantPageProps {
     restaurant: Restaurant;
     dishes: DishView[];
     sections: DishSection[];
+    /** Промокод этого ресторана для баннера; null — у ресторана нет промокода. */
+    restaurantPromo: RestaurantPromoBanner | null;
 }
 
 /** Эвристические правила группировки блюд по секциям. */
@@ -113,7 +123,7 @@ const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) })
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
-        return { restaurant: FALLBACK_RESTAURANT, dishes: [], sections: buildSections([]) };
+        return { restaurant: FALLBACK_RESTAURANT, dishes: [], sections: buildSections([]), restaurantPromo: null };
     }
 
     try {
@@ -129,15 +139,29 @@ export async function load(): Promise<RestaurantPageProps> {
     }
     await Promise.all(aux);
 
-    const [brandRes, dishesRes] = await Promise.allSettled([
+    const [brandRes, dishesRes, promoRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
         restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
+        httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
     ]);
 
     const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
     const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
 
-    return { restaurant, dishes, sections: buildSections(dishes) };
+    // Баннер промокода — необязательная деталь: ошибку запроса молча игнорируем.
+    let restaurantPromo: RestaurantPromoBanner | null = null;
+    if (promoRes.status === 'fulfilled' && promoRes.value.ok) {
+        try {
+            const list = await promoRes.value.json();
+            if (Array.isArray(list) && list.length > 0) {
+                restaurantPromo = { code: String(list[0].code), title: String(list[0].title) };
+            }
+        } catch (e) {
+            console.warn('restaurant: loadPromos failed', e);
+        }
+    }
+
+    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo };
 }
 
 // Возвращает видимую цель для анимации полёта в корзину: на мобильной вёрстке
@@ -166,9 +190,8 @@ function visibleCartTarget(): HTMLElement | null {
 }
 
 // Анимация полёта картинки блюда к иконке корзины; молча выходит, если узлы не найдены.
-const flyDishToCart = (dishId: number) => {
-    const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
-    const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
+const flyDishToCart = (dishCard: HTMLElement) => {
+    const dishImgToAnimate = dishCard.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
     const cartIcon = visibleCartTarget();
 
     if (!dishImgToAnimate || !cartIcon) return;
@@ -291,6 +314,21 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     const allDishes = signal<DishView[]>(props.dishes.slice());
     // Отрисовываемые секции (учитывают фильтр поиска по меню).
     const sections = signal<DishSection[]>(props.sections);
+
+    /** До 4 блюд для секции «Рекомендуем» — первые из каждой категории. */
+    const recommended = computed<DishView[]>(() => {
+        const picks: DishView[] = [];
+        const seen = new Set<number>();
+        for (const sec of sections()) {
+            for (const d of sec.dishes) {
+                if (seen.has(d.id)) continue;
+                seen.add(d.id);
+                picks.push(d);
+                if (picks.length >= 4) return picks;
+            }
+        }
+        return picks;
+    });
     const offset = signal<number>(props.dishes.length);
     const hasMore = signal<boolean>(props.dishes.length === PAGE_SIZE);
     const isFetching = signal<boolean>(false);
@@ -330,7 +368,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
     const scrollToDishById = async (dishId: string) => {
         for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
-            const card = document.querySelector(`.dish-card[data-dish-id="${dishId}"]`) as HTMLElement | null;
+            // Исключаем карточки секции «Рекомендуем» (тот же data-dish-id),
+            // чтобы якорь вёл к блюду в основном меню, а не в рекомендациях.
+            const card = document.querySelector(
+                `.dish-card:not(.dish-card_reco)[data-dish-id="${dishId}"]`,
+            ) as HTMLElement | null;
             if (card) {
                 highlightAndScroll(card);
                 return;
@@ -347,11 +389,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Добавление блюда в корзину; неавторизованного редиректит на /login, при смене ресторана спрашивает подтверждение.
-    const handleAdd = async (dish: DishView) => {
+    const handleAdd = async (dish: DishView, sourceEl: HTMLElement) => {
         if (!userStore.getState().user) {
             void router.go(ROUTES.login);
             return;
         }
+
+        const dishCard = sourceEl.closest('[data-dish-id]') as HTMLElement | null;
 
         try {
             await addToCart(
@@ -364,7 +408,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 restaurantId,
                 () => Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?'),
             );
-            flyDishToCart(dish.id);
+            if (dishCard) flyDishToCart(dishCard);
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
             const msg = e instanceof Error && e.message ? e.message : 'Не удалось добавить блюдо.';
@@ -721,6 +765,37 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                             />
                         </div>
 
+                        <Show when={() => props.restaurantPromo !== null}>
+                            <div class="restaurant-promo-banner">
+                                <div class="restaurant-promo-banner__info">
+                                    <span class="restaurant-promo-banner__icon">🏷️</span>
+                                    <div class="restaurant-promo-banner__text">
+                                        <span class="restaurant-promo-banner__code">
+                                            {() => props.restaurantPromo?.code ?? ''}
+                                        </span>
+                                        <span class="restaurant-promo-banner__desc">
+                                            {() => props.restaurantPromo?.title ?? ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class={() =>
+                                        appliedCodeAccessor() === props.restaurantPromo?.code
+                                            ? 'restaurant-promo-banner__btn restaurant-promo-banner__btn_applied'
+                                            : 'restaurant-promo-banner__btn'
+                                    }
+                                    onClick={() => {
+                                        if (props.restaurantPromo) applyPromo(props.restaurantPromo.code);
+                                    }}
+                                >
+                                    {() =>
+                                        appliedCodeAccessor() === props.restaurantPromo?.code ? 'Применён' : 'Применить'
+                                    }
+                                </button>
+                            </div>
+                        </Show>
+
                         <div class="restaurant-search">
                             <div class="restaurant-search__box">
                                 <svg
@@ -782,6 +857,75 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                             Отзывы
                         </button>
 
+                        <Show when={() => recommended().length > 0 && searchValue() === ''}>
+                            <h2 class="restaurant-section-title restaurant-section-title_reco">Рекомендуем</h2>
+                            <div class="res-grid res-grid_reco">
+                                <For each={recommended} key={(d) => `reco-${d.id}`}>
+                                    {(d) => {
+                                        const qtyInCart = computed(() => {
+                                            const myId = currentUserId();
+                                            const it = cartItems().find(
+                                                (i) => i.dish_id === d.id && (i.owner_user_id ?? null) === myId,
+                                            );
+                                            return it ? it.quantity : 0;
+                                        });
+                                        return (
+                                            <div class="dish-card dish-card_reco" data-dish-id={d.id}>
+                                                <img
+                                                    class="dish-card__img"
+                                                    src={d.image_url}
+                                                    alt={d.name}
+                                                    onError={imageFallback(
+                                                        'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
+                                                    )}
+                                                />
+                                                <div class="dish-card__prices">
+                                                    <div class="dish-card__price">{`${d.price_rub.toFixed(2)} ₽`}</div>
+                                                </div>
+                                                <div class="dish-card__title">{d.name}</div>
+                                                <Show
+                                                    when={() => qtyInCart() > 0}
+                                                    fallback={
+                                                        <button
+                                                            class="button dish-card__add-btn"
+                                                            type="button"
+                                                            onClick={(e: MouseEvent) => {
+                                                                void handleAdd(d, e.currentTarget as HTMLElement);
+                                                            }}
+                                                        >
+                                                            В корзину
+                                                        </button>
+                                                    }
+                                                >
+                                                    <div class="dish-card__counter">
+                                                        <button
+                                                            type="button"
+                                                            class="dish-card__counter-btn"
+                                                            onClick={() => {
+                                                                void cartStore.changeQuantity(d.id, -1);
+                                                            }}
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <span class="dish-card__counter-value">{qtyInCart}</span>
+                                                        <button
+                                                            type="button"
+                                                            class="dish-card__counter-btn"
+                                                            onClick={() => {
+                                                                void cartStore.changeQuantity(d.id, 1);
+                                                            }}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </Show>
+                                            </div>
+                                        );
+                                    }}
+                                </For>
+                            </div>
+                        </Show>
+
                         <div>
                             <For
                                 each={sections}
@@ -831,8 +975,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                                     <button
                                                                         class="button dish-card__add-btn"
                                                                         type="button"
-                                                                        onClick={() => {
-                                                                            void handleAdd(d);
+                                                                        onClick={(e: MouseEvent) => {
+                                                                            void handleAdd(
+                                                                                d,
+                                                                                e.currentTarget as HTMLElement,
+                                                                            );
                                                                         }}
                                                                     >
                                                                         В корзину

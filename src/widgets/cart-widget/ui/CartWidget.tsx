@@ -8,7 +8,9 @@ import './cartWidget.scss';
 import { cartStore, fromMicros, type CartItem, type CartMember } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { clearCart } from '@features/cart/clear-cart';
+import { applyPromo, removeAppliedPromo, appliedCodeAccessor } from '@features/profile/manage-promos';
 import { router } from '@app/router';
+import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';
 import { computed, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
@@ -90,7 +92,13 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     // Поле ввода кода неконтролируемое: значение читаем и чистим через ref,
     // потому что проп value у этого VDOM прокидывается через setAttribute.
     let joinInputEl: HTMLInputElement | null = null;
+    let promoInputEl: HTMLInputElement | null = null;
+    const promoInput = signal<string>('');
+    const promoOpen = signal<boolean>(false);
+    const promoError = signal<string>('');
 
+    const cartRestaurantId = useStoreSignal(cartStore, (s) => s.restaurantId);
+    const cartTotalCost = useStoreSignal(cartStore, (s) => s.totalCost);
     const currentUserId = computed<number | null>(() => user()?.id ?? null);
     const hasItems = computed(() => items().length > 0);
     const isShared = computed(() => mode() === 'shared');
@@ -340,10 +348,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For
-                        each={items}
-                        key={(item) => `${item.dish_id}:${item.owner_user_id ?? 0}`}
-                    >
+                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_user_id ?? 0}`}>
                         {(item) => {
                             const dishId = item.dish_id;
                             // Позицию ищем по паре dish_id + владелец: у блюда в
@@ -440,6 +445,96 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             );
                         }}
                     </For>
+                </div>
+
+                <div class="cart-promo">
+                    <Show
+                        when={() => appliedCodeAccessor() !== ''}
+                        fallback={
+                            <Show
+                                when={promoOpen}
+                                fallback={
+                                    <button
+                                        type="button"
+                                        class="cart-promo__toggle"
+                                        onClick={() => promoOpen.set(true)}
+                                    >
+                                        🏷️ Ввести промокод
+                                    </button>
+                                }
+                            >
+                                <>
+                                    <div class="cart-promo__row">
+                                        <input
+                                            type="text"
+                                            class="cart-promo__input"
+                                            placeholder="Промокод"
+                                            autocomplete="off"
+                                            ref={(el: Element | null) => {
+                                                promoInputEl = el as HTMLInputElement | null;
+                                            }}
+                                            onInput={(e: Event) => {
+                                                promoInput.set((e.target as HTMLInputElement).value);
+                                                promoError.set('');
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            class="cart-promo__submit"
+                                            disabled={() => promoInput().trim() === ''}
+                                            onClick={async () => {
+                                                const code = promoInput.peek().trim();
+                                                if (!code) return;
+                                                promoError.set('');
+                                                try {
+                                                    const resp = await httpClient.post('/promos/validate', {
+                                                        code: code.toUpperCase(),
+                                                        restaurant_brand_id: cartRestaurantId() ?? 0,
+                                                        order_amount: cartTotalCost() ?? 0,
+                                                        delivery_cost: 0,
+                                                        service_fee: 0,
+                                                    });
+                                                    if (!resp.ok) {
+                                                        promoError.set('Промокод не найден');
+                                                        return;
+                                                    }
+                                                    const data = await resp.json();
+                                                    if (!data.valid) {
+                                                        promoError.set(
+                                                            data.reason === 'promo not found'
+                                                                ? 'Промокод не найден'
+                                                                : 'Промокод недействителен',
+                                                        );
+                                                        return;
+                                                    }
+                                                    applyPromo(code);
+                                                    promoInput.set('');
+                                                    if (promoInputEl) promoInputEl.value = '';
+                                                    promoOpen.set(false);
+                                                } catch {
+                                                    promoError.set('Ошибка проверки промокода');
+                                                }
+                                            }}
+                                        >
+                                            Применить
+                                        </button>
+                                    </div>
+                                    <Show when={() => promoError() !== ''}>
+                                        <div class="error-msg" style="margin-top: 6px; font-size: 12px;">
+                                            {promoError}
+                                        </div>
+                                    </Show>
+                                </>
+                            </Show>
+                        }
+                    >
+                        <div class="cart-promo__applied">
+                            <span class="cart-promo__badge">🏷️ {appliedCodeAccessor}</span>
+                            <button type="button" class="cart-promo__remove" onClick={() => removeAppliedPromo()}>
+                                ✕
+                            </button>
+                        </div>
+                    </Show>
                 </div>
 
                 <div class="cart-footer">

@@ -284,7 +284,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             floor: (formData.get('floor') as string) || undefined,
             door_code: (formData.get('door_code') as string) || undefined,
             courier_comment: (formData.get('courier_comment') as string) || undefined,
-            label: 'Дом',
+            label: (formData.get('label') as string) || 'Адрес',
         };
 
         closeDetailsModal();
@@ -477,6 +477,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                             detailsFormEl = el as HTMLFormElement | null;
                         }}
                     >
+                        <div class="input-group">
+                            <label>Название</label>
+                            <input name="label" class="input-field" value="Адрес" placeholder="Например: Дом, Работа" />
+                        </div>
                         <div class="input-group">
                             <label>Адрес</label>
                             <div style="display: flex; gap: 8px;">

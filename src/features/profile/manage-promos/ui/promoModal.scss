@@ -113,6 +113,11 @@
     border-color: #e84444;
   }
 
+  &_applied {
+    background: #f0faf0;
+    border-color: #18b213;
+  }
+
   &__code {
     height: 36px;
     display: flex;
@@ -131,6 +136,16 @@
   &_expiring &__code {
     border-color: #e84444;
     color: #e84444;
+  }
+
+  &__code_applied {
+    border-color: #18b213;
+    color: #18b213;
+  }
+
+  &_applied &__code {
+    border-color: #18b213;
+    color: #18b213;
   }
 
   &__body {
@@ -179,6 +194,15 @@
 
     &:hover {
       filter: brightness(1.15);
+    }
+
+    &_applied {
+      background: #18b213;
+      cursor: default;
+
+      &:hover {
+        filter: none;
+      }
     }
   }
 }

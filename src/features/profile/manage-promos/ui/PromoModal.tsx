@@ -1,31 +1,75 @@
 // Модалка «Мои промокоды» для профиля: список карточек промокодов и поле
-// ввода нового кода. Пока работает на моках; применение промокода и валидация
-// нового кода будут проброшены в бэкенд после появления соответствующих API.
+// ввода нового кода. Применённый промокод обводится зелёным, обычный —
+// оранжевым, а истекающий — красным.
 
 import './promoModal.scss';
 
 import { Popup } from '@shared/ui/popup';
-import { For } from '@shared/lib/vdom';
+import { For, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
-import { MOCK_PROMOS } from '../model/mockPromos';
+import { signal } from '@shared/lib/signals';
+import { promosAccessor, appliedCodeAccessor, applyPromo, addPromo, loadPromos } from '../model/promoStore';
 import type { Promo } from '../model/types';
 
 export interface PromoModalProps {
-    /** Колбэк закрытия (нажатие на крестик). */
     onClose: () => void;
 }
 
-/** Реакция на «Применить»: пока заглушка, чтобы UI был кликабельным. */
 function handleApply(promo: Promo) {
-    void Popup.alert(`Промокод ${promo.code} применится на оформлении заказа`);
-}
-
-/** Реакция на «Добавить»: тоже заглушка до прихода эндпоинта валидации. */
-function handleAdd() {
-    void Popup.alert('Добавление промокодов скоро появится');
+    applyPromo(promo.code);
+    void Popup.alert(`Промокод ${promo.code} применён к корзине`);
 }
 
 export function PromoModal(props: PromoModalProps): VNode {
+    const inputValue = signal<string>('');
+    let inputEl: HTMLInputElement | null = null;
+
+    onMount(() => {
+        void loadPromos();
+    });
+
+    const handleAdd = async () => {
+        const code = inputValue.peek().trim();
+        if (!code) return;
+        const ok = await addPromo(code);
+        if (ok) {
+            inputValue.set('');
+            if (inputEl) inputEl.value = '';
+        } else {
+            void Popup.alert('Промокод не найден или уже добавлен');
+        }
+    };
+
+    const cardClass = (promo: Promo) => {
+        const applied = appliedCodeAccessor();
+        if (applied === promo.code) return 'promo-card promo-card_applied';
+        if (promo.expiringSoon === true) return 'promo-card promo-card_expiring';
+        return 'promo-card';
+    };
+
+    const codeClass = (promo: Promo) => {
+        const applied = appliedCodeAccessor();
+        if (applied === promo.code) return 'promo-card__code promo-card__code_applied';
+        if (promo.expiringSoon === true) return 'promo-card__code promo-card__code_expiring';
+        return 'promo-card__code';
+    };
+
+    const expiresClass = (promo: Promo) => {
+        if (promo.expiringSoon === true) return 'promo-card__expires promo-card__expires_soon';
+        return 'promo-card__expires';
+    };
+
+    const applyBtnClass = (promo: Promo) => {
+        const applied = appliedCodeAccessor();
+        if (applied === promo.code) return 'promo-card__apply promo-card__apply_applied';
+        return 'promo-card__apply';
+    };
+
+    const applyBtnText = (promo: Promo) => {
+        const applied = appliedCodeAccessor();
+        return applied === promo.code ? 'Применён' : 'Применить';
+    };
+
     return (
         <div class="promo-modal">
             <div class="promo-modal__header">
@@ -36,24 +80,14 @@ export function PromoModal(props: PromoModalProps): VNode {
             </div>
 
             <div class="promo-modal__list">
-                <For each={() => MOCK_PROMOS} key={(p) => p.id}>
+                <For each={promosAccessor} key={(p) => p.id}>
                     {(promo) => (
-                        <div
-                            class={() =>
-                                promo.expiringSoon === true ? 'promo-card promo-card_expiring' : 'promo-card'
-                            }
-                        >
-                            <div class="promo-card__code">{promo.code}</div>
+                        <div class={() => cardClass(promo)}>
+                            <div class={() => codeClass(promo)}>{promo.code}</div>
                             <div class="promo-card__body">
                                 <div class="promo-card__title">{promo.title}</div>
                                 <div class="promo-card__condition">{promo.condition}</div>
-                                <div
-                                    class={() =>
-                                        promo.expiringSoon === true
-                                            ? 'promo-card__expires promo-card__expires_soon'
-                                            : 'promo-card__expires'
-                                    }
-                                >
+                                <div class={() => expiresClass(promo)}>
                                     {() =>
                                         promo.expiringSoon === true
                                             ? (promo.expiringSoonText ?? promo.expiresAt)
@@ -63,12 +97,12 @@ export function PromoModal(props: PromoModalProps): VNode {
                             </div>
                             <button
                                 type="button"
-                                class="promo-card__apply"
+                                class={() => applyBtnClass(promo)}
                                 onClick={() => {
                                     handleApply(promo);
                                 }}
                             >
-                                Применить
+                                {() => applyBtnText(promo)}
                             </button>
                         </div>
                     )}
@@ -81,6 +115,12 @@ export function PromoModal(props: PromoModalProps): VNode {
                     class="promo-modal__input"
                     placeholder="Введите промокод"
                     autocomplete="off"
+                    ref={(el: Element | null) => {
+                        inputEl = el as HTMLInputElement | null;
+                    }}
+                    onInput={(e: Event) => {
+                        inputValue.set((e.target as HTMLInputElement).value);
+                    }}
                 />
                 <button type="button" class="promo-modal__add" onClick={handleAdd}>
                     Добавить

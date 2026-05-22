@@ -19,6 +19,7 @@ export interface PickAddressFormProps {
 
 export function PickAddressForm(props: PickAddressFormProps): VNode {
     const initial = props.initial ?? {};
+    const label = signal<string>(initial.label || 'Адрес');
     const apartment = signal<string>(initial.apartment ?? '');
     const entrance = signal<string>(initial.entrance ?? '');
     const floor = signal<string>(initial.floor ?? '');
@@ -31,6 +32,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
         if (submitting.peek()) return;
 
         const details: AddressDetails = {
+            label: label.peek() || 'Адрес',
             apartment: apartment.peek(),
             entrance: entrance.peek(),
             floor: floor.peek(),
@@ -60,6 +62,20 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                 void handleSubmit(e);
             }}
         >
+            <div class="input-group">
+                <label for="address-label">Название</label>
+                <input
+                    id="address-label"
+                    name="label"
+                    class="input-field"
+                    type="text"
+                    value={label.peek()}
+                    placeholder="Например: Дом, Работа"
+                    onInput={(e: Event) => {
+                        label.set((e.target as HTMLInputElement).value);
+                    }}
+                />
+            </div>
             <div class="input-group">
                 <label for="display-address-text">Адрес</label>
                 <input

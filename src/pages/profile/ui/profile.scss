@@ -359,6 +359,7 @@
   align-items: center;
   gap: 5px;
   font-size: 14px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -378,13 +379,13 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .section-title {
   font-family: "Open Sans Condensed", sans-serif;
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 600;
   margin: 0;
 }
 
@@ -517,7 +518,7 @@
 
 .profile-card__bonus-title {
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: #0e1117;
 }
 
@@ -528,6 +529,18 @@
   gap: 16px;
 }
 
+.profile-card__bonus-inline {
+  font-weight: 700;
+  color: #18b213;
+}
+
+.profile-card__promo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .profile-card__promo-info {
   display: flex;
   flex-direction: column;
@@ -536,7 +549,7 @@
 
 .profile-card__promo-label {
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 500;
   color: #0e1117;
 }
 
@@ -870,41 +883,68 @@
 }
 
 /* Платёжные карты — выглядят как настоящие, активная обведена */
+.cards-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .cards-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
+  flex-wrap: nowrap;
+  gap: 8px;
   padding: 4px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.cards-scroll-arrow {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0.3;
+  font-size: 14px;
+  padding: 0;
+  transition: opacity 0.15s;
+
+  &:hover {
+    opacity: 0.7;
+  }
 }
 
 .payment-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 140px;
-  height: 86px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  width: 90px;
+  min-width: 90px;
+  height: 54px;
+  padding: 4px 6px;
+  border-radius: 8px;
   cursor: pointer;
   color: #fff;
-  /* Цвет фона задаётся темами банков. Дефолт — графитовый. */
   background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition:
     transform 0.15s ease,
-    box-shadow 0.2s ease,
-    outline-color 0.2s ease;
-  outline: 0 solid transparent;
-  outline-offset: 3px; /* обводка снаружи, не по контуру */
+    box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
   }
 
-  /* Активная карта = такая же визуально, но с оранжевой обводкой снаружи. */
   &_active {
-    outline: 2px solid #f7958c;
+    box-shadow: inset 0 0 0 2px #d78306, 0 2px 8px rgba(0, 0, 0, 0.12);
     cursor: default;
 
     &:hover {
@@ -916,24 +956,24 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   &__chip {
-    width: 18px;
-    height: 14px;
-    border-radius: 3px;
+    width: 14px;
+    height: 10px;
+    border-radius: 2px;
     background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
     flex-shrink: 0;
   }
 
   &__brand {
-    font-size: 9px;
+    font-size: 7px;
     font-weight: 600;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     opacity: 0.9;
     line-height: 1.1;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -944,24 +984,23 @@
     align-items: flex-end;
     justify-content: space-between;
     margin-top: auto;
-    gap: 6px;
+    gap: 4px;
   }
 
   &__number {
     font-family: "Courier New", monospace;
-    font-size: 12px;
-    letter-spacing: 1px;
+    font-size: 9px;
+    letter-spacing: 0.5px;
   }
 
-  /* Платёжная система — текстовый «лого» с фирменным цветом. */
   &__system {
-    font-size: 10px;
+    font-size: 7px;
     font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 4px;
+    padding: 1px 4px;
+    border-radius: 3px;
     background: rgba(255, 255, 255, 0.92);
     color: #1a202c;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     white-space: nowrap;
 
     &_visa {
@@ -990,13 +1029,13 @@
   }
 
   &__remove {
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     border: none;
     border-radius: 50%;
     background: rgba(0, 0, 0, 0.25);
     color: #fff;
-    font-size: 14px;
+    font-size: 11px;
     line-height: 1;
     cursor: pointer;
     opacity: 0.7;

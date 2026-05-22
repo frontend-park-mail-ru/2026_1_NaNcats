@@ -85,11 +85,12 @@ async function handleCartInvite(isAuth: boolean): Promise<void> {
     }
 }
 
-/** Сколько брендов держать в секциях «Вы заказывали» и «Попробуйте» (карусель). */
+/** Сколько брендов держать в секции «Вы заказывали» (карусель). */
 const SECTION_SIZE = 12;
+/** Сколько ресторанов показывать в «Попробуйте». */
+const RECO_SIZE = 8;
 /** Запасная картинка для карточки в "Вы заказывали", если у заказа нет логотипа. */
-const RESTAURANT_FALLBACK_IMAGE =
-    'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
+const RESTAURANT_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
 /** Уникальные бренды из истории заказов в порядке от свежих к старым. */
 function pastBrandsFromOrders(orders: Order[]): RestaurantCard[] {
@@ -97,7 +98,7 @@ function pastBrandsFromOrders(orders: Order[]): RestaurantCard[] {
     const cards: RestaurantCard[] = [];
     for (const order of orders) {
         const id = order.restaurant_id;
-        if (id === undefined) continue;
+        if (!id) continue;
         const key = String(id);
         if (seen.has(key)) continue;
         seen.add(key);
@@ -123,7 +124,7 @@ function recommendedFromList(restaurants: Restaurant[], exclude: Set<string>): R
             description: r.description ?? 'Вкусная еда',
             image_url: r.logo_url,
         });
-        if (picks.length >= SECTION_SIZE) break;
+        if (picks.length >= RECO_SIZE) break;
     }
     return picks;
 }
@@ -176,6 +177,11 @@ export async function load(): Promise<HomePageProps> {
     ]);
 
     const pastBrands = pastBrandsFromOrders(orders);
+    // Обогащаем описаниями из каталога ресторанов.
+    const descMap = new Map(restaurants.map((r) => [String(r.id), r.description ?? '']));
+    for (const pb of pastBrands) {
+        if (!pb.description) pb.description = descMap.get(String(pb.id)) ?? '';
+    }
     const pastIds = new Set(pastBrands.map((b) => String(b.id)));
     const recommended = recommendedFromList(restaurants, pastIds);
 
@@ -237,9 +243,7 @@ function BrandCarousel(props: BrandCarouselProps): VNode {
                 <div class="brand-nav">
                     <button
                         type="button"
-                        class={() =>
-                            canScrollLeft() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled'
-                        }
+                        class={() => (canScrollLeft() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled')}
                         aria-label="Предыдущие рестораны"
                         onClick={() => scrollByCards(-1)}
                     >
@@ -255,9 +259,7 @@ function BrandCarousel(props: BrandCarouselProps): VNode {
                     </button>
                     <button
                         type="button"
-                        class={() =>
-                            canScrollRight() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled'
-                        }
+                        class={() => (canScrollRight() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled')}
                         aria-label="Ещё рестораны"
                         onClick={() => scrollByCards(1)}
                     >
@@ -285,9 +287,7 @@ function BrandCarousel(props: BrandCarouselProps): VNode {
                         <div
                             class="res-card brand-card"
                             onClick={() => {
-                                void router.go(
-                                    `${ROUTES.restaurant}?id=${encodeURIComponent(String(brand.id))}`,
-                                );
+                                void router.go(`${ROUTES.restaurant}?id=${encodeURIComponent(String(brand.id))}`);
                             }}
                         >
                             <img
@@ -569,19 +569,11 @@ export function HomePage(props: HomePageProps): VNode {
                     <div class="sheet">
                         <Show when={() => searchQuery() === '' && activeCategory() === ''}>
                             <Show when={() => props.pastBrands.length > 0}>
-                                <BrandCarousel
-                                    title="Вы заказывали"
-                                    items={() => props.pastBrands}
-                                    keyPrefix="past"
-                                />
+                                <BrandCarousel title="Вы заказывали" items={() => props.pastBrands} keyPrefix="past" />
                             </Show>
 
                             <Show when={() => props.recommended.length > 0}>
-                                <BrandCarousel
-                                    title="Попробуйте"
-                                    items={() => props.recommended}
-                                    keyPrefix="reco"
-                                />
+                                <BrandCarousel title="Попробуйте" items={() => props.recommended} keyPrefix="reco" />
                             </Show>
                         </Show>
 
