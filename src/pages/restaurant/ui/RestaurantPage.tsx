@@ -338,7 +338,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Позиции корзины: по ним карточка блюда показывает счётчик вместо кнопки.
     const cartItems = useStoreSignal(cartStore, (s) => s.items);
     // Нужен, чтобы в совместной корзине считать только свою позицию блюда.
-    const currentUserId = useStoreSignal(userStore, (s) => s.user?.id ?? null);
+    const currentUserId = useStoreSignal(userStore, (s) => s.user?.public_id ?? null);
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
     let searchInputEl: HTMLInputElement | null = null;
@@ -865,7 +865,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         const qtyInCart = computed(() => {
                                             const myId = currentUserId();
                                             const it = cartItems().find(
-                                                (i) => i.dish_id === d.id && (i.owner_user_id ?? null) === myId,
+                                                (i) => i.dish_id === d.id && (i.owner_public_id ?? null) === myId,
                                             );
                                             return it ? it.quantity : 0;
                                         });
@@ -946,7 +946,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                         const it = cartItems().find(
                                                             (i) =>
                                                                 i.dish_id === d.id &&
-                                                                (i.owner_user_id ?? null) === myId,
+                                                                (i.owner_public_id ?? null) === myId,
                                                         );
                                                         return it ? it.quantity : 0;
                                                     });

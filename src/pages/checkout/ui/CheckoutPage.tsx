@@ -224,13 +224,13 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         // Переназначить ничейные позиции (например, оставшиеся после кика
         // гостя) на себя может только организатор корзины.
         const me = userStore.getState().user;
-        const isAdmin = me !== null && cart.adminId !== null && me.id === cart.adminId;
+        const isAdmin = me !== null && cart.adminId !== null && me.public_id === cart.adminId;
 
         if (isAdmin && cart.cartId && cart.adminId !== null) {
             try {
                 await Promise.all(
                     unassignedItems.map((item) =>
-                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as number),
+                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as string),
                     ),
                 );
 
@@ -261,7 +261,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         // блокирует корзину от имени админа, гостю запрос вернёт 403.
         const cartState = cartStore.getState();
         const me = userStore.getState().user;
-        if (cartState.mode === 'shared' && (me === null || me.id !== cartState.adminId)) {
+        if (cartState.mode === 'shared' && (me === null || me.public_id !== cartState.adminId)) {
             errorSig.set('Оформить заказ может только организатор совместной корзины.');
             return;
         }
@@ -451,7 +451,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                             }
                                         }}
                                     >
-                                        <For each={itemsSig} key={(i) => `${i.dish_id}:${i.owner_user_id ?? 0}`}>
+                                        <For each={itemsSig} key={(i) => `${i.dish_id}:${i.owner_public_id ?? ''}`}>
                                             {(item) => (
                                                 <div class="checkout-item-row">
                                                     <img

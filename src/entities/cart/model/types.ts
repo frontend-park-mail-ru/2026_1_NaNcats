@@ -12,9 +12,7 @@ export interface CartItem {
     quantity: number;
     /** Ссылка на изображение блюда. */
     image_url: string;
-    /** Идентификатор пользователя-владельца позиции в групповом режиме. */
-    owner_user_id?: number | null;
-    /** Публичный идентификатор владельца позиции (UUID), как его отдаёт бэкенд. */
+    /** Публичный идентификатор владельца позиции (UUID) в групповом режиме. */
     owner_public_id?: string | null;
     /** Имя владельца позиции (для отображения в групповой корзине). */
     owner_name?: string | null;
@@ -40,8 +38,12 @@ export interface DishToAdd {
  * Участник групповой корзины.
  */
 export interface CartMember {
-    /** Идентификатор пользователя. */
-    user_id: number;
+    /** Публичный идентификатор пользователя (UUID). */
+    public_id: string;
+    /** Отображаемое имя участника. */
+    name: string;
+    /** Ссылка на аватар участника. */
+    avatar_url: string;
     /** ISO-метка времени присоединения к корзине. */
     joined_at: string;
 }
@@ -61,8 +63,8 @@ export interface CartSnapshot {
     mode: string;
     /** Статус групповой комнаты. */
     roomStatus: string;
-    /** Идентификатор администратора групповой корзины. */
-    adminId: number | null;
+    /** Публичный идентификатор (UUID) администратора групповой корзины. */
+    adminId: string | null;
     /** Список участников групповой корзины. */
     members: CartMember[];
     /** Итоговая стоимость корзины в микрорублях. */

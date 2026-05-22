@@ -160,9 +160,9 @@ function splitStatusIcon(status: string) {
 }
 
 /** Подпись участника-плательщика доли относительно текущего пользователя. */
-function splitPayerLabel(split: OrderSplit, currentUserId: number | null) {
-    if (currentUserId !== null && split.user_id === currentUserId) return 'Ваша часть';
-    return `Участник #${split.user_id}`;
+function splitPayerLabel(split: OrderSplit, currentUserId: string | null) {
+    if (currentUserId !== null && split.user_public_id === currentUserId) return 'Ваша часть';
+    return split.user_name && split.user_name.length > 0 ? split.user_name : 'Участник';
 }
 
 // Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
@@ -208,7 +208,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     /** Текущий пользователь: нужен, чтобы отличать свою долю счёта от чужой. */
     const currentUser = useStoreSignal(userStore, (s) => s.user);
-    const myId = () => currentUser()?.id ?? null;
+    const myId = () => currentUser()?.public_id ?? null;
 
     const errorText = computed(() => order()?.error ?? '');
 
@@ -222,7 +222,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const mySplit = computed<OrderSplit | null>(() => {
         const id = myId();
         if (id === null) return null;
-        return splits().find((s) => s.user_id === id) ?? null;
+        return splits().find((s) => s.user_public_id === id) ?? null;
     });
 
     /**
@@ -338,13 +338,17 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
         // В совместном заказе по одному WS-каналу прилетают события оплаты
         // всех участников. Чужую ссылку на оплату отбрасываем: на экране
-        // должна оставаться только своя доля счёта.
+        // должна оставаться только своя доля счёта. Долю события сопоставляем
+        // по split_id со списком долей заказа, где у каждой есть user_public_id.
+        const eventSplit =
+            event.split_id !== undefined && event.split_id !== ''
+                ? current.splits.find((s) => s.split_id === event.split_id)
+                : undefined;
         const foreignPayment =
             event.payment_url !== undefined &&
-            event.user_id !== undefined &&
-            event.user_id !== 0 &&
+            eventSplit !== undefined &&
             myId() !== null &&
-            event.user_id !== myId();
+            eventSplit.user_public_id !== myId();
         const scoped: GatewayWsEvent = foreignPayment ? { ...event, payment_url: undefined } : event;
 
         if (scoped.payment_url !== undefined) {
@@ -595,7 +599,9 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                     const liveSplit = computed<OrderSplit>(
                                         () => splits().find((s) => s.split_id === splitId) ?? split,
                                     );
-                                    const isMine = computed(() => myId() !== null && liveSplit().user_id === myId());
+                                    const isMine = computed(
+                                        () => myId() !== null && liveSplit().user_public_id === myId(),
+                                    );
                                     const waiting = computed(() => splitWaiting() === splitId);
                                     // Платить можно любую неоплаченную долю: и свою, и чужую.
                                     const canPay = computed(

@@ -12,7 +12,7 @@ interface CartResponse {
     restaurant_id?: number;
     mode?: string;
     status?: string;
-    admin_id?: number;
+    admin_id?: string;
     members?: CartMember[];
     total_cost?: number;
 }
@@ -140,14 +140,14 @@ export const cartApi = {
      *
      * @param cartId Идентификатор корзины.
      * @param dishId Идентификатор блюда.
-     * @param newOwnerId Идентификатор нового владельца или `null`, чтобы
-     *   снять привязку.
+     * @param newOwnerPublicID Публичный идентификатор (UUID) нового владельца
+     *   или `null`, чтобы снять привязку.
      */
-    reassignOwner(cartId: string, dishId: number, newOwnerId: number | null): Promise<void> {
+    reassignOwner(cartId: string, dishId: number, newOwnerPublicID: string | null): Promise<void> {
         return httpClient.send('PATCH', '/cart/items/owner', {
             cart_id: cartId,
             dish_id: Number(dishId),
-            new_owner_id: newOwnerId,
+            new_owner_public_id: newOwnerPublicID,
         });
     },
 
@@ -177,12 +177,12 @@ export const cartApi = {
      * Удаляет участника из групповой корзины (доступно администратору).
      *
      * @param cartId Идентификатор корзины.
-     * @param targetUserId Идентификатор пользователя, которого нужно удалить.
+     * @param targetPublicID Публичный идентификатор (UUID) удаляемого участника.
      */
-    kickMember(cartId: string, targetUserId: number): Promise<void> {
+    kickMember(cartId: string, targetPublicID: string): Promise<void> {
         return httpClient.send('DELETE', '/cart/members', {
             cart_id: cartId,
-            target_user_id: targetUserId,
+            target_public_id: targetPublicID,
         });
     },
 

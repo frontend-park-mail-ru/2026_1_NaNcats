@@ -32,22 +32,27 @@ function formatItemPriceRub(item: CartItem) {
 
 /**
  * Человекочитаемая метка участника корзины относительно текущего пользователя.
- * Имён бэкенд не отдаёт, поэтому участник опознаётся по роли и числовому id.
+ * Участник опознаётся по публичному id (UUID), подпись — по имени и роли.
  */
-function memberLabel(member: CartMember, currentUserId: number | null, adminId: number | null): string {
-    if (currentUserId !== null && member.user_id === currentUserId) {
-        return member.user_id === adminId ? 'Вы (организатор)' : 'Вы';
+function memberLabel(member: CartMember, currentUserId: string | null, adminId: string | null): string {
+    if (currentUserId !== null && member.public_id === currentUserId) {
+        return member.public_id === adminId ? 'Вы (организатор)' : 'Вы';
     }
-    if (member.user_id === adminId) return 'Организатор';
-    return `Участник #${member.user_id}`;
+    if (member.public_id === adminId) return 'Организатор';
+    return member.name;
 }
 
 /** Метка владельца позиции для бейджа в строке товара. */
-function ownerLabel(ownerId: number | null | undefined, currentUserId: number | null, adminId: number | null): string {
-    if (ownerId === null || ownerId === undefined) return 'Ничьё';
-    if (currentUserId !== null && ownerId === currentUserId) return 'Ваше';
-    if (ownerId === adminId) return 'Организатор';
-    return `Участник #${ownerId}`;
+function ownerLabel(
+    ownerPublicId: string | null | undefined,
+    ownerName: string | null | undefined,
+    currentUserId: string | null,
+    adminId: string | null,
+): string {
+    if (!ownerPublicId) return 'Ничьё';
+    if (currentUserId !== null && ownerPublicId === currentUserId) return 'Ваше';
+    if (ownerPublicId === adminId) return 'Организатор';
+    return ownerName && ownerName.length > 0 ? ownerName : 'Участник';
 }
 
 /**
@@ -99,7 +104,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
 
     const cartRestaurantId = useStoreSignal(cartStore, (s) => s.restaurantId);
     const cartTotalCost = useStoreSignal(cartStore, (s) => s.totalCost);
-    const currentUserId = computed<number | null>(() => user()?.id ?? null);
+    const currentUserId = computed<string | null>(() => user()?.public_id ?? null);
     const hasItems = computed(() => items().length > 0);
     const isShared = computed(() => mode() === 'shared');
     const isAdmin = computed(() => {
@@ -193,7 +198,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
             return;
         }
         try {
-            await cartStore.kickMember(member.user_id);
+            await cartStore.kickMember(member.public_id);
         } catch (err) {
             console.error('[CartWidget] kickMember failed:', err);
             await Popup.alert('Не удалось удалить участника.');
@@ -241,14 +246,14 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                         <span class="cart-shared__label">{() => `Участники · ${members().length}`}</span>
                     </div>
                     <div class="cart-members">
-                        <For each={members} key={(m) => m.user_id}>
+                        <For each={members} key={(m) => m.public_id}>
                             {(m) => (
                                 <div class="cart-member">
                                     <span class="cart-member__dot" />
                                     <span class="cart-member__name">
                                         {() => memberLabel(m, currentUserId(), adminId())}
                                     </span>
-                                    <Show when={() => isAdmin() && m.user_id !== adminId()}>
+                                    <Show when={() => isAdmin() && m.public_id !== adminId()}>
                                         <button
                                             type="button"
                                             class="cart-member__kick"
@@ -348,30 +353,35 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_user_id ?? 0}`}>
+                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}>
                         {(item) => {
                             const dishId = item.dish_id;
                             // Позицию ищем по паре dish_id + владелец: у блюда в
                             // совместной корзине бывает по строке на участника.
-                            const ownerKey = item.owner_user_id ?? 0;
+                            const ownerKey = item.owner_public_id ?? '';
                             // For не перевызывает children при изменении полей позиции,
                             // поэтому актуальную позицию читаем из сигнала items на каждом
                             // тике; если позиция исчезла, держим последний снимок до размонтирования.
                             const currentItem = computed<CartItem>(
                                 () =>
                                     items().find(
-                                        (it) => it.dish_id === dishId && (it.owner_user_id ?? 0) === ownerKey,
+                                        (it) => it.dish_id === dishId && (it.owner_public_id ?? '') === ownerKey,
                                     ) ?? item,
                             );
                             const quantity = computed(() => currentItem().quantity);
                             const priceRub = computed(() => formatItemPriceRub(currentItem()));
                             const ownerText = computed(() =>
-                                ownerLabel(currentItem().owner_user_id, currentUserId(), adminId()),
+                                ownerLabel(
+                                    currentItem().owner_public_id,
+                                    currentItem().owner_name,
+                                    currentUserId(),
+                                    adminId(),
+                                ),
                             );
                             // Гость правит только свои позиции, в соло-корзине ограничений нет.
                             const canModify = computed(() => {
                                 if (!isShared()) return true;
-                                return currentItem().owner_user_id === currentUserId();
+                                return currentItem().owner_public_id === currentUserId();
                             });
                             return (
                                 <div class="cart-item">
@@ -387,7 +397,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                         <Show when={isShared}>
                                             <div
                                                 class={() =>
-                                                    currentItem().owner_user_id == null
+                                                    currentItem().owner_public_id == null
                                                         ? 'cart-item__owner cart-item__owner_none'
                                                         : 'cart-item__owner'
                                                 }
@@ -398,7 +408,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                     </div>
                                     <div class="cart-item__counter">
                                         <Show
-                                            when={() => isShared() && currentItem().owner_user_id == null}
+                                            when={() => isShared() && currentItem().owner_public_id == null}
                                             fallback={
                                                 <>
                                                     <button

@@ -91,10 +91,10 @@ function formatRubles(microRubles: number): string {
  * Подсказка о доле счёта текущего пользователя в совместном заказе. Возвращает
  * `null`, если заказ не разделённый или пользователь в нём не плательщик.
  */
-function splitOwnerHint(order: Order, myId: number | null): { text: string; cls: string } | null {
+function splitOwnerHint(order: Order, myId: string | null): { text: string; cls: string } | null {
     const splits = order.splits ?? [];
     if (splits.length <= 1 || myId === null) return null;
-    const mine = splits.find((s) => s.user_id === myId);
+    const mine = splits.find((s) => s.user_public_id === myId);
     if (!mine) return null;
     if (mine.status === 'paid') return { text: '✓ Ваша часть оплачена', cls: 'paid' };
     if (mine.status === 'pending') return { text: '⏳ Ваша часть не оплачена', cls: 'pending' };
@@ -288,11 +288,11 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         }
         if (!shouldOpen || !orderStatusCtl) return;
 
-        const myId = props.user.id;
+        const myId = props.user.public_id;
         const target = ordersSig.peek().find((o) => {
             const splits = o.splits ?? [];
             if (splits.length <= 1) return false;
-            const mine = splits.find((s) => s.user_id === myId);
+            const mine = splits.find((s) => s.user_public_id === myId);
             return mine !== undefined && mine.status === 'pending';
         });
         if (target) {
@@ -636,7 +636,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                     <span>{order._badge.label}</span>
                                                 </div>
                                                 {(() => {
-                                                    const hint = splitOwnerHint(order, props.user.id);
+                                                    const hint = splitOwnerHint(order, props.user.public_id);
                                                     return hint ? (
                                                         <div class={`order-card__split order-card__split_${hint.cls}`}>
                                                             {hint.text}
