@@ -19,7 +19,7 @@ import {
 } from '@entities/order';
 import { uploadAvatar, deleteAvatar } from '@features/profile/upload-avatar';
 import { EditProfileForm } from '@features/profile/edit-profile';
-import { AddressesModal } from '@features/profile/manage-addresses';
+import { AddressesModal, removeAddress } from '@features/profile/manage-addresses';
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { PromoModal, promosAccessor, ensureLoaded as ensurePromosLoaded } from '@features/profile/manage-promos';
 import { OrdersHistoryModal } from '@features/profile/orders-history';
@@ -346,6 +346,23 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         });
     };
 
+    const handleEditAddress = (event: Event, id: string) => {
+        event.stopPropagation();
+        addressPickerHandle.openDetailsForEdit(id);
+    };
+
+    const handleRemoveAddress = async (event: Event, id: string) => {
+        event.stopPropagation();
+        const ok = await Popup.confirm('Удалить этот адрес?');
+        if (!ok) return;
+        try {
+            await removeAddress(id);
+        } catch (e) {
+            console.error('ProfilePage: remove address failed', e);
+            await Popup.alert('Не удалось удалить адрес');
+        }
+    };
+
     const compactOrders = () => ordersSig().slice(0, 2);
 
     return (
@@ -499,6 +516,40 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                             <span class="address-compact__label">{addr.label ?? 'Адрес'}</span>
                                             <span class="address-compact__sep">·</span>
                                             <span class="address-compact__text">{addr.location.address_text}</span>
+                                            <span
+                                                class="address-compact__action"
+                                                role="button"
+                                                tabindex="0"
+                                                aria-label="Редактировать"
+                                                onClick={(event: Event) => handleEditAddress(event, addr.id)}
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                                    <path
+                                                        d="M1 11.5V13h1.5l8.5-8.5L9.5 3L1 11.5Z"
+                                                        stroke="#7D7D7D"
+                                                        stroke-width="1.2"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </span>
+                                            <span
+                                                class="address-compact__action"
+                                                role="button"
+                                                tabindex="0"
+                                                aria-label="Удалить"
+                                                onClick={(event: Event) => {
+                                                    void handleRemoveAddress(event, addr.id);
+                                                }}
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                                    <path
+                                                        d="M2 2L12 12M12 2L2 12"
+                                                        stroke="#7D7D7D"
+                                                        stroke-width="1.4"
+                                                        stroke-linecap="round"
+                                                    />
+                                                </svg>
+                                            </span>
                                         </div>
                                     )}
                                 </For>
@@ -649,9 +700,6 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                 </For>
                             </div>
                             <div class="orders-actions">
-                                <button type="button" class="orders-actions__primary" disabled>
-                                    Повторить заказ
-                                </button>
                                 <button type="button" class="orders-actions__secondary" onClick={openOrdersModal}>
                                     Показать все заказы
                                     <span class="orders-actions__arrow" aria-hidden="true">

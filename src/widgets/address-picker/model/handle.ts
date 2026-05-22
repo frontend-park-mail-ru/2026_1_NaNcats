@@ -18,4 +18,8 @@ export const addressPickerHandle = {
     openMapModal(addressId?: string): void {
         void current?.openMapModal(addressId);
     },
+    /** Открывает форму деталей для редактирования адреса, минуя карту. */
+    openDetailsForEdit(addressId: string): void {
+        current?.openDetailsForEdit(addressId);
+    },
 };

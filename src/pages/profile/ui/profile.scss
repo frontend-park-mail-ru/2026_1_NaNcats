@@ -468,6 +468,22 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  &__action {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: #f1f1f1;
+    }
+  }
 }
 
 .address-compact-footer {

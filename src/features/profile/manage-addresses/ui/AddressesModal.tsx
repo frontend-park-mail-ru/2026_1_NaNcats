@@ -12,9 +12,7 @@ import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { removeAddress } from '../model/manageAddresses';
 
-const RU_MONTHS_SHORT = [
-    'янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
-];
+const RU_MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
 export interface AddressesModalProps {
     /** Колбэк закрытия (крестик / клик по затемнению). */
@@ -62,7 +60,7 @@ export function AddressesModal(props: AddressesModalProps): VNode {
     const handleEdit = (event: Event, id: string) => {
         event.stopPropagation();
         props.onClose();
-        addressPickerHandle.openMapModal(id);
+        addressPickerHandle.openDetailsForEdit(id);
     };
 
     const handleDelete = async (event: Event, id: string) => {
@@ -87,15 +85,8 @@ export function AddressesModal(props: AddressesModalProps): VNode {
             <div class="addresses-modal__header">
                 <div class="addresses-modal__title">Адреса доставки</div>
                 <div class="addresses-modal__header-right">
-                    <span class="addresses-modal__count">
-                        {() => `${addresses().length} адреса`}
-                    </span>
-                    <button
-                        type="button"
-                        class="addresses-modal__close"
-                        aria-label="Закрыть"
-                        onClick={props.onClose}
-                    >
+                    <span class="addresses-modal__count">{() => `${addresses().length} адреса`}</span>
+                    <button type="button" class="addresses-modal__close" aria-label="Закрыть" onClick={props.onClose}>
                         ✕
                     </button>
                 </div>
@@ -120,9 +111,7 @@ export function AddressesModal(props: AddressesModalProps): VNode {
                     fallback={
                         <div class="addresses-modal__empty">
                             {() =>
-                                addresses().length === 0
-                                    ? 'У вас пока нет сохранённых адресов'
-                                    : 'Ничего не нашлось'
+                                addresses().length === 0 ? 'У вас пока нет сохранённых адресов' : 'Ничего не нашлось'
                             }
                         </div>
                     }
@@ -141,8 +130,7 @@ export function AddressesModal(props: AddressesModalProps): VNode {
                                 <span
                                     class={() => {
                                         const cls = ['addresses-modal__radio'];
-                                        if (isActiveAddress(addr, current()))
-                                            cls.push('addresses-modal__radio_active');
+                                        if (isActiveAddress(addr, current())) cls.push('addresses-modal__radio_active');
                                         return cls.join(' ');
                                     }}
                                     aria-hidden="true"
@@ -154,9 +142,7 @@ export function AddressesModal(props: AddressesModalProps): VNode {
                                             <span class="addresses-modal__primary-tag">Основной</span>
                                         </Show>
                                     </span>
-                                    <span class="addresses-modal__row-text">
-                                        {addr.location.address_text}
-                                    </span>
+                                    <span class="addresses-modal__row-text">{addr.location.address_text}</span>
                                     <span class="addresses-modal__row-meta">
                                         {() => lastOrderHint(filtered().indexOf(addr))}
                                     </span>

@@ -17,6 +17,8 @@ import type { VNode } from '@shared/lib/vdom';
 export interface AddressPickerController {
     /** Открывает модалку с картой для выбора или редактирования адреса (по id сохранённого). */
     openMapModal(addressId?: string): Promise<void>;
+    /** Открывает форму деталей для редактирования сохранённого адреса, минуя карту. */
+    openDetailsForEdit(addressId: string): void;
 }
 
 export interface AddressPickerProps {
@@ -160,6 +162,29 @@ export function AddressPicker(props: AddressPickerProps): VNode {
 
     const closeMapModal = () => {
         mapModalOpen.set(false);
+    };
+
+    const openDetailsForEdit = (addressId: string) => {
+        const target = addressStore.getState().saved.find((a) => a.id === addressId);
+        if (target === undefined) return;
+        editingAddressId = addressId;
+        selectedCoords = [target.location.latitude, target.location.longitude];
+        pendingAddressText = target.location.address_text;
+        if (detailsFormEl !== null) {
+            detailsFormEl.reset();
+            const setField = (name: string, value: string | undefined) => {
+                const input = detailsFormEl?.querySelector(`input[name="${name}"]`) as HTMLInputElement | null;
+                if (input) input.value = value ?? '';
+            };
+            setField('label', target.label ?? 'Адрес');
+            setField('apartment', target.apartment);
+            setField('entrance', target.entrance);
+            setField('floor', target.floor);
+            setField('door_code', target.door_code);
+            setField('courier_comment', target.courier_comment);
+        }
+        if (detailsDisplayEl !== null) detailsDisplayEl.value = target.location.address_text;
+        detailsModalOpen.set(true);
     };
 
     // Клик по подсказке: при geocodeOnClick сначала геокодим адрес, иначе берём текущие координаты.
@@ -307,7 +332,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         }
     };
 
-    const controller: AddressPickerController = { openMapModal };
+    const controller: AddressPickerController = { openMapModal, openDetailsForEdit };
 
     // Controller отдаётся синхронно при рендере: openMapModal трогает DOM только
     // через свои внутренние ссылки, которые заполнятся при mount поддерева.

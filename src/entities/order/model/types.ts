@@ -154,6 +154,10 @@ export interface Order {
     eta_minutes?: number;
     /** URL страницы подтверждения оплаты. */
     payment_url?: string;
+    /** Применённый промокод (если был). */
+    applied_promocode?: string | null;
+    /** Сумма скидки по промокоду в микрорублях. */
+    discount_amount?: number;
     /** Произвольные дополнительные поля бэкенда. */
     [extra: string]: unknown;
 }
@@ -189,6 +193,10 @@ export interface NormalizedOrder {
     payment_url?: string;
     /** Текст последней ошибки, если она была. */
     error?: string;
+    /** Применённый промокод (если был). */
+    applied_promocode?: string;
+    /** Сумма скидки по промокоду в микрорублях. */
+    discount_amount: number;
 }
 
 /**

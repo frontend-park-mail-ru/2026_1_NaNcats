@@ -266,13 +266,16 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (processing()) return false;
         const o = order();
         if (o === null) return false;
+        if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
         return o.status === 'awaiting_payment' || o.status === 'created';
     });
 
     const showCancelButton = computed(() => {
         if (processing()) return false;
         const o = order();
-        return o !== null && CANCELLABLE_STATUSES.has(o.status);
+        if (o === null) return false;
+        if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
+        return CANCELLABLE_STATUSES.has(o.status);
     });
 
     let tracker: OrderTracker | null = null;
@@ -704,6 +707,21 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 {() => formatRubles(order()?.delivery_cost ?? 0)}₽
                             </div>
                         </div>
+
+                        <Show when={() => (order()?.discount_amount ?? 0) > 0}>
+                            <div class="order-status-modal__fee-row order-status-modal__fee-row_discount">
+                                <div class="order-status-modal__fee-label">
+                                    {() =>
+                                        order()?.applied_promocode
+                                            ? `Промокод ${order()?.applied_promocode}:`
+                                            : 'Скидка по промокоду:'
+                                    }
+                                </div>
+                                <div class="order-status-modal__fee-value">
+                                    {() => `−${formatRubles(order()?.discount_amount ?? 0)}₽`}
+                                </div>
+                            </div>
+                        </Show>
                     </div>
                 </div>
             </Show>
