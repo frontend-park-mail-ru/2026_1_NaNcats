@@ -24,10 +24,11 @@ module.exports = (env, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: (pathData) => {
-        return pathData.chunk.name === 'sw' 
-          ? 'sw.js' 
+        return pathData.chunk.name === 'sw'
+          ? 'sw.js'
           : (isProduction ? '[name].[contenthash].js' : '[name].js');
-      }, 
+      },
+      chunkFilename: isProduction ? '[name].[contenthash].js' : '[name].js',
       publicPath: '/',
       clean: true,
     },

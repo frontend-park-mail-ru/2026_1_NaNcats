@@ -44,7 +44,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (stats) {
-        res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+        const cacheControl =
+            ext === '.html' || filePath.endsWith('sw.js')
+                ? 'no-cache'
+                : 'public, max-age=31536000, immutable';
+        res.writeHead(200, {
+            'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
+            'Cache-Control': cacheControl,
+        });
         createReadStream(filePath).pipe(res);
     } else {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });

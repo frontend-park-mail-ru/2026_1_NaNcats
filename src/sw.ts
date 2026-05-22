@@ -15,7 +15,7 @@
 /// <reference lib="webworker" />
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE_NAME = 'foodcourt-cache-v2';
+const CACHE_NAME = 'foodcourt-cache-v3';
 
 /**
  * Обработчик `install`: предзагружает оболочку приложения.
@@ -81,6 +81,19 @@ sw.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(() => caches.match(event.request) as Promise<Response>),
+        );
+        return;
+    }
+
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    const clone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                    return response;
+                })
+                .catch(() => caches.match('/') as Promise<Response>),
         );
         return;
     }
