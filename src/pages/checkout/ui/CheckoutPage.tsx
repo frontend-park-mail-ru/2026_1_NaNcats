@@ -282,7 +282,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         const cartTotal = itemsTotalRub(assignedItems);
         if (cartTotal <= 0) return;
 
-        const grand = cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB;
+        const grand = Math.max(0, cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB - promoDiscount());
 
         payProcessingSig.set(true);
 
