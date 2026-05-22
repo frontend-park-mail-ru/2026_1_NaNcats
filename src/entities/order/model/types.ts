@@ -18,6 +18,8 @@ export interface OrderCreatePayload {
     service_fee: number;
     /** Итоговая стоимость заказа в микрорублях. */
     total_cost: number;
+    /** Применённый промокод; бэкенд сам считает по нему скидку. */
+    promocode?: string;
 }
 
 /**

@@ -304,6 +304,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     service_fee: toMicros(SERVICE_FEE_RUB),
                     total_cost: toMicros(grand),
                     pay_for_all: payForAll,
+                    promocode: appliedCodeAccessor() || undefined,
                 },
                 idempotencyKey,
             );
@@ -329,16 +330,9 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
             await cartStore.clear();
 
-            const appliedCode = appliedCodeAccessor();
-            if (appliedCode) {
-                // order_id — строковый public_id, внутренний id резолвит бэкенд.
-                // После записи использования перезагружаем промокоды, чтобы
-                // израсходованный исчез из профиля.
-                void httpClient
-                    .post('/promos/use', { code: appliedCode, order_public_id: result.order_id })
-                    .then(() => loadPromos())
-                    .catch(() => {});
+            if (appliedCodeAccessor()) {
                 removeAppliedPromo();
+                void loadPromos();
             }
 
             // В snapshot нет долей счёта, а для совместного заказа модалке
