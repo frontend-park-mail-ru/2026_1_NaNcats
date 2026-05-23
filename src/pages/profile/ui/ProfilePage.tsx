@@ -23,6 +23,7 @@ import { AddressesModal, removeAddress } from '@features/profile/manage-addresse
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { PromoModal, promosAccessor, ensureLoaded as ensurePromosLoaded } from '@features/profile/manage-promos';
 import { OrdersHistoryModal } from '@features/profile/orders-history';
+import { AchievementsModal, achievementsAccessor, ensureAchievementsLoaded } from '@features/profile/achievements';
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
 import { OrderStatusModal, type OrderStatusModalController } from '@widgets/order-status';
@@ -118,6 +119,7 @@ export async function load(): Promise<ProfilePageProps> {
         cardStore.load(),
         orderApi.list(),
         ensurePromosLoaded(),
+        ensureAchievementsLoaded(),
     ]);
     const orders = ordersRes.status === 'fulfilled' ? ordersRes.value : [];
     return { user, orders: decorate(orders) };
@@ -244,6 +246,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     let promoModalInstance: Modal | null = null;
     let ordersModalInstance: Modal | null = null;
     let addressesModalInstance: Modal | null = null;
+    let achievementsModalInstance: Modal | null = null;
 
     const openPromoModal = () => {
         if (promoModalInstance !== null && promoModalInstance.isOpen()) return;
@@ -270,6 +273,12 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         if (addressesModalInstance !== null && addressesModalInstance.isOpen()) return;
         addressesModalInstance = new Modal();
         addressesModalInstance.open(<AddressesModal onClose={() => addressesModalInstance?.close()} />);
+    };
+
+    const openAchievementsModal = () => {
+        if (achievementsModalInstance !== null && achievementsModalInstance.isOpen()) return;
+        achievementsModalInstance = new Modal();
+        achievementsModalInstance.open(<AchievementsModal onClose={() => achievementsModalInstance?.close()} />);
     };
 
     const handleAddAddress = () => {
@@ -311,6 +320,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         promoModalInstance?.close();
         ordersModalInstance?.close();
         addressesModalInstance?.close();
+        achievementsModalInstance?.close();
     });
 
     // Адрес, считающийся «основным»: текущий выбранный, либо первый сохранённый.
@@ -427,6 +437,22 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         </div>
                         <div class="card-side-content card-value-text">
                             {() => `${userSig()?.streak_weeks ?? 0} нед. — так держать! 🔥`}
+                        </div>
+                    </div>
+
+                    <div class="profile-card profile-card_row">
+                        <div class="card-side-label">Ачивки</div>
+                        <div class="card-side-content profile-card__promo-row">
+                            <span class="card-subtext">
+                                {() => {
+                                    const items = achievementsAccessor();
+                                    const earned = items.filter((a) => a.earned).length;
+                                    return `${earned} из ${items.length}`;
+                                }}
+                            </span>
+                            <button type="button" class="profile-card__promo-button" onClick={openAchievementsModal}>
+                                Посмотреть
+                            </button>
                         </div>
                     </div>
 

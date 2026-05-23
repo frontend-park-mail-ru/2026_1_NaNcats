@@ -132,14 +132,6 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
                 </div>
             </div>
 
-            <div class="info-group">
-                <label class="info-label">Подписка</label>
-                <div class="subscription-status">Обычная</div>
-                <div class="subscription-text">
-                    Оформи подписку <span class="link-orange">Премиум</span> для дополнительных бонусов и привилегий
-                </div>
-            </div>
-
             <Show when={() => generalError() !== ''}>
                 <div id="profile-error" class="error-msg">
                     {() => generalError()}
