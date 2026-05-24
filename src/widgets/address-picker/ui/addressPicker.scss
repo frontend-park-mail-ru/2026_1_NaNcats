@@ -3,6 +3,11 @@
   width: 861px;
   max-width: calc(100vw - 24px);
   background: var(--bg-main);
+
+  &_narrow {
+    width: 500px;
+  }
+
   border-radius: 24px;
   padding: 40px 30px 30px 30px;
   display: flex;

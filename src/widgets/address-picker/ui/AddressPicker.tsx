@@ -489,7 +489,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             </div>
 
             <div class={() => (detailsModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay')}>
-                <div class="address-modal" style="width: 500px;">
+                <div class="address-modal address-modal_narrow">
                     <div class="address-modal__close" onClick={closeDetailsModal}>
                         ×
                     </div>

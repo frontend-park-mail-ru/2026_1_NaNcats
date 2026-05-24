@@ -185,6 +185,10 @@ function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
         delivery_cost: current.delivery_cost,
         eta_minutes: current.eta_minutes,
         payment_url: event.payment_url ?? current.payment_url,
+        // Промокод и скидку WS не присылает — переносим из текущего заказа,
+        // иначе блок «Промокод ...» мигнёт при каждом обновлении статуса.
+        applied_promocode: current.applied_promocode,
+        discount_amount: current.discount_amount,
     };
     const next = normalizeOrder(merged);
     next.error = event.error;
