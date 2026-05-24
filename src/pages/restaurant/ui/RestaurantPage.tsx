@@ -1040,7 +1040,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 <aside class="side-column restaurant-cart-column">
                     <div class="card card_cart">
                         <div class="cart-slot">
-                            <CartWidget />
+                            <CartWidget onClose={closePanels} />
                         </div>
                     </div>
                 </aside>

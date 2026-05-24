@@ -48,8 +48,7 @@ export function AddressSelect(): VNode {
         return PLACEHOLDER;
     };
 
-    const toggle = (event: Event) => {
-        event.stopPropagation();
+    const toggle = (_event: Event) => {
         // Гостя ведём на логин, чтобы сначала залогинился и подгрузил адреса.
         if (user() === null) {
             void router.go(ROUTES.login);

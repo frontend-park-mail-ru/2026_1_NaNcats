@@ -476,6 +476,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     </div>
                     <div class="address-modal__map-container">
                         <div
+                            class="js-yandex-map"
                             style="width: 100%; height: 297px; border-radius: 24px;"
                             ref={(el: Element | null) => {
                                 mapContainerEl = el as HTMLElement | null;

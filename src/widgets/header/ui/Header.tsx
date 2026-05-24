@@ -5,7 +5,7 @@ import '@pages/home/ui/home.scss';
 import { userStore, type User } from '@entities/user';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
-import { router, Link } from '@app/router';
+import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { getQueryParam } from '@shared/lib/url/searchParams';
 import { effect, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
@@ -56,6 +56,7 @@ export function Header(props: HeaderProps): VNode {
     const suggestOpen = signal<boolean>(false);
     const suggestResults = signal<SearchAllResult | null>(null);
     const mobileMenuOpen = signal<boolean>(false);
+    const profileMenuOpen = signal<boolean>(false);
     // До завершения первой проверки авторизации не показываем ни гостевые,
     // ни пользовательские контролы, иначе кнопки «Войти/Регистрация» мигают.
     const authResolved = useStoreSignal(userStore, (s) => s.authResolved);
@@ -66,6 +67,7 @@ export function Header(props: HeaderProps): VNode {
     let headerEl: HTMLElement | null = null;
     let searchInputEl: HTMLInputElement | null = null;
     let suggestEl: HTMLElement | null = null;
+    let userMenuEl: HTMLElement | null = null;
 
     // Header живёт в shell-е и переживает навигацию между страницами, поэтому
     // searchValue нужно синхронизировать с URL: иначе после поиска и возврата
@@ -175,6 +177,13 @@ export function Header(props: HeaderProps): VNode {
                 mobileMenuOpen.set(false);
             }
         }
+
+        // Дропдаун профиля закрывается по клику вне блока user-menu-wrapper.
+        if (profileMenuOpen()) {
+            if (userMenuEl !== null && !userMenuEl.contains(target)) {
+                profileMenuOpen.set(false);
+            }
+        }
     };
 
     const handleBackClick = () => {
@@ -202,12 +211,18 @@ export function Header(props: HeaderProps): VNode {
     };
 
     const handleLogout = async () => {
+        profileMenuOpen.set(false);
         try {
             await logoutAction();
             props.onLoggedOut?.();
         } catch (err) {
             console.error('[Header] logout failed:', err);
         }
+    };
+
+    const handleProfileToggle = (event: Event) => {
+        event.stopPropagation();
+        profileMenuOpen.set((prev) => !prev);
     };
 
     onMount(() => {
@@ -417,8 +432,18 @@ export function Header(props: HeaderProps): VNode {
                             </svg>
                         </div>
                     </div>
-                    <div class="user-menu-wrapper">
-                        <Link to={ROUTES.profile} class="user-profile">
+                    <div
+                        class="user-menu-wrapper"
+                        ref={(el: Element | null) => {
+                            userMenuEl = el as HTMLElement | null;
+                        }}
+                    >
+                        <button
+                            type="button"
+                            class="user-profile"
+                            aria-label="Меню профиля"
+                            onClick={handleProfileToggle}
+                        >
                             <img
                                 src={() => props.user()?.avatar_url ?? ''}
                                 class="user-profile__avatar"
@@ -426,8 +451,22 @@ export function Header(props: HeaderProps): VNode {
                                     'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp',
                                 )}
                             />
-                        </Link>
-                        <div class="user-dropdown">
+                        </button>
+                        <div
+                            class={() =>
+                                profileMenuOpen() ? 'user-dropdown user-dropdown_open' : 'user-dropdown'
+                            }
+                        >
+                            <button
+                                class="user-dropdown__profile"
+                                type="button"
+                                onClick={() => {
+                                    profileMenuOpen.set(false);
+                                    void router.go(ROUTES.profile);
+                                }}
+                            >
+                                Профиль
+                            </button>
                             <button
                                 class="user-dropdown__logout"
                                 type="button"

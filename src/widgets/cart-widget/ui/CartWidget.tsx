@@ -23,6 +23,8 @@ const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/food
 export interface CartWidgetProps {
     /** Колбэк после перехода к оформлению (например, чтобы закрыть боковую панель). */
     onCheckout?: () => void;
+    /** Колбэк закрытия корзины. */
+    onClose?: () => void;
 }
 
 /** Цена одной позиции в рублях, без дробной части. */
@@ -234,7 +236,12 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             Очистить
                         </button>
                     </Show>
-                    <button type="button" class="cart-close-btn js-close-panels" aria-label="Закрыть корзину">
+                    <button
+                        type="button"
+                        class="cart-close-btn js-close-panels"
+                        aria-label="Закрыть корзину"
+                        onClick={() => props.onClose?.()}
+                    >
                         ×
                     </button>
                 </div>

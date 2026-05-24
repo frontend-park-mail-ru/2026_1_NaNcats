@@ -634,7 +634,7 @@ export function HomePage(props: HomePageProps): VNode {
 
                     <div class="card card_cart">
                         <div class="cart-slot">
-                            <CartWidget />
+                            <CartWidget onClose={closePanels} />
                         </div>
                     </div>
                 </aside>

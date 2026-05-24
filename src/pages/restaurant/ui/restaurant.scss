@@ -482,6 +482,9 @@
       grid-template-columns: 1fr;
       gap: 0;
       padding: 8px 16px 16px;
+      /* Сбрасываем десктопные ограничения: на мобилке скролл отдан документу */
+      height: auto;
+      overflow: visible;
     }
 
     .restaurant-menu-column {
