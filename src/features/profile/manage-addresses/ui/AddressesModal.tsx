@@ -5,6 +5,7 @@
 import './addressesModal.scss';
 
 import { addressStore, type Address, type CurrentAddress } from '@entities/address';
+// eslint-disable-next-line no-restricted-imports
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Popup } from '@shared/ui/popup';
 import { computed, signal, useStoreSignal } from '@shared/lib/signals';

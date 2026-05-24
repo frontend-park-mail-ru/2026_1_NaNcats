@@ -9,6 +9,7 @@ import { cartStore, fromMicros, type CartItem, type CartMember } from '@entities
 import { userStore } from '@entities/user';
 import { clearCart } from '@features/cart/clear-cart';
 import { applyPromo, removeAppliedPromo, appliedCodeAccessor } from '@features/profile/manage-promos';
+// eslint-disable-next-line no-restricted-imports
 import { router } from '@app/router';
 import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';

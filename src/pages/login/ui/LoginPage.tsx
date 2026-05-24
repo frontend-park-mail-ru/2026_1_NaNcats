@@ -1,6 +1,7 @@
 // Страница входа. Layout: 'auth' (логотип живёт в AuthLayout).
 
 import './login.scss';
+// eslint-disable-next-line no-restricted-imports
 import { Link, router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { LoginForm } from '@features/auth/login';

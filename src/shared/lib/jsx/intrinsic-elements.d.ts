@@ -77,9 +77,11 @@ declare namespace JSX {
     }
 
     /** Пропсы div: только база, специфичных полей у div нет. */
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface HTMLDivAttributes extends HTMLAttributesBase {}
 
     /** Пропсы span: только база. */
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface HTMLSpanAttributes extends HTMLAttributesBase {}
 
     /** Пропсы label: контролируется атрибут htmlFor (или его HTML-вариант for). */

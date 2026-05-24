@@ -6,6 +6,7 @@ import { env } from '@shared/config/env';
  */
 export type LatLng = [number, number];
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 declare namespace ymaps {
     function ready(callback: () => void): void;
     function geocode(request: string | LatLng): Promise<YandexGeocodeResult>;
