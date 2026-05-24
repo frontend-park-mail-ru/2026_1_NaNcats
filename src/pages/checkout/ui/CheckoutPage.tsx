@@ -124,6 +124,20 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     /** Скидка промокода в рублях (заполняется через API validate). */
     const promoDiscount = signal<number>(0);
 
+    /** Переводит reason из бэкенда в читаемое сообщение. */
+    const promoReasonToMessage = (reason: string): string => {
+        const map: Record<string, string> = {
+            'promo already used': 'Промокод уже был использован',
+            'promo has expired': 'Срок действия промокода истёк',
+            'order amount is below minimum': 'Сумма заказа ниже минимальной для этого промокода',
+            'max uses reached': 'Промокод исчерпал лимит использований',
+            'promo is not valid for this restaurant': 'Промокод не действует в этом ресторане',
+            'promo not found': 'Промокод не найден',
+            'promo is tied to another user': 'Промокод предназначен другому пользователю',
+        };
+        return map[reason] ?? 'Промокод недействителен';
+    };
+
     /** Запрашивает скидку у бэкенда при наличии промокода. */
     const refreshPromoDiscount = async () => {
         const code = appliedCodeAccessor();
@@ -140,10 +154,10 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 service_fee: toMicros(SERVICE_FEE_RUB),
             });
             if (!resp.ok) {
-                // Промокод больше не проходит проверку — снимаем его,
-                // чтобы бейдж «применён» не вводил в заблуждение без скидки.
+                // Промокод не прошёл проверку — снимаем и сообщаем пользователю.
                 removeAppliedPromo();
                 promoDiscount.set(0);
+                promoErrorSig.set('Промокод недействителен');
                 return;
             }
             const data = await resp.json();
@@ -152,6 +166,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             } else {
                 removeAppliedPromo();
                 promoDiscount.set(0);
+                promoErrorSig.set(promoReasonToMessage(data.reason ?? ''));
             }
         } catch {
             promoDiscount.set(0);

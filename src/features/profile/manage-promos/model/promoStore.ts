@@ -69,14 +69,28 @@ function persistCode(code: string): void {
     }
 }
 
-/** Применяет промокод к корзине и автоматически привязывает к профилю. */
+/** Применяет промокод к корзине и автоматически привязывает к профилю.
+ *  409 = уже привязан — промокод остаётся применённым(нормальное поведение).
+ *  4xx (кроме 409) = промокод не найден или истёк — сбрасываем применение.
+ */
 export function applyPromo(code: string): void {
     const c = code.toUpperCase().trim();
     appliedCode.set(c);
     persistCode(c);
-    // Привязываем к профилю в фоне (если ещё не привязан — bind вернёт 409).
     if (c) {
-        void httpClient.post('/promos/bind', { code: c }).catch(() => {});
+        void httpClient
+            .post('/promos/bind', { code: c })
+            .then((resp) => {
+                // 409 = уже привязан - всё норм, оставляем как есть.
+                if (!resp.ok && resp.status !== 409) {
+                    // Промокод не найден, истёк и т.п. — снимаем применение.
+                    appliedCode.set('');
+                    persistCode('');
+                }
+            })
+            .catch(() => {
+                // Сетевая ошибка —  validate на чекауте исправит.
+            });
     }
 }
 
