@@ -41,6 +41,8 @@ export interface RestaurantPageProps {
     sections: DishSection[];
     /** Промокод этого ресторана для баннера; null — у ресторана нет промокода. */
     restaurantPromo: RestaurantPromoBanner | null;
+    /** Топ блюд этого ресторана (бэк подбирает эвристикой по продажам за 30 дней). */
+    recommendedDishes: DishView[];
 }
 
 /** Эвристические правила группировки блюд по секциям. */
@@ -123,7 +125,13 @@ const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) })
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
-        return { restaurant: FALLBACK_RESTAURANT, dishes: [], sections: buildSections([]), restaurantPromo: null };
+        return {
+            restaurant: FALLBACK_RESTAURANT,
+            dishes: [],
+            sections: buildSections([]),
+            restaurantPromo: null,
+            recommendedDishes: [],
+        };
     }
 
     try {
@@ -139,14 +147,16 @@ export async function load(): Promise<RestaurantPageProps> {
     }
     await Promise.all(aux);
 
-    const [brandRes, dishesRes, promoRes] = await Promise.allSettled([
+    const [brandRes, dishesRes, promoRes, recoRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
         restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
         httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
+        restaurantApi.listRecommendedDishes(idParam, 4),
     ]);
 
     const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
     const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
+    const recommendedDishes = recoRes.status === 'fulfilled' ? recoRes.value.map(toView) : [];
 
     // Баннер промокода — необязательная деталь: ошибку запроса молча игнорируем.
     let restaurantPromo: RestaurantPromoBanner | null = null;
@@ -161,7 +171,7 @@ export async function load(): Promise<RestaurantPageProps> {
         }
     }
 
-    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo };
+    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo, recommendedDishes };
 }
 
 // Возвращает видимую цель для анимации полёта в корзину: на мобильной вёрстке
@@ -315,8 +325,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Отрисовываемые секции (учитывают фильтр поиска по меню).
     const sections = signal<DishSection[]>(props.sections);
 
-    /** До 4 блюд для секции «Рекомендуем» — первые из каждой категории. */
+    // Блюда секции «Рекомендуем» приходят с бэка (топ продаж за 30 дней).
+    // Если бэк ничего не отдал — fallback на первые позиции меню (по секциям),
+    // чтобы блок не пустовал на свежем ресторане без истории заказов.
     const recommended = computed<DishView[]>(() => {
+        if (props.recommendedDishes.length > 0) return props.recommendedDishes;
         const picks: DishView[] = [];
         const seen = new Set<number>();
         for (const sec of sections()) {

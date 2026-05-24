@@ -65,6 +65,14 @@ export const restaurantApi = {
         return (data.dishes ?? []).map((d) => ({ ...d, id: Number(d.id) }));
     },
 
+    /** Рекомендованные блюда внутри ресторана (топ по продажам за 30 дней). */
+    async listRecommendedDishes(brandId: string | number, limit = 4): Promise<Dish[]> {
+        const data = await httpClient.getJson<DishesResponse>(`/restaurants/brands/${brandId}/recommended-dishes`, {
+            limit,
+        });
+        return (data.dishes ?? []).map((d) => ({ ...d, id: Number(d.id) }));
+    },
+
     /**
      * Возвращает список категорий кухни.
      *
