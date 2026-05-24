@@ -31,6 +31,12 @@ export const restaurantApi = {
         return data.restaurants ?? [];
     },
 
+    /** Рекомендованные бренды для пользователя/гостя (эвристика на бэке). */
+    async listRecommendations(limit = 4): Promise<Restaurant[]> {
+        const data = await httpClient.getJson<BrandsResponse>('/restaurants/recommendations', { limit });
+        return data.restaurants ?? [];
+    },
+
     /**
      * Возвращает один бренд по идентификатору.
      *

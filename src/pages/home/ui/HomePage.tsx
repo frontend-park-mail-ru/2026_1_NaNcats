@@ -36,7 +36,7 @@ export interface HomePageProps {
     searchQuery: string;
     /** Заказанные раньше рестораны (дедуп по id). Пусто для гостя или без истории. */
     pastBrands: RestaurantCard[];
-    /** Рекомендации (заглушка): 4 ресторана из общей выдачи. */
+    /** Рекомендованные рестораны от бэка (эвристика «похожие категории» / trending). */
     recommended: RestaurantCard[];
 }
 
@@ -113,20 +113,13 @@ function pastBrandsFromOrders(orders: Order[]): RestaurantCard[] {
     return cards;
 }
 
-/** Карточки-заглушки для секции «Попробуйте»: первые рестораны выдачи, не пересекающиеся с историей. */
-function recommendedFromList(restaurants: Restaurant[], exclude: Set<string>): RestaurantCard[] {
-    const picks: RestaurantCard[] = [];
-    for (const r of restaurants) {
-        if (exclude.has(String(r.id))) continue;
-        picks.push({
-            id: r.id,
-            name: r.name,
-            description: r.description ?? 'Вкусная еда',
-            image_url: r.logo_url,
-        });
-        if (picks.length >= RECO_SIZE) break;
-    }
-    return picks;
+function toRecommendationCards(brands: Restaurant[]): RestaurantCard[] {
+    return brands.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description ?? 'Вкусная еда',
+        image_url: r.logo_url,
+    }));
 }
 
 /** Loader: грузит пользователя (и корзину/адреса для авторизованного), первую страницу ресторанов и категории. */
@@ -153,6 +146,7 @@ export async function load(): Promise<HomePageProps> {
     let restaurants: Restaurant[] = [];
     let categories: Category[] = [];
     let orders: Order[] = [];
+    let recommendedBrands: Restaurant[] = [];
 
     await Promise.all([
         (initialQuery ? restaurantApi.search(initialQuery, PAGE_SIZE) : restaurantApi.listBrands(PAGE_SIZE, 0))
@@ -166,6 +160,12 @@ export async function load(): Promise<HomePageProps> {
                 categories = c;
             })
             .catch((e) => console.warn('home: listCategories failed', e)),
+        restaurantApi
+            .listRecommendations(RECO_SIZE)
+            .then((r) => {
+                recommendedBrands = r;
+            })
+            .catch((e) => console.warn('home: listRecommendations failed', e)),
         isAuth
             ? orderApi
                   .list()
@@ -177,13 +177,11 @@ export async function load(): Promise<HomePageProps> {
     ]);
 
     const pastBrands = pastBrandsFromOrders(orders);
-    // Обогащаем описаниями из каталога ресторанов.
     const descMap = new Map(restaurants.map((r) => [String(r.id), r.description ?? '']));
     for (const pb of pastBrands) {
         if (!pb.description) pb.description = descMap.get(String(pb.id)) ?? '';
     }
-    const pastIds = new Set(pastBrands.map((b) => String(b.id)));
-    const recommended = recommendedFromList(restaurants, pastIds);
+    const recommended = toRecommendationCards(recommendedBrands);
 
     return { restaurants, categories, activeCategory: '', searchQuery: initialQuery, pastBrands, recommended };
 }
