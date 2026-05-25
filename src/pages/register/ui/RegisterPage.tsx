@@ -1,7 +1,6 @@
 // Страница регистрации. Layout: 'auth' (логотип живёт в AuthLayout).
 
 import './register.scss';
-// eslint-disable-next-line no-restricted-imports
 import { Link, router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { RegisterForm } from '@features/auth/register';

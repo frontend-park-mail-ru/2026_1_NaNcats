@@ -8,9 +8,6 @@ import { App } from './App';
 import { initCsrf, initOnlineStatus, initServiceWorker } from './providers';
 import { router } from './router';
 
-// Глобальная ссылка для legacy-кода (Header и пара других мест дёргают window.router.go).
-window.router = router;
-
 /**
  * Инициализирует приложение и монтирует корневой компонент.
  *

@@ -33,6 +33,11 @@ export type ComponentChunk = {
  */
 export type ChunkLoader = () => Promise<ComponentChunk>;
 
+// Обёртка над динамическим import-ом страницы: единственное место с кастом
+// типа модуля к ChunkLoader (страницы экспортируют ещё load/типы, чего нет в ComponentChunk).
+const lazyPage = (loader: () => Promise<unknown>): ChunkLoader =>
+    loader as unknown as ChunkLoader;
+
 /**
  * Дескриптор одного роута в таблице.
  *
@@ -62,40 +67,40 @@ export const ROUTES_TABLE: RouteDescriptor[] = [
     {
         path: ROUTES.home,
         layout: 'root',
-        component: () => import('@pages/home') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/home')),
         loader: async () => (await import('@pages/home')).load(),
     },
     {
         path: ROUTES.restaurant,
         layout: 'root',
-        component: () => import('@pages/restaurant') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/restaurant')),
         loader: async () => (await import('@pages/restaurant')).load(),
     },
     {
         path: ROUTES.login,
         layout: 'auth',
-        component: () => import('@pages/login') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/login')),
     },
     {
         path: ROUTES.register,
         layout: 'auth',
-        component: () => import('@pages/register') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/register')),
     },
     {
         path: ROUTES.profile,
         layout: 'root',
-        component: () => import('@pages/profile') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/profile')),
         loader: async () => (await import('@pages/profile')).load(),
     },
     {
         path: ROUTES.checkout,
         layout: 'root',
-        component: () => import('@pages/checkout') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/checkout')),
         loader: async () => (await import('@pages/checkout')).load(),
     },
     {
         path: ROUTES.notFound,
         layout: 'root',
-        component: () => import('@pages/not-found') as unknown as Promise<ComponentChunk>,
+        component: lazyPage(() => import('@pages/not-found')),
     },
 ];

@@ -5,7 +5,6 @@ import '@pages/home/ui/home.scss';
 import { userStore, type User } from '@entities/user';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
-// eslint-disable-next-line no-restricted-imports
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { getQueryParam } from '@shared/lib/url/searchParams';

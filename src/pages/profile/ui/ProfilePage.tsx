@@ -2,7 +2,6 @@
 
 import './profile.scss';
 
-// eslint-disable-next-line no-restricted-imports
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { Modal } from '@shared/ui/modal';

@@ -2,7 +2,6 @@
 
 import './home.scss';
 
-// eslint-disable-next-line no-restricted-imports
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { getQueryParam } from '@shared/lib/url/searchParams';

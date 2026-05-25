@@ -2,13 +2,12 @@
 
 import './restaurant.scss';
 
-// eslint-disable-next-line no-restricted-imports
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import { Popup } from '@shared/ui/popup';
 import { getQueryParam } from '@shared/lib/url/searchParams';
 import { computed, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
-import { For, onMount, Show } from '@shared/lib/vdom';
+import { For, onMount, render, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { restaurantApi, type Dish, type DishSearchHit, type Restaurant, type Review } from '@entities/restaurant';
 import { cartStore, fromMicros } from '@entities/cart';
@@ -262,58 +261,8 @@ const highlightAndScroll = (card: HTMLElement) => {
     document.addEventListener('keydown', dismiss, { capture: true, once: true });
 };
 
-// HTML-разметка модалки отзывов.
-const buildReviewsModalHtml = (reviews: Review[]): string => {
-    const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
-
-    const list = reviews.length
-        ? reviews
-              .map(
-                  (r) => `
-            <div class="review-item">
-                <div class="review-item__top">
-                    <span class="review-item__author">${r.author_name}</span>
-                    <span class="review-item__stars">${stars(r.rating)}</span>
-                </div>
-                <p class="review-item__comment">${r.comment}</p>
-            </div>`,
-              )
-              .join('')
-        : '<p class="reviews-empty">Отзывов пока нет. Будьте первым!</p>';
-
-    return `
-        <div class="reviews-modal">
-            <div class="reviews-modal__header">
-                <h2 class="reviews-modal__title">Отзывы</h2>
-                <button type="button" class="reviews-modal__close js-reviews-close" aria-label="Закрыть">×</button>
-            </div>
-            <div class="reviews-modal__list">${list}</div>
-            <div class="reviews-modal__form">
-                <h3 class="reviews-form__title">Оставить отзыв</h3>
-                <input
-                    type="text"
-                    class="reviews-form__input js-review-author"
-                    placeholder="Ваше имя"
-                    maxlength="60"
-                />
-                <div class="star-picker js-star-picker" data-rating="0" aria-label="Оценка">
-                    <span class="star-picker__star js-star" data-value="1">★</span>
-                    <span class="star-picker__star js-star" data-value="2">★</span>
-                    <span class="star-picker__star js-star" data-value="3">★</span>
-                    <span class="star-picker__star js-star" data-value="4">★</span>
-                    <span class="star-picker__star js-star" data-value="5">★</span>
-                </div>
-                <textarea
-                    class="reviews-form__textarea js-review-comment"
-                    placeholder="Ваш комментарий"
-                    rows="3"
-                    maxlength="500"
-                ></textarea>
-                <button type="button" class="reviews-form__submit js-review-submit">Отправить</button>
-                <p class="reviews-form__error js-review-error" style="display:none"></p>
-            </div>
-        </div>`;
-};
+// Отрисовка звёзд оценки текстом для уже опубликованных отзывов.
+const ratingStars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 export function RestaurantPage(props: RestaurantPageProps): VNode {
     const restaurantId = (() => {
@@ -356,6 +305,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
     let searchInputEl: HTMLInputElement | null = null;
+    // Handle закрытия активной модалки отзывов (если она открыта): нужен Escape'у и cleanup-у страницы.
+    let closeActiveReviews: (() => void) | null = null;
 
     // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
     const fetchNextPage = async () => {
@@ -498,83 +449,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         cartOpen.set(false);
     };
 
-    // Закрывает модалку отзывов: снимает класс и удаляет оверлей после transition.
-    const closeReviews = () => {
-        const overlay = document.querySelector('.js-reviews-overlay');
-        if (!overlay) return;
-        overlay.classList.remove('reviews-overlay_open');
-        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-    };
-
-    // Интерактивный выбор оценки звёздами; зафиксированное значение лежит в data-rating контейнера.
-    const setupStarPicker = (overlay: HTMLElement) => {
-        const picker = overlay.querySelector('.js-star-picker') as HTMLElement | null;
-        if (!picker) return;
-
-        const stars = picker.querySelectorAll('.js-star');
-
-        const highlight = (n: number) => {
-            stars.forEach((s, i) => {
-                s.classList.toggle('star-picker__star_active', i < n);
-            });
-        };
-
-        stars.forEach((star, idx) => {
-            star.addEventListener('mouseenter', () => highlight(idx + 1));
-            star.addEventListener('mouseleave', () => {
-                highlight(parseInt(picker.dataset.rating ?? '0', 10));
-            });
-            star.addEventListener('click', () => {
-                picker.dataset.rating = String(idx + 1);
-                highlight(idx + 1);
-            });
-        });
-    };
-
-    // Форма отправки отзыва: валидирует имя, оценку, комментарий; при успехе закрывает модалку.
-    const setupReviewForm = (overlay: HTMLElement) => {
-        const submitBtn = overlay.querySelector('.js-review-submit') as HTMLButtonElement | null;
-        if (!submitBtn) return;
-
-        submitBtn.addEventListener('click', async () => {
-            const author = (overlay.querySelector('.js-review-author') as HTMLInputElement | null)?.value.trim();
-            const comment = (overlay.querySelector('.js-review-comment') as HTMLTextAreaElement | null)?.value.trim();
-            const rating = parseInt(
-                (overlay.querySelector('.js-star-picker') as HTMLElement | null)?.dataset.rating ?? '0',
-                10,
-            );
-            const errorEl = overlay.querySelector('.js-review-error') as HTMLElement | null;
-
-            if (!author || !comment || rating < 1) {
-                if (errorEl) {
-                    errorEl.textContent = 'Заполните имя, оценку и комментарий';
-                    errorEl.style.display = 'block';
-                }
-                return;
-            }
-
-            if (errorEl) errorEl.style.display = 'none';
-            submitBtn.disabled = true;
-
-            try {
-                await restaurantApi.createReview(restaurantId, {
-                    author_name: author,
-                    rating,
-                    comment,
-                });
-                closeReviews();
-                void Popup.alert('Спасибо! Ваш отзыв опубликован.');
-            } catch {
-                if (errorEl) {
-                    errorEl.textContent = 'Не удалось отправить отзыв. Попробуйте ещё раз.';
-                    errorEl.style.display = 'block';
-                }
-                submitBtn.disabled = false;
-            }
-        });
-    };
-
-    // Открывает модалку отзывов: грузит отзывы, вставляет оверлей, навешивает обработчики и форму.
+    // Открывает модалку отзывов: грузит список и монтирует VDOM-дерево в overlay,
+    // прикреплённый к body. Все интерактивные состояния (оценка, форма, ошибка)
+    // живут в локальных сигналах, текст автоматически экранируется vdom-ом.
     const openReviews = async () => {
         let reviews: Review[] = [];
         try {
@@ -584,22 +461,139 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
 
         const overlay = document.createElement('div');
-        overlay.className = 'reviews-overlay js-reviews-overlay';
-        overlay.innerHTML = buildReviewsModalHtml(reviews);
+        overlay.className = 'reviews-overlay';
         document.body.appendChild(overlay);
 
-        requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
+        const rating = signal(0);
+        const hover = signal(0);
+        const author = signal('');
+        const comment = signal('');
+        const error = signal('');
+        const submitting = signal(false);
 
-        const closeBtn = overlay.querySelector('.js-reviews-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => closeReviews());
-        }
+        let unmount: (() => void) | null = null;
+
+        const close = () => {
+            closeActiveReviews = null;
+            overlay.classList.remove('reviews-overlay_open');
+            overlay.addEventListener(
+                'transitionend',
+                () => {
+                    unmount?.();
+                    overlay.remove();
+                },
+                { once: true },
+            );
+        };
+        closeActiveReviews = close;
+
+        const submit = async () => {
+            const a = author().trim();
+            const c = comment().trim();
+            const r = rating();
+            if (!a || !c || r < 1) {
+                error.set('Заполните имя, оценку и комментарий');
+                return;
+            }
+            error.set('');
+            submitting.set(true);
+            try {
+                await restaurantApi.createReview(restaurantId, {
+                    author_name: a,
+                    rating: r,
+                    comment: c,
+                });
+                close();
+                void Popup.alert('Спасибо! Ваш отзыв опубликован.');
+            } catch {
+                error.set('Не удалось отправить отзыв. Попробуйте ещё раз.');
+                submitting.set(false);
+            }
+        };
+
+        // Клик строго по бэкдропу (overlay), не по содержимому модалки.
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeReviews();
+            if (e.target === overlay) close();
         });
 
-        setupStarPicker(overlay);
-        setupReviewForm(overlay);
+        const starClass = (i: number) => () => {
+            const lit = hover() > 0 ? hover() : rating();
+            return i < lit ? 'star-picker__star star-picker__star_active' : 'star-picker__star';
+        };
+
+        const tree = (
+            <div class="reviews-modal">
+                <div class="reviews-modal__header">
+                    <h2 class="reviews-modal__title">Отзывы</h2>
+                    <button
+                        type="button"
+                        class="reviews-modal__close"
+                        aria-label="Закрыть"
+                        onClick={close}
+                    >
+                        ×
+                    </button>
+                </div>
+                <div class="reviews-modal__list">
+                    {reviews.length === 0 ? (
+                        <p class="reviews-empty">Отзывов пока нет. Будьте первым!</p>
+                    ) : (
+                        reviews.map((r) => (
+                            <div class="review-item">
+                                <div class="review-item__top">
+                                    <span class="review-item__author">{r.author_name}</span>
+                                    <span class="review-item__stars">{ratingStars(r.rating)}</span>
+                                </div>
+                                <p class="review-item__comment">{r.comment}</p>
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div class="reviews-modal__form">
+                    <h3 class="reviews-form__title">Оставить отзыв</h3>
+                    <input
+                        type="text"
+                        class="reviews-form__input"
+                        placeholder="Ваше имя"
+                        maxlength="60"
+                        onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
+                    />
+                    <div class="star-picker" aria-label="Оценка">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                            <span
+                                class={starClass(i)}
+                                onMouseEnter={() => hover.set(i + 1)}
+                                onMouseLeave={() => hover.set(0)}
+                                onClick={() => rating.set(i + 1)}
+                            >
+                                ★
+                            </span>
+                        ))}
+                    </div>
+                    <textarea
+                        class="reviews-form__textarea"
+                        placeholder="Ваш комментарий"
+                        rows="3"
+                        maxlength="500"
+                        onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
+                    />
+                    <button
+                        type="button"
+                        class="reviews-form__submit"
+                        disabled={() => submitting()}
+                        onClick={submit}
+                    >
+                        Отправить
+                    </button>
+                    <Show when={() => error() !== ''}>
+                        <p class="reviews-form__error">{() => error()}</p>
+                    </Show>
+                </div>
+            </div>
+        ) as VNode;
+
+        unmount = render(tree, overlay);
+        requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
     };
 
     // Подгружает следующую страницу блюд при приближении к низу.
@@ -615,7 +609,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key !== 'Escape') return;
         closePanels();
-        closeReviews();
+        closeActiveReviews?.();
     };
 
     // При росте ширины окна закрываем открытые мобильные панели.
@@ -649,9 +643,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             clearTimeout(searchTimer);
             searchTimer = null;
         }
-        // Если страница размонтировалась с открытой модалкой отзывов, убираем оверлей из body.
-        const lingering = document.querySelector('.js-reviews-overlay');
-        if (lingering) lingering.remove();
+        // Если страница размонтировалась с открытой модалкой отзывов, убираем оверлей из body немедленно.
+        closeActiveReviews?.();
     });
 
     return (

@@ -1,6 +1,5 @@
 // Страница 404. Layout: 'root'.
 
-// eslint-disable-next-line no-restricted-imports
 import { Link } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
 import type { VNode } from '@shared/lib/vdom';
