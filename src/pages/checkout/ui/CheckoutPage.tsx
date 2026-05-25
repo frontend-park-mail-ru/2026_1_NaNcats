@@ -321,6 +321,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 idempotencyKey,
             );
 
+            const appliedCodeForOrder = appliedCodeAccessor();
             const orderSnapshot: Order = {
                 order_id: result.order_id,
                 status: 'created',
@@ -338,6 +339,11 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 })),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                // Без этих полей бейдж «Промокод X · −Y₽» не появляется в
+                // только что открытой модалке статуса; данные подтягиваются позже
+                // из списка заказов, но не сразу — отсюда мигание скидки.
+                applied_promocode: appliedCodeForOrder || undefined,
+                discount_amount: toMicros(promoDiscount()),
             };
 
             await cartStore.clear();

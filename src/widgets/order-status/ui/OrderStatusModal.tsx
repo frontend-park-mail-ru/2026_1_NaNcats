@@ -70,6 +70,25 @@ const STATUS_TEXT: Record<OrderUiStatus, (eta: number) => string> = {
     cancelled: () => 'Заказ отменён',
 };
 
+/**
+ * Текст по сырому статусу: чтобы видимый заголовок модалки менялся на каждом
+ * шаге (например, между `paid` и `created`, которые в UI-флоу совпадают), а
+ * не только на смене UI-стадии. STATUS_TEXT остаётся фолбэком для неизвестных
+ * сырых статусов.
+ */
+const STATUS_TEXT_BY_RAW: Record<string, (eta: number) => string> = {
+    created: () => 'Ваш заказ принят',
+    cart_locked: () => 'Ожидаем оплату',
+    payment_ready: () => 'Ожидаем оплату',
+    paid: () => 'Оплачен, ждём подтверждения ресторана',
+    in_progress: (eta) => `Готовим: будет через ${eta} минут :)`,
+    waiting: (eta) => `Готовим: будет через ${eta} минут :)`,
+    delivering: (eta) => `Будем у Вас через ${eta} минут :)`,
+    finished: () => 'Заказ доставлен. Приятного аппетита!',
+    cancelled: () => 'Заказ отменён',
+    failed: () => 'Ошибка обработки заказа',
+};
+
 /** Сырые статусы, после которых нет смысла продолжать live-обновления. */
 const TERMINAL_RAW_STATUSES = new Set<string>(['finished', 'cancelled', 'failed']);
 
@@ -263,7 +282,9 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const statusText = computed(() => {
         const o = order();
-        return o === null ? '' : STATUS_TEXT[o.status](o.eta_minutes);
+        if (o === null) return '';
+        const byRaw = STATUS_TEXT_BY_RAW[o.raw_status];
+        return byRaw ? byRaw(o.eta_minutes) : STATUS_TEXT[o.status](o.eta_minutes);
     });
 
     const showPaymentButton = computed(() => {
