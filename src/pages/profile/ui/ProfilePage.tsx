@@ -9,7 +9,6 @@ import { Popup } from '@shared/ui/popup';
 import { userStore, type User } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore } from '@entities/card';
-import { cartStore } from '@entities/cart';
 import {
     orderApi,
     connectOrderTracker,
@@ -128,7 +127,6 @@ export async function load(): Promise<ProfilePageProps> {
 
 export function ProfilePage(props: ProfilePageProps): VNode {
     const userSig = useStoreSignal(userStore, (s) => s.user);
-    const cartItemsCount = useStoreSignal(cartStore, (s) => s.items.reduce((sum, it) => sum + it.quantity, 0));
     // Стрим статусов точечно подменяет записи в этом списке.
     const ordersSig = signal<OrderRowView[]>(props.orders);
     const savedAddresses = useStoreSignal(addressStore, (s) => s.saved);
@@ -500,24 +498,6 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                             </button>
                         </div>
                     </div>
-
-                    <Show when={() => cartItemsCount() > 0}>
-                        <div class="profile-card profile-card_row">
-                            <div class="card-side-label">Корзина</div>
-                            <div class="card-side-content profile-card__promo-row">
-                                <span class="card-subtext">{() => `${cartItemsCount()} товара(ов)`}</span>
-                                <button
-                                    type="button"
-                                    class="profile-card__promo-button"
-                                    onClick={() => {
-                                        void router.go(ROUTES.checkout);
-                                    }}
-                                >
-                                    Оформить
-                                </button>
-                            </div>
-                        </div>
-                    </Show>
                 </aside>
 
                 <main class="profile-main">

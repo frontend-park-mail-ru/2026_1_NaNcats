@@ -8,6 +8,8 @@ import { Popup } from '@shared/ui/popup';
 import { For, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal } from '@shared/lib/signals';
+import { router } from '@app/router';
+import { ROUTES } from '@shared/config/routes';
 import { promosAccessor, appliedCodeAccessor, tryApplyPromo, addPromo, loadPromos } from '../model/promoStore';
 import { promoReasonToMessage } from '../lib/promoMessage';
 import type { Promo } from '../model/types';
@@ -16,13 +18,19 @@ export interface PromoModalProps {
     onClose: () => void;
 }
 
-async function handleApply(promo: Promo) {
+async function handleApply(promo: Promo, onClose: () => void) {
     const res = await tryApplyPromo(promo.code);
-    if (res.ok) {
-        void Popup.alert(`Промокод ${promo.code} применён к корзине`);
+    if (!res.ok) {
+        void Popup.alert(promoReasonToMessage(res.reason));
         return;
     }
-    void Popup.alert(promoReasonToMessage(res.reason));
+    // Промокод применён — предлагаем сразу перейти к оформлению, чтобы не
+    // заставлять пользователя самому искать корзину после применения.
+    const goToCheckout = await Popup.confirm(`Промокод ${promo.code} применён к корзине. Перейти к оформлению заказа?`);
+    if (goToCheckout) {
+        onClose();
+        void router.go(ROUTES.checkout);
+    }
 }
 
 export function PromoModal(props: PromoModalProps): VNode {
@@ -104,7 +112,7 @@ export function PromoModal(props: PromoModalProps): VNode {
                                 type="button"
                                 class={() => applyBtnClass(promo)}
                                 onClick={() => {
-                                    void handleApply(promo);
+                                    void handleApply(promo, props.onClose);
                                 }}
                             >
                                 {() => applyBtnText(promo)}
