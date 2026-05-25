@@ -12,9 +12,18 @@ import { restaurantApi, type Category, type Restaurant } from '@entities/restaur
 import { userStore } from '@entities/user';
 import { addressStore } from '@entities/address';
 import { cartStore } from '@entities/cart';
+import { orderApi, type Order } from '@entities/order';
 import { CartWidget } from '@widgets/cart-widget';
 import { Streak } from '@widgets/streak';
 import { imageFallback } from '@shared/lib/img';
+
+/** Карточка ресторана для секций "Вы заказывали" и "Попробуйте". */
+export interface RestaurantCard {
+    id: number | string;
+    name: string;
+    description: string;
+    image_url: string;
+}
 
 export interface HomePageProps {
     /** Рестораны первой страницы выдачи. */
@@ -25,6 +34,10 @@ export interface HomePageProps {
     activeCategory: string;
     /** Текущий поисковый запрос (без пробелов по краям). */
     searchQuery: string;
+    /** Заказанные раньше рестораны (дедуп по id). Пусто для гостя или без истории. */
+    pastBrands: RestaurantCard[];
+    /** Рекомендованные рестораны от бэка (эвристика «похожие категории» / trending). */
+    recommended: RestaurantCard[];
 }
 
 /** Размер страницы выдачи ресторанов. */
@@ -72,6 +85,43 @@ async function handleCartInvite(isAuth: boolean): Promise<void> {
     }
 }
 
+/** Сколько брендов держать в секции «Вы заказывали» (карусель). */
+const SECTION_SIZE = 12;
+/** Сколько ресторанов показывать в «Попробуйте». */
+const RECO_SIZE = 8;
+/** Запасная картинка для карточки в "Вы заказывали", если у заказа нет логотипа. */
+const RESTAURANT_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
+
+/** Уникальные бренды из истории заказов в порядке от свежих к старым. */
+function pastBrandsFromOrders(orders: Order[]): RestaurantCard[] {
+    const seen = new Set<string>();
+    const cards: RestaurantCard[] = [];
+    for (const order of orders) {
+        const id = order.restaurant_id;
+        if (!id) continue;
+        const key = String(id);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        cards.push({
+            id,
+            name: order.restaurant_name ?? 'Ресторан',
+            description: '',
+            image_url: order.restaurant_image_url ?? RESTAURANT_FALLBACK_IMAGE,
+        });
+        if (cards.length >= SECTION_SIZE) break;
+    }
+    return cards;
+}
+
+function toRecommendationCards(brands: Restaurant[]): RestaurantCard[] {
+    return brands.map((r) => ({
+        id: r.id,
+        name: r.name,
+        description: r.description ?? 'Вкусная еда',
+        image_url: r.logo_url,
+    }));
+}
+
 /** Loader: грузит пользователя (и корзину/адреса для авторизованного), первую страницу ресторанов и категории. */
 export async function load(): Promise<HomePageProps> {
     try {
@@ -95,6 +145,8 @@ export async function load(): Promise<HomePageProps> {
 
     let restaurants: Restaurant[] = [];
     let categories: Category[] = [];
+    let orders: Order[] = [];
+    let recommendedBrands: Restaurant[] = [];
 
     await Promise.all([
         (initialQuery ? restaurantApi.search(initialQuery, PAGE_SIZE) : restaurantApi.listBrands(PAGE_SIZE, 0))
@@ -108,9 +160,30 @@ export async function load(): Promise<HomePageProps> {
                 categories = c;
             })
             .catch((e) => console.warn('home: listCategories failed', e)),
+        restaurantApi
+            .listRecommendations(RECO_SIZE)
+            .then((r) => {
+                recommendedBrands = r;
+            })
+            .catch((e) => console.warn('home: listRecommendations failed', e)),
+        isAuth
+            ? orderApi
+                  .list()
+                  .then((o) => {
+                      orders = o;
+                  })
+                  .catch((e) => console.warn('home: orderApi.list failed', e))
+            : Promise.resolve(),
     ]);
 
-    return { restaurants, categories, activeCategory: '', searchQuery: initialQuery };
+    const pastBrands = pastBrandsFromOrders(orders);
+    const descMap = new Map(restaurants.map((r) => [String(r.id), r.description ?? '']));
+    for (const pb of pastBrands) {
+        if (!pb.description) pb.description = descMap.get(String(pb.id)) ?? '';
+    }
+    const recommended = toRecommendationCards(recommendedBrands);
+
+    return { restaurants, categories, activeCategory: '', searchQuery: initialQuery, pastBrands, recommended };
 }
 
 // Заголовок листинга: имя категории, либо "Поиск", либо "Рестораны".
@@ -120,6 +193,119 @@ function buildTitle(categories: Category[], activeCategoryId: string, query: str
     }
     if (query) return 'Поиск';
     return 'Рестораны';
+}
+
+/** Пропсы горизонтальной карусели брендов на главной. */
+interface BrandCarouselProps {
+    /** Заголовок секции. */
+    title: string;
+    /** Аксессор списка карточек. */
+    items: () => RestaurantCard[];
+    /** Префикс ключей для `For` (секции на одной странице не должны пересекаться). */
+    keyPrefix: string;
+}
+
+/**
+ * Горизонтальная карусель брендов: лента карточек со скроллом и стрелками
+ * навигации. Правая стрелка активна, пока справа есть ещё рестораны.
+ */
+function BrandCarousel(props: BrandCarouselProps): VNode {
+    let rowEl: HTMLElement | null = null;
+    const canScrollLeft = signal<boolean>(false);
+    const canScrollRight = signal<boolean>(false);
+
+    // Пересчитывает доступность стрелок по текущей позиции скролла.
+    const updateArrows = () => {
+        if (rowEl === null) return;
+        canScrollLeft.set(rowEl.scrollLeft > 4);
+        canScrollRight.set(rowEl.scrollLeft + rowEl.clientWidth < rowEl.scrollWidth - 4);
+    };
+
+    const scrollByCards = (direction: number) => {
+        rowEl?.scrollBy({ left: direction * 340, behavior: 'smooth' });
+    };
+
+    onMount(() => {
+        updateArrows();
+        window.addEventListener('resize', updateArrows);
+    });
+
+    onCleanup(() => {
+        window.removeEventListener('resize', updateArrows);
+    });
+
+    return (
+        <div class="sheet__section">
+            <div class="sheet__section-header">
+                <h2 class="sheet__section-title">{props.title}</h2>
+                <div class="brand-nav">
+                    <button
+                        type="button"
+                        class={() => (canScrollLeft() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled')}
+                        aria-label="Предыдущие рестораны"
+                        onClick={() => scrollByCards(-1)}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                                d="M15 6l-6 6 6 6"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        type="button"
+                        class={() => (canScrollRight() ? 'brand-nav__btn' : 'brand-nav__btn brand-nav__btn_disabled')}
+                        aria-label="Ещё рестораны"
+                        onClick={() => scrollByCards(1)}
+                    >
+                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path
+                                d="M9 6l6 6-6 6"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div
+                class="brand-row"
+                onScroll={updateArrows}
+                ref={(el: Element | null) => {
+                    rowEl = el as HTMLElement | null;
+                }}
+            >
+                <For each={props.items} key={(b) => `${props.keyPrefix}-${String(b.id)}`}>
+                    {(brand) => (
+                        <div
+                            class="res-card brand-card"
+                            onClick={() => {
+                                void router.go(`${ROUTES.restaurant}?id=${encodeURIComponent(String(brand.id))}`);
+                            }}
+                        >
+                            <img
+                                class="res-card__rect"
+                                src={brand.image_url}
+                                alt={brand.name}
+                                onError={imageFallback(RESTAURANT_FALLBACK_IMAGE)}
+                            />
+                            <div class="res-card__info">
+                                <span class="res-card__name">{brand.name}</span>
+                                <Show when={() => brand.description.length > 0}>
+                                    <span class="res-card__desc">{brand.description}</span>
+                                </Show>
+                            </div>
+                        </div>
+                    )}
+                </For>
+            </div>
+        </div>
+    );
 }
 
 export function HomePage(props: HomePageProps): VNode {
@@ -140,6 +326,7 @@ export function HomePage(props: HomePageProps): VNode {
     const refreshGrid = async () => {
         const q = searchQuery();
         const cat = activeCategory();
+        const catName = cat ? (props.categories.find((c) => c.id === cat)?.name ?? cat) : cat;
 
         offset.set(0);
         hasMore.set(false);
@@ -153,10 +340,10 @@ export function HomePage(props: HomePageProps): VNode {
         } else if (q && !cat) {
             results = await restaurantApi.search(q, PAGE_SIZE).catch(() => []);
         } else if (!q && cat) {
-            results = await restaurantApi.listBrandsByCategory(cat, PAGE_SIZE, 0).catch(() => []);
+            results = await restaurantApi.listBrandsByCategory(catName, PAGE_SIZE, 0).catch(() => []);
         } else {
             const COMBINED_LIMIT = 100;
-            const inCat = await restaurantApi.listBrandsByCategory(cat, COMBINED_LIMIT, 0).catch(() => []);
+            const inCat = await restaurantApi.listBrandsByCategory(catName, COMBINED_LIMIT, 0).catch(() => []);
             const needle = q.toLowerCase();
             results = inCat.filter((r) => {
                 const name = (r.name ?? '').toLowerCase();
@@ -379,6 +566,16 @@ export function HomePage(props: HomePageProps): VNode {
 
                 <main class="center-column">
                     <div class="sheet">
+                        <Show when={() => searchQuery() === '' && activeCategory() === ''}>
+                            <Show when={() => props.pastBrands.length > 0}>
+                                <BrandCarousel title="Вы заказывали" items={() => props.pastBrands} keyPrefix="past" />
+                            </Show>
+
+                            <Show when={() => props.recommended.length > 0}>
+                                <BrandCarousel title="Попробуйте" items={() => props.recommended} keyPrefix="reco" />
+                            </Show>
+                        </Show>
+
                         <div class="sheet__header">
                             <h1 class="sheet__title">
                                 {() => buildTitle(props.categories, activeCategory(), searchQuery())}
@@ -437,7 +634,7 @@ export function HomePage(props: HomePageProps): VNode {
 
                     <div class="card card_cart">
                         <div class="cart-slot">
-                            <CartWidget />
+                            <CartWidget onClose={closePanels} />
                         </div>
                     </div>
                 </aside>

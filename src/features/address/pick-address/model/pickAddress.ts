@@ -36,7 +36,7 @@ export const pickAddress = async ({ text, coords, details, addressId }: PickAddr
         lat: coords[0],
         lon: coords[1],
         ...(details ?? {}),
-        label: details?.label ?? 'Дом',
+        label: details?.label || 'Адрес',
     };
 
     if (addressId) {

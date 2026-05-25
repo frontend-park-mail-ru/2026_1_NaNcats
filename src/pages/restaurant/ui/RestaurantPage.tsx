@@ -7,14 +7,16 @@ import { ROUTES } from '@shared/config/routes';
 import { Popup } from '@shared/ui/popup';
 import { getQueryParam } from '@shared/lib/url/searchParams';
 import { computed, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
-import { For, onMount, Show } from '@shared/lib/vdom';
+import { For, onMount, render, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { restaurantApi, type Dish, type DishSearchHit, type Restaurant, type Review } from '@entities/restaurant';
 import { cartStore, fromMicros } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { addToCart } from '@features/cart/add-to-cart';
+import { applyPromo, appliedCodeAccessor } from '@features/profile/manage-promos';
 import { CartWidget } from '@widgets/cart-widget';
 import { imageFallback } from '@shared/lib/img';
+import { httpClient } from '@shared/api/http';
 
 /** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
@@ -27,10 +29,20 @@ interface DishSection {
     dishes: DishView[];
 }
 
+/** Промокод, привязанный к ресторану, — для баннера на странице. */
+export interface RestaurantPromoBanner {
+    code: string;
+    title: string;
+}
+
 export interface RestaurantPageProps {
     restaurant: Restaurant;
     dishes: DishView[];
     sections: DishSection[];
+    /** Промокод этого ресторана для баннера; null — у ресторана нет промокода. */
+    restaurantPromo: RestaurantPromoBanner | null;
+    /** Топ блюд этого ресторана (бэк подбирает эвристикой по продажам за 30 дней). */
+    recommendedDishes: DishView[];
 }
 
 /** Эвристические правила группировки блюд по секциям. */
@@ -113,7 +125,13 @@ const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) })
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
-        return { restaurant: FALLBACK_RESTAURANT, dishes: [], sections: buildSections([]) };
+        return {
+            restaurant: FALLBACK_RESTAURANT,
+            dishes: [],
+            sections: buildSections([]),
+            restaurantPromo: null,
+            recommendedDishes: [],
+        };
     }
 
     try {
@@ -129,15 +147,31 @@ export async function load(): Promise<RestaurantPageProps> {
     }
     await Promise.all(aux);
 
-    const [brandRes, dishesRes] = await Promise.allSettled([
+    const [brandRes, dishesRes, promoRes, recoRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
         restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
+        httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
+        restaurantApi.listRecommendedDishes(idParam, 4),
     ]);
 
     const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
     const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
+    const recommendedDishes = recoRes.status === 'fulfilled' ? recoRes.value.map(toView) : [];
 
-    return { restaurant, dishes, sections: buildSections(dishes) };
+    // Баннер промокода — необязательная деталь: ошибку запроса молча игнорируем.
+    let restaurantPromo: RestaurantPromoBanner | null = null;
+    if (promoRes.status === 'fulfilled' && promoRes.value.ok) {
+        try {
+            const list = await promoRes.value.json();
+            if (Array.isArray(list) && list.length > 0) {
+                restaurantPromo = { code: String(list[0].code), title: String(list[0].title) };
+            }
+        } catch (e) {
+            console.warn('restaurant: loadPromos failed', e);
+        }
+    }
+
+    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo, recommendedDishes };
 }
 
 // Возвращает видимую цель для анимации полёта в корзину: на мобильной вёрстке
@@ -166,9 +200,8 @@ function visibleCartTarget(): HTMLElement | null {
 }
 
 // Анимация полёта картинки блюда к иконке корзины; молча выходит, если узлы не найдены.
-const flyDishToCart = (dishId: number) => {
-    const dishCard = document.querySelector(`[data-dish-id="${dishId}"]`);
-    const dishImgToAnimate = dishCard?.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
+const flyDishToCart = (dishCard: HTMLElement) => {
+    const dishImgToAnimate = dishCard.getElementsByClassName('dish-card__img')[0] as HTMLElement | undefined;
     const cartIcon = visibleCartTarget();
 
     if (!dishImgToAnimate || !cartIcon) return;
@@ -228,58 +261,8 @@ const highlightAndScroll = (card: HTMLElement) => {
     document.addEventListener('keydown', dismiss, { capture: true, once: true });
 };
 
-// HTML-разметка модалки отзывов.
-const buildReviewsModalHtml = (reviews: Review[]): string => {
-    const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
-
-    const list = reviews.length
-        ? reviews
-              .map(
-                  (r) => `
-            <div class="review-item">
-                <div class="review-item__top">
-                    <span class="review-item__author">${r.author_name}</span>
-                    <span class="review-item__stars">${stars(r.rating)}</span>
-                </div>
-                <p class="review-item__comment">${r.comment}</p>
-            </div>`,
-              )
-              .join('')
-        : '<p class="reviews-empty">Отзывов пока нет. Будьте первым!</p>';
-
-    return `
-        <div class="reviews-modal">
-            <div class="reviews-modal__header">
-                <h2 class="reviews-modal__title">Отзывы</h2>
-                <button type="button" class="reviews-modal__close js-reviews-close" aria-label="Закрыть">×</button>
-            </div>
-            <div class="reviews-modal__list">${list}</div>
-            <div class="reviews-modal__form">
-                <h3 class="reviews-form__title">Оставить отзыв</h3>
-                <input
-                    type="text"
-                    class="reviews-form__input js-review-author"
-                    placeholder="Ваше имя"
-                    maxlength="60"
-                />
-                <div class="star-picker js-star-picker" data-rating="0" aria-label="Оценка">
-                    <span class="star-picker__star js-star" data-value="1">★</span>
-                    <span class="star-picker__star js-star" data-value="2">★</span>
-                    <span class="star-picker__star js-star" data-value="3">★</span>
-                    <span class="star-picker__star js-star" data-value="4">★</span>
-                    <span class="star-picker__star js-star" data-value="5">★</span>
-                </div>
-                <textarea
-                    class="reviews-form__textarea js-review-comment"
-                    placeholder="Ваш комментарий"
-                    rows="3"
-                    maxlength="500"
-                ></textarea>
-                <button type="button" class="reviews-form__submit js-review-submit">Отправить</button>
-                <p class="reviews-form__error js-review-error" style="display:none"></p>
-            </div>
-        </div>`;
-};
+// Отрисовка звёзд оценки текстом для уже опубликованных отзывов.
+const ratingStars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
 export function RestaurantPage(props: RestaurantPageProps): VNode {
     const restaurantId = (() => {
@@ -291,6 +274,24 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     const allDishes = signal<DishView[]>(props.dishes.slice());
     // Отрисовываемые секции (учитывают фильтр поиска по меню).
     const sections = signal<DishSection[]>(props.sections);
+
+    // Блюда секции «Рекомендуем» приходят с бэка (топ продаж за 30 дней).
+    // Если бэк ничего не отдал — fallback на первые позиции меню (по секциям),
+    // чтобы блок не пустовал на свежем ресторане без истории заказов.
+    const recommended = computed<DishView[]>(() => {
+        if (props.recommendedDishes.length > 0) return props.recommendedDishes;
+        const picks: DishView[] = [];
+        const seen = new Set<number>();
+        for (const sec of sections()) {
+            for (const d of sec.dishes) {
+                if (seen.has(d.id)) continue;
+                seen.add(d.id);
+                picks.push(d);
+                if (picks.length >= 4) return picks;
+            }
+        }
+        return picks;
+    });
     const offset = signal<number>(props.dishes.length);
     const hasMore = signal<boolean>(props.dishes.length === PAGE_SIZE);
     const isFetching = signal<boolean>(false);
@@ -300,10 +301,12 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Позиции корзины: по ним карточка блюда показывает счётчик вместо кнопки.
     const cartItems = useStoreSignal(cartStore, (s) => s.items);
     // Нужен, чтобы в совместной корзине считать только свою позицию блюда.
-    const currentUserId = useStoreSignal(userStore, (s) => s.user?.id ?? null);
+    const currentUserId = useStoreSignal(userStore, (s) => s.user?.public_id ?? null);
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
     let searchInputEl: HTMLInputElement | null = null;
+    // Handle закрытия активной модалки отзывов (если она открыта): нужен Escape'у и cleanup-у страницы.
+    let closeActiveReviews: (() => void) | null = null;
 
     // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
     const fetchNextPage = async () => {
@@ -330,7 +333,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
     const scrollToDishById = async (dishId: string) => {
         for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
-            const card = document.querySelector(`.dish-card[data-dish-id="${dishId}"]`) as HTMLElement | null;
+            // Исключаем карточки секции «Рекомендуем» (тот же data-dish-id),
+            // чтобы якорь вёл к блюду в основном меню, а не в рекомендациях.
+            const card = document.querySelector(
+                `.dish-card:not(.dish-card_reco)[data-dish-id="${dishId}"]`,
+            ) as HTMLElement | null;
             if (card) {
                 highlightAndScroll(card);
                 return;
@@ -347,11 +354,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     // Добавление блюда в корзину; неавторизованного редиректит на /login, при смене ресторана спрашивает подтверждение.
-    const handleAdd = async (dish: DishView) => {
+    const handleAdd = async (dish: DishView, sourceEl: HTMLElement) => {
         if (!userStore.getState().user) {
             void router.go(ROUTES.login);
             return;
         }
+
+        const dishCard = sourceEl.closest('[data-dish-id]') as HTMLElement | null;
 
         try {
             await addToCart(
@@ -364,7 +373,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 restaurantId,
                 () => Popup.confirm('В корзине уже есть блюда из другого ресторана. Очистить и добавить новое?'),
             );
-            flyDishToCart(dish.id);
+            if (dishCard) flyDishToCart(dishCard);
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
             const msg = e instanceof Error && e.message ? e.message : 'Не удалось добавить блюдо.';
@@ -440,83 +449,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         cartOpen.set(false);
     };
 
-    // Закрывает модалку отзывов: снимает класс и удаляет оверлей после transition.
-    const closeReviews = () => {
-        const overlay = document.querySelector('.js-reviews-overlay');
-        if (!overlay) return;
-        overlay.classList.remove('reviews-overlay_open');
-        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
-    };
-
-    // Интерактивный выбор оценки звёздами; зафиксированное значение лежит в data-rating контейнера.
-    const setupStarPicker = (overlay: HTMLElement) => {
-        const picker = overlay.querySelector('.js-star-picker') as HTMLElement | null;
-        if (!picker) return;
-
-        const stars = picker.querySelectorAll('.js-star');
-
-        const highlight = (n: number) => {
-            stars.forEach((s, i) => {
-                s.classList.toggle('star-picker__star_active', i < n);
-            });
-        };
-
-        stars.forEach((star, idx) => {
-            star.addEventListener('mouseenter', () => highlight(idx + 1));
-            star.addEventListener('mouseleave', () => {
-                highlight(parseInt(picker.dataset.rating ?? '0', 10));
-            });
-            star.addEventListener('click', () => {
-                picker.dataset.rating = String(idx + 1);
-                highlight(idx + 1);
-            });
-        });
-    };
-
-    // Форма отправки отзыва: валидирует имя, оценку, комментарий; при успехе закрывает модалку.
-    const setupReviewForm = (overlay: HTMLElement) => {
-        const submitBtn = overlay.querySelector('.js-review-submit') as HTMLButtonElement | null;
-        if (!submitBtn) return;
-
-        submitBtn.addEventListener('click', async () => {
-            const author = (overlay.querySelector('.js-review-author') as HTMLInputElement | null)?.value.trim();
-            const comment = (overlay.querySelector('.js-review-comment') as HTMLTextAreaElement | null)?.value.trim();
-            const rating = parseInt(
-                (overlay.querySelector('.js-star-picker') as HTMLElement | null)?.dataset.rating ?? '0',
-                10,
-            );
-            const errorEl = overlay.querySelector('.js-review-error') as HTMLElement | null;
-
-            if (!author || !comment || rating < 1) {
-                if (errorEl) {
-                    errorEl.textContent = 'Заполните имя, оценку и комментарий';
-                    errorEl.style.display = 'block';
-                }
-                return;
-            }
-
-            if (errorEl) errorEl.style.display = 'none';
-            submitBtn.disabled = true;
-
-            try {
-                await restaurantApi.createReview(restaurantId, {
-                    author_name: author,
-                    rating,
-                    comment,
-                });
-                closeReviews();
-                void Popup.alert('Спасибо! Ваш отзыв опубликован.');
-            } catch {
-                if (errorEl) {
-                    errorEl.textContent = 'Не удалось отправить отзыв. Попробуйте ещё раз.';
-                    errorEl.style.display = 'block';
-                }
-                submitBtn.disabled = false;
-            }
-        });
-    };
-
-    // Открывает модалку отзывов: грузит отзывы, вставляет оверлей, навешивает обработчики и форму.
+    // Открывает модалку отзывов: грузит список и монтирует VDOM-дерево в overlay,
+    // прикреплённый к body. Все интерактивные состояния (оценка, форма, ошибка)
+    // живут в локальных сигналах, текст автоматически экранируется vdom-ом.
     const openReviews = async () => {
         let reviews: Review[] = [];
         try {
@@ -526,22 +461,129 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
 
         const overlay = document.createElement('div');
-        overlay.className = 'reviews-overlay js-reviews-overlay';
-        overlay.innerHTML = buildReviewsModalHtml(reviews);
+        overlay.className = 'reviews-overlay';
         document.body.appendChild(overlay);
 
-        requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
+        const rating = signal(0);
+        const hover = signal(0);
+        const author = signal('');
+        const comment = signal('');
+        const error = signal('');
+        const submitting = signal(false);
 
-        const closeBtn = overlay.querySelector('.js-reviews-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => closeReviews());
-        }
+        let unmount: (() => void) | null = null;
+
+        const close = () => {
+            closeActiveReviews = null;
+            overlay.classList.remove('reviews-overlay_open');
+            overlay.addEventListener(
+                'transitionend',
+                () => {
+                    unmount?.();
+                    overlay.remove();
+                },
+                { once: true },
+            );
+        };
+        closeActiveReviews = close;
+
+        const submit = async () => {
+            const a = author().trim();
+            const c = comment().trim();
+            const r = rating();
+            if (!a || !c || r < 1) {
+                error.set('Заполните имя, оценку и комментарий');
+                return;
+            }
+            error.set('');
+            submitting.set(true);
+            try {
+                await restaurantApi.createReview(restaurantId, {
+                    author_name: a,
+                    rating: r,
+                    comment: c,
+                });
+                close();
+                void Popup.alert('Спасибо! Ваш отзыв опубликован.');
+            } catch {
+                error.set('Не удалось отправить отзыв. Попробуйте ещё раз.');
+                submitting.set(false);
+            }
+        };
+
+        // Клик строго по бэкдропу (overlay), не по содержимому модалки.
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) closeReviews();
+            if (e.target === overlay) close();
         });
 
-        setupStarPicker(overlay);
-        setupReviewForm(overlay);
+        const starClass = (i: number) => () => {
+            const lit = hover() > 0 ? hover() : rating();
+            return i < lit ? 'star-picker__star star-picker__star_active' : 'star-picker__star';
+        };
+
+        const tree = (
+            <div class="reviews-modal">
+                <div class="reviews-modal__header">
+                    <h2 class="reviews-modal__title">Отзывы</h2>
+                    <button type="button" class="reviews-modal__close" aria-label="Закрыть" onClick={close}>
+                        ×
+                    </button>
+                </div>
+                <div class="reviews-modal__list">
+                    {reviews.length === 0 ? (
+                        <p class="reviews-empty">Отзывов пока нет. Будьте первым!</p>
+                    ) : (
+                        reviews.map((r) => (
+                            <div class="review-item">
+                                <div class="review-item__top">
+                                    <span class="review-item__author">{r.author_name}</span>
+                                    <span class="review-item__stars">{ratingStars(r.rating)}</span>
+                                </div>
+                                <p class="review-item__comment">{r.comment}</p>
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div class="reviews-modal__form">
+                    <h3 class="reviews-form__title">Оставить отзыв</h3>
+                    <input
+                        type="text"
+                        class="reviews-form__input"
+                        placeholder="Ваше имя"
+                        maxlength="60"
+                        onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
+                    />
+                    <div class="star-picker" aria-label="Оценка">
+                        {[0, 1, 2, 3, 4].map((i) => (
+                            <span
+                                class={starClass(i)}
+                                onMouseEnter={() => hover.set(i + 1)}
+                                onMouseLeave={() => hover.set(0)}
+                                onClick={() => rating.set(i + 1)}
+                            >
+                                ★
+                            </span>
+                        ))}
+                    </div>
+                    <textarea
+                        class="reviews-form__textarea"
+                        placeholder="Ваш комментарий"
+                        rows="3"
+                        maxlength="500"
+                        onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
+                    />
+                    <button type="button" class="reviews-form__submit" disabled={() => submitting()} onClick={submit}>
+                        Отправить
+                    </button>
+                    <Show when={() => error() !== ''}>
+                        <p class="reviews-form__error">{() => error()}</p>
+                    </Show>
+                </div>
+            </div>
+        ) as VNode;
+
+        unmount = render(tree, overlay);
+        requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
     };
 
     // Подгружает следующую страницу блюд при приближении к низу.
@@ -557,7 +599,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key !== 'Escape') return;
         closePanels();
-        closeReviews();
+        closeActiveReviews?.();
     };
 
     // При росте ширины окна закрываем открытые мобильные панели.
@@ -591,9 +633,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             clearTimeout(searchTimer);
             searchTimer = null;
         }
-        // Если страница размонтировалась с открытой модалкой отзывов, убираем оверлей из body.
-        const lingering = document.querySelector('.js-reviews-overlay');
-        if (lingering) lingering.remove();
+        // Если страница размонтировалась с открытой модалкой отзывов, убираем оверлей из body немедленно.
+        closeActiveReviews?.();
     });
 
     return (
@@ -721,6 +762,37 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                             />
                         </div>
 
+                        <Show when={() => props.restaurantPromo !== null}>
+                            <div class="restaurant-promo-banner">
+                                <div class="restaurant-promo-banner__info">
+                                    <span class="restaurant-promo-banner__icon">🏷️</span>
+                                    <div class="restaurant-promo-banner__text">
+                                        <span class="restaurant-promo-banner__code">
+                                            {() => props.restaurantPromo?.code ?? ''}
+                                        </span>
+                                        <span class="restaurant-promo-banner__desc">
+                                            {() => props.restaurantPromo?.title ?? ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class={() =>
+                                        appliedCodeAccessor() === props.restaurantPromo?.code
+                                            ? 'restaurant-promo-banner__btn restaurant-promo-banner__btn_applied'
+                                            : 'restaurant-promo-banner__btn'
+                                    }
+                                    onClick={() => {
+                                        if (props.restaurantPromo) applyPromo(props.restaurantPromo.code);
+                                    }}
+                                >
+                                    {() =>
+                                        appliedCodeAccessor() === props.restaurantPromo?.code ? 'Применён' : 'Применить'
+                                    }
+                                </button>
+                            </div>
+                        </Show>
+
                         <div class="restaurant-search">
                             <div class="restaurant-search__box">
                                 <svg
@@ -782,6 +854,75 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                             Отзывы
                         </button>
 
+                        <Show when={() => recommended().length > 0 && searchValue() === ''}>
+                            <h2 class="restaurant-section-title restaurant-section-title_reco">Рекомендуем</h2>
+                            <div class="res-grid res-grid_reco">
+                                <For each={recommended} key={(d) => `reco-${d.id}`}>
+                                    {(d) => {
+                                        const qtyInCart = computed(() => {
+                                            const myId = currentUserId();
+                                            const it = cartItems().find(
+                                                (i) => i.dish_id === d.id && (i.owner_public_id ?? null) === myId,
+                                            );
+                                            return it ? it.quantity : 0;
+                                        });
+                                        return (
+                                            <div class="dish-card dish-card_reco" data-dish-id={d.id}>
+                                                <img
+                                                    class="dish-card__img"
+                                                    src={d.image_url}
+                                                    alt={d.name}
+                                                    onError={imageFallback(
+                                                        'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
+                                                    )}
+                                                />
+                                                <div class="dish-card__prices">
+                                                    <div class="dish-card__price">{`${d.price_rub.toFixed(2)} ₽`}</div>
+                                                </div>
+                                                <div class="dish-card__title">{d.name}</div>
+                                                <Show
+                                                    when={() => qtyInCart() > 0}
+                                                    fallback={
+                                                        <button
+                                                            class="button dish-card__add-btn"
+                                                            type="button"
+                                                            onClick={(e: MouseEvent) => {
+                                                                void handleAdd(d, e.currentTarget as HTMLElement);
+                                                            }}
+                                                        >
+                                                            В корзину
+                                                        </button>
+                                                    }
+                                                >
+                                                    <div class="dish-card__counter">
+                                                        <button
+                                                            type="button"
+                                                            class="dish-card__counter-btn"
+                                                            onClick={() => {
+                                                                void cartStore.changeQuantity(d.id, -1);
+                                                            }}
+                                                        >
+                                                            −
+                                                        </button>
+                                                        <span class="dish-card__counter-value">{qtyInCart}</span>
+                                                        <button
+                                                            type="button"
+                                                            class="dish-card__counter-btn"
+                                                            onClick={() => {
+                                                                void cartStore.changeQuantity(d.id, 1);
+                                                            }}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                </Show>
+                                            </div>
+                                        );
+                                    }}
+                                </For>
+                            </div>
+                        </Show>
+
                         <div>
                             <For
                                 each={sections}
@@ -802,7 +943,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                         const it = cartItems().find(
                                                             (i) =>
                                                                 i.dish_id === d.id &&
-                                                                (i.owner_user_id ?? null) === myId,
+                                                                (i.owner_public_id ?? null) === myId,
                                                         );
                                                         return it ? it.quantity : 0;
                                                     });
@@ -831,8 +972,11 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                                     <button
                                                                         class="button dish-card__add-btn"
                                                                         type="button"
-                                                                        onClick={() => {
-                                                                            void handleAdd(d);
+                                                                        onClick={(e: MouseEvent) => {
+                                                                            void handleAdd(
+                                                                                d,
+                                                                                e.currentTarget as HTMLElement,
+                                                                            );
                                                                         }}
                                                                     >
                                                                         В корзину
@@ -880,7 +1024,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 <aside class="side-column restaurant-cart-column">
                     <div class="card card_cart">
                         <div class="cart-slot">
-                            <CartWidget />
+                            <CartWidget onClose={closePanels} />
                         </div>
                     </div>
                 </aside>

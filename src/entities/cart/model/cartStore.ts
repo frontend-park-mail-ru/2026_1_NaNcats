@@ -207,10 +207,8 @@ class CartStore extends Store<CartState> {
 
             // У блюда в совместной корзине бывает по позиции на участника,
             // поэтому трогаем только позицию текущего пользователя.
-            const myId = userStore.getState().user?.id ?? null;
-            const target = state.items.find(
-                (i) => i.dish_id === dishId && (i.owner_user_id ?? null) === myId,
-            );
+            const myId = userStore.getState().user?.public_id ?? null;
+            const target = state.items.find((i) => i.dish_id === dishId && (i.owner_public_id ?? null) === myId);
             if (!target) {
                 this.setState({ status: 'idle' });
                 return;
@@ -245,7 +243,7 @@ class CartStore extends Store<CartState> {
 
         this.setState({ status: 'syncing', error: undefined });
         try {
-            await cartApi.reassignOwner(state.cartId, dishId, me.id);
+            await cartApi.reassignOwner(state.cartId, dishId, me.public_id);
             await this.refresh();
         } catch (e) {
             console.error('cartStore.claimItem', e);
@@ -392,7 +390,7 @@ class CartStore extends Store<CartState> {
     private notifyGuestOrderPlaced(): void {
         const state = this.getState();
         const me = userStore.getState().user;
-        const isGuest = me !== null && state.adminId !== null && me.id !== state.adminId;
+        const isGuest = me !== null && state.adminId !== null && me.public_id !== state.adminId;
         if (!isGuest) return;
 
         try {
@@ -468,15 +466,15 @@ class CartStore extends Store<CartState> {
      * Удаляет участника из совместной корзины. Доступно только
      * администратору; блюда удалённого участника становятся ничейными.
      *
-     * @param targetUserId Идентификатор удаляемого участника.
+     * @param targetPublicID Публичный идентификатор (UUID) удаляемого участника.
      */
-    async kickMember(targetUserId: number): Promise<void> {
+    async kickMember(targetPublicID: string): Promise<void> {
         const state = this.getState();
         if (!state.cartId) return;
 
         this.setState({ status: 'syncing', error: undefined });
         try {
-            await cartApi.kickMember(state.cartId, targetUserId);
+            await cartApi.kickMember(state.cartId, targetPublicID);
             await this.refresh();
         } catch (e) {
             console.error('cartStore.kickMember', e);

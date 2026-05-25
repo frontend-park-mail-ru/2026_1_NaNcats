@@ -17,6 +17,8 @@ import type { VNode } from '@shared/lib/vdom';
 export interface AddressPickerController {
     /** Открывает модалку с картой для выбора или редактирования адреса (по id сохранённого). */
     openMapModal(addressId?: string): Promise<void>;
+    /** Открывает форму деталей для редактирования сохранённого адреса, минуя карту. */
+    openDetailsForEdit(addressId: string): void;
 }
 
 export interface AddressPickerProps {
@@ -162,6 +164,29 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         mapModalOpen.set(false);
     };
 
+    const openDetailsForEdit = (addressId: string) => {
+        const target = addressStore.getState().saved.find((a) => a.id === addressId);
+        if (target === undefined) return;
+        editingAddressId = addressId;
+        selectedCoords = [target.location.latitude, target.location.longitude];
+        pendingAddressText = target.location.address_text;
+        if (detailsFormEl !== null) {
+            detailsFormEl.reset();
+            const setField = (name: string, value: string | undefined) => {
+                const input = detailsFormEl?.querySelector(`input[name="${name}"]`) as HTMLInputElement | null;
+                if (input) input.value = value ?? '';
+            };
+            setField('label', target.label ?? 'Адрес');
+            setField('apartment', target.apartment);
+            setField('entrance', target.entrance);
+            setField('floor', target.floor);
+            setField('door_code', target.door_code);
+            setField('courier_comment', target.courier_comment);
+        }
+        if (detailsDisplayEl !== null) detailsDisplayEl.value = target.location.address_text;
+        detailsModalOpen.set(true);
+    };
+
     // Клик по подсказке: при geocodeOnClick сначала геокодим адрес, иначе берём текущие координаты.
     const handleInlineSuggestionClick = async (suggestion: InlineSuggestion) => {
         if (suggestion.geocodeOnClick) {
@@ -284,7 +309,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             floor: (formData.get('floor') as string) || undefined,
             door_code: (formData.get('door_code') as string) || undefined,
             courier_comment: (formData.get('courier_comment') as string) || undefined,
-            label: 'Дом',
+            label: (formData.get('label') as string) || 'Адрес',
         };
 
         closeDetailsModal();
@@ -307,7 +332,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         }
     };
 
-    const controller: AddressPickerController = { openMapModal };
+    const controller: AddressPickerController = { openMapModal, openDetailsForEdit };
 
     // Controller отдаётся синхронно при рендере: openMapModal трогает DOM только
     // через свои внутренние ссылки, которые заполнятся при mount поддерева.
@@ -451,6 +476,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     </div>
                     <div class="address-modal__map-container">
                         <div
+                            class="js-yandex-map"
                             style="width: 100%; height: 297px; border-radius: 24px;"
                             ref={(el: Element | null) => {
                                 mapContainerEl = el as HTMLElement | null;
@@ -462,7 +488,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             </div>
 
             <div class={() => (detailsModalOpen() ? 'modal-overlay modal-overlay_active' : 'modal-overlay')}>
-                <div class="address-modal" style="width: 500px;">
+                <div class="address-modal address-modal_narrow">
                     <div class="address-modal__close" onClick={closeDetailsModal}>
                         ×
                     </div>
@@ -477,6 +503,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                             detailsFormEl = el as HTMLFormElement | null;
                         }}
                     >
+                        <div class="input-group">
+                            <label>Название</label>
+                            <input name="label" class="input-field" value="Адрес" placeholder="Например: Дом, Работа" />
+                        </div>
                         <div class="input-group">
                             <label>Адрес</label>
                             <div style="display: flex; gap: 8px;">

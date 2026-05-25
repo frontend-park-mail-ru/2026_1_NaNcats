@@ -31,6 +31,12 @@ export const restaurantApi = {
         return data.restaurants ?? [];
     },
 
+    /** Рекомендованные бренды для пользователя/гостя (эвристика на бэке). */
+    async listRecommendations(limit = 4): Promise<Restaurant[]> {
+        const data = await httpClient.getJson<BrandsResponse>('/restaurants/recommendations', { limit });
+        return data.restaurants ?? [];
+    },
+
     /**
      * Возвращает один бренд по идентификатору.
      *
@@ -56,6 +62,14 @@ export const restaurantApi = {
         });
         // Бэкенд отдаёт id блюда строкой; приводим к числу, чтобы тип Dish.id
         // соответствовал рантайму и корзина сравнивала позиции корректно.
+        return (data.dishes ?? []).map((d) => ({ ...d, id: Number(d.id) }));
+    },
+
+    /** Рекомендованные блюда внутри ресторана (топ по продажам за 30 дней). */
+    async listRecommendedDishes(brandId: string | number, limit = 4): Promise<Dish[]> {
+        const data = await httpClient.getJson<DishesResponse>(`/restaurants/brands/${brandId}/recommended-dishes`, {
+            limit,
+        });
         return (data.dishes ?? []).map((d) => ({ ...d, id: Number(d.id) }));
     },
 

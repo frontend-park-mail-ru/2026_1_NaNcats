@@ -1,0 +1,193 @@
+/**
+ * Стили скелетонов под конкретные страницы. Базовая палитра серых
+ * прямоугольников и общая пульс-анимация переиспользуются всеми скелетонами;
+ * различается только структура блоков под каждую страницу.
+ */
+
+.page-skel {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px;
+  display: flex;
+  gap: 24px;
+
+  @media (max-width: 900px) {
+    padding: 16px;
+    flex-direction: column;
+  }
+}
+
+.page-skel__col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.page-skel__col_sidebar {
+  flex: 0 0 280px;
+  max-width: 280px;
+
+  @media (max-width: 900px) {
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
+}
+
+.page-skel__col_main {
+  flex: 1 1 auto;
+}
+
+.page-skel__col_aside {
+  flex: 0 0 320px;
+  max-width: 320px;
+
+  @media (max-width: 1200px) {
+    display: none;
+  }
+}
+
+.page-skel__box,
+.page-skel__line,
+.page-skel__card,
+.page-skel__tile,
+.page-skel__row {
+  border-radius: 12px;
+  background: #ececec;
+  animation: page-skel-pulse 1.4s ease-in-out infinite;
+}
+
+.page-skel__line {
+  height: 16px;
+  border-radius: 6px;
+
+  &_lg {
+    height: 28px;
+    max-width: 360px;
+  }
+
+  &_sm {
+    height: 12px;
+    max-width: 60%;
+  }
+}
+
+.page-skel__box {
+  &_hero {
+    height: 200px;
+  }
+
+  &_card {
+    height: 140px;
+  }
+
+  &_strip {
+    height: 56px;
+  }
+}
+
+.page-skel__row {
+  height: 64px;
+}
+
+.page-skel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+
+  &_carousel {
+    grid-template-columns: repeat(4, 1fr);
+
+    @media (max-width: 1200px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.page-skel__tile {
+  height: 160px;
+
+  &_sm {
+    height: 120px;
+  }
+
+  &_avatar {
+    height: 96px;
+    width: 96px;
+    border-radius: 50%;
+    margin: 0 auto;
+  }
+}
+
+.page-skel__auth {
+  margin: auto;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+}
+
+.page-skel__notfound {
+  margin: auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 48px 24px;
+  max-width: 400px;
+}
+
+/* Сдвинутые анимационные задержки по позиции, чтобы плитки не пульсировали в унисон. */
+.page-skel__tile:nth-child(2),
+.page-skel__row:nth-child(2),
+.page-skel__box:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.page-skel__tile:nth-child(3),
+.page-skel__row:nth-child(3),
+.page-skel__box:nth-child(3) {
+  animation-delay: 0.2s;
+}
+.page-skel__tile:nth-child(4),
+.page-skel__row:nth-child(4),
+.page-skel__box:nth-child(4) {
+  animation-delay: 0.3s;
+}
+.page-skel__tile:nth-child(5),
+.page-skel__row:nth-child(5) {
+  animation-delay: 0.4s;
+}
+.page-skel__tile:nth-child(6),
+.page-skel__row:nth-child(6) {
+  animation-delay: 0.5s;
+}
+
+@keyframes page-skel-pulse {
+  0% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.55;
+  }
+}

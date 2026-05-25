@@ -70,6 +70,25 @@ const STATUS_TEXT: Record<OrderUiStatus, (eta: number) => string> = {
     cancelled: () => 'Заказ отменён',
 };
 
+/**
+ * Текст по сырому статусу: чтобы видимый заголовок модалки менялся на каждом
+ * шаге (например, между `paid` и `created`, которые в UI-флоу совпадают), а
+ * не только на смене UI-стадии. STATUS_TEXT остаётся фолбэком для неизвестных
+ * сырых статусов.
+ */
+const STATUS_TEXT_BY_RAW: Record<string, (eta: number) => string> = {
+    created: () => 'Ваш заказ принят',
+    cart_locked: () => 'Ожидаем оплату',
+    payment_ready: () => 'Ожидаем оплату',
+    paid: () => 'Оплачен, ждём подтверждения ресторана',
+    in_progress: (eta) => `Готовим: будет через ${eta} минут :)`,
+    waiting: (eta) => `Готовим: будет через ${eta} минут :)`,
+    delivering: (eta) => `Будем у Вас через ${eta} минут :)`,
+    finished: () => 'Заказ доставлен. Приятного аппетита!',
+    cancelled: () => 'Заказ отменён',
+    failed: () => 'Ошибка обработки заказа',
+};
+
 /** Сырые статусы, после которых нет смысла продолжать live-обновления. */
 const TERMINAL_RAW_STATUSES = new Set<string>(['finished', 'cancelled', 'failed']);
 
@@ -160,9 +179,9 @@ function splitStatusIcon(status: string) {
 }
 
 /** Подпись участника-плательщика доли относительно текущего пользователя. */
-function splitPayerLabel(split: OrderSplit, currentUserId: number | null) {
-    if (currentUserId !== null && split.user_id === currentUserId) return 'Ваша часть';
-    return `Участник #${split.user_id}`;
+function splitPayerLabel(split: OrderSplit, currentUserId: string | null) {
+    if (currentUserId !== null && split.user_public_id === currentUserId) return 'Ваша часть';
+    return split.user_name && split.user_name.length > 0 ? split.user_name : 'Участник';
 }
 
 // Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
@@ -185,6 +204,10 @@ function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
         delivery_cost: current.delivery_cost,
         eta_minutes: current.eta_minutes,
         payment_url: event.payment_url ?? current.payment_url,
+        // Промокод и скидку WS не присылает — переносим из текущего заказа,
+        // иначе блок «Промокод ...» мигнёт при каждом обновлении статуса.
+        applied_promocode: current.applied_promocode,
+        discount_amount: current.discount_amount,
     };
     const next = normalizeOrder(merged);
     next.error = event.error;
@@ -208,7 +231,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     /** Текущий пользователь: нужен, чтобы отличать свою долю счёта от чужой. */
     const currentUser = useStoreSignal(userStore, (s) => s.user);
-    const myId = () => currentUser()?.id ?? null;
+    const myId = () => currentUser()?.public_id ?? null;
 
     const errorText = computed(() => order()?.error ?? '');
 
@@ -222,7 +245,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     const mySplit = computed<OrderSplit | null>(() => {
         const id = myId();
         if (id === null) return null;
-        return splits().find((s) => s.user_id === id) ?? null;
+        return splits().find((s) => s.user_public_id === id) ?? null;
     });
 
     /**
@@ -259,19 +282,25 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const statusText = computed(() => {
         const o = order();
-        return o === null ? '' : STATUS_TEXT[o.status](o.eta_minutes);
+        if (o === null) return '';
+        const byRaw = STATUS_TEXT_BY_RAW[o.raw_status];
+        return byRaw ? byRaw(o.eta_minutes) : STATUS_TEXT[o.status](o.eta_minutes);
     });
 
     const showPaymentButton = computed(() => {
         if (processing()) return false;
         const o = order();
-        return o !== null && o.status === 'awaiting_payment' && o.payment_url !== undefined;
+        if (o === null) return false;
+        if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
+        return o.status === 'awaiting_payment' || o.status === 'created';
     });
 
     const showCancelButton = computed(() => {
         if (processing()) return false;
         const o = order();
-        return o !== null && CANCELLABLE_STATUSES.has(o.status);
+        if (o === null) return false;
+        if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
+        return CANCELLABLE_STATUSES.has(o.status);
     });
 
     let tracker: OrderTracker | null = null;
@@ -337,13 +366,17 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
         // В совместном заказе по одному WS-каналу прилетают события оплаты
         // всех участников. Чужую ссылку на оплату отбрасываем: на экране
-        // должна оставаться только своя доля счёта.
+        // должна оставаться только своя доля счёта. Долю события сопоставляем
+        // по split_id со списком долей заказа, где у каждой есть user_public_id.
+        const eventSplit =
+            event.split_id !== undefined && event.split_id !== ''
+                ? current.splits.find((s) => s.split_id === event.split_id)
+                : undefined;
         const foreignPayment =
             event.payment_url !== undefined &&
-            event.user_id !== undefined &&
-            event.user_id !== 0 &&
+            eventSplit !== undefined &&
             myId() !== null &&
-            event.user_id !== myId();
+            eventSplit.user_public_id !== myId();
         const scoped: GatewayWsEvent = foreignPayment ? { ...event, payment_url: undefined } : event;
 
         if (scoped.payment_url !== undefined) {
@@ -354,7 +387,17 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (PAYMENT_SETTLED_RAW_STATUSES.has(next.raw_status)) {
             endPaymentProcessing();
         }
+        // payment_ready без ссылки на оплату означает, что платёж не создался
+        // (например, карту отклонил банк). Снимаем "обрабатываем" сразу, чтобы
+        // не держать пользователя на спиннере до 60-секундного таймаута.
+        if (next.raw_status === 'payment_ready' && next.payment_url === undefined) {
+            endPaymentProcessing();
+        }
         order.set(next);
+
+        if (processing() && next.payment_url !== undefined) {
+            window.location.replace(next.payment_url);
+        }
     };
 
     // Запускает оплату своей доли счёта: бэкенд создаёт по ней платёж, а
@@ -423,9 +466,13 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const handlePay = () => {
         const current = order();
-        if (current === null || current.payment_url === undefined) return;
-        beginPaymentProcessing();
-        window.open(current.payment_url, '_blank', 'noopener');
+        if (current === null) return;
+        if (current.payment_url !== undefined) {
+            beginPaymentProcessing();
+            window.location.replace(current.payment_url);
+        } else {
+            beginPaymentProcessing();
+        }
     };
 
     // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
@@ -581,7 +628,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                         () => splits().find((s) => s.split_id === splitId) ?? split,
                                     );
                                     const isMine = computed(
-                                        () => myId() !== null && liveSplit().user_id === myId(),
+                                        () => myId() !== null && liveSplit().user_public_id === myId(),
                                     );
                                     const waiting = computed(() => splitWaiting() === splitId);
                                     // Платить можно любую неоплаченную долю: и свою, и чужую.
@@ -685,6 +732,21 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 {() => formatRubles(order()?.delivery_cost ?? 0)}₽
                             </div>
                         </div>
+
+                        <Show when={() => (order()?.discount_amount ?? 0) > 0}>
+                            <div class="order-status-modal__fee-row order-status-modal__fee-row_discount">
+                                <div class="order-status-modal__fee-label">
+                                    {() =>
+                                        order()?.applied_promocode
+                                            ? `Промокод ${order()?.applied_promocode}:`
+                                            : 'Скидка по промокоду:'
+                                    }
+                                </div>
+                                <div class="order-status-modal__fee-value">
+                                    {() => `−${formatRubles(order()?.discount_amount ?? 0)}₽`}
+                                </div>
+                            </div>
+                        </Show>
                     </div>
                 </div>
             </Show>

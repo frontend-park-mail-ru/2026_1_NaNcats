@@ -8,7 +8,14 @@ import './cartWidget.scss';
 import { cartStore, fromMicros, type CartItem, type CartMember } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { clearCart } from '@features/cart/clear-cart';
+import {
+    applyPromo,
+    removeAppliedPromo,
+    appliedCodeAccessor,
+    promoReasonToMessage,
+} from '@features/profile/manage-promos';
 import { router } from '@app/router';
+import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';
 import { computed, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
@@ -21,6 +28,8 @@ const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/food
 export interface CartWidgetProps {
     /** Колбэк после перехода к оформлению (например, чтобы закрыть боковую панель). */
     onCheckout?: () => void;
+    /** Колбэк закрытия корзины. */
+    onClose?: () => void;
 }
 
 /** Цена одной позиции в рублях, без дробной части. */
@@ -30,22 +39,27 @@ function formatItemPriceRub(item: CartItem) {
 
 /**
  * Человекочитаемая метка участника корзины относительно текущего пользователя.
- * Имён бэкенд не отдаёт, поэтому участник опознаётся по роли и числовому id.
+ * Участник опознаётся по публичному id (UUID), подпись — по имени и роли.
  */
-function memberLabel(member: CartMember, currentUserId: number | null, adminId: number | null): string {
-    if (currentUserId !== null && member.user_id === currentUserId) {
-        return member.user_id === adminId ? 'Вы (организатор)' : 'Вы';
+function memberLabel(member: CartMember, currentUserId: string | null, adminId: string | null): string {
+    if (currentUserId !== null && member.public_id === currentUserId) {
+        return member.public_id === adminId ? 'Вы (организатор)' : 'Вы';
     }
-    if (member.user_id === adminId) return 'Организатор';
-    return `Участник #${member.user_id}`;
+    if (member.public_id === adminId) return 'Организатор';
+    return member.name;
 }
 
 /** Метка владельца позиции для бейджа в строке товара. */
-function ownerLabel(ownerId: number | null | undefined, currentUserId: number | null, adminId: number | null): string {
-    if (ownerId === null || ownerId === undefined) return 'Ничьё';
-    if (currentUserId !== null && ownerId === currentUserId) return 'Ваше';
-    if (ownerId === adminId) return 'Организатор';
-    return `Участник #${ownerId}`;
+function ownerLabel(
+    ownerPublicId: string | null | undefined,
+    ownerName: string | null | undefined,
+    currentUserId: string | null,
+    adminId: string | null,
+): string {
+    if (!ownerPublicId) return 'Ничьё';
+    if (currentUserId !== null && ownerPublicId === currentUserId) return 'Ваше';
+    if (ownerPublicId === adminId) return 'Организатор';
+    return ownerName && ownerName.length > 0 ? ownerName : 'Участник';
 }
 
 /**
@@ -90,8 +104,14 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     // Поле ввода кода неконтролируемое: значение читаем и чистим через ref,
     // потому что проп value у этого VDOM прокидывается через setAttribute.
     let joinInputEl: HTMLInputElement | null = null;
+    let promoInputEl: HTMLInputElement | null = null;
+    const promoInput = signal<string>('');
+    const promoOpen = signal<boolean>(false);
+    const promoError = signal<string>('');
 
-    const currentUserId = computed<number | null>(() => user()?.id ?? null);
+    const cartRestaurantId = useStoreSignal(cartStore, (s) => s.restaurantId);
+    const cartTotalCost = useStoreSignal(cartStore, (s) => s.totalCost);
+    const currentUserId = computed<string | null>(() => user()?.public_id ?? null);
     const hasItems = computed(() => items().length > 0);
     const isShared = computed(() => mode() === 'shared');
     const isAdmin = computed(() => {
@@ -185,7 +205,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
             return;
         }
         try {
-            await cartStore.kickMember(member.user_id);
+            await cartStore.kickMember(member.public_id);
         } catch (err) {
             console.error('[CartWidget] kickMember failed:', err);
             await Popup.alert('Не удалось удалить участника.');
@@ -221,7 +241,12 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             Очистить
                         </button>
                     </Show>
-                    <button type="button" class="cart-close-btn js-close-panels" aria-label="Закрыть корзину">
+                    <button
+                        type="button"
+                        class="cart-close-btn js-close-panels"
+                        aria-label="Закрыть корзину"
+                        onClick={() => props.onClose?.()}
+                    >
                         ×
                     </button>
                 </div>
@@ -233,14 +258,14 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                         <span class="cart-shared__label">{() => `Участники · ${members().length}`}</span>
                     </div>
                     <div class="cart-members">
-                        <For each={members} key={(m) => m.user_id}>
+                        <For each={members} key={(m) => m.public_id}>
                             {(m) => (
                                 <div class="cart-member">
                                     <span class="cart-member__dot" />
                                     <span class="cart-member__name">
                                         {() => memberLabel(m, currentUserId(), adminId())}
                                     </span>
-                                    <Show when={() => isAdmin() && m.user_id !== adminId()}>
+                                    <Show when={() => isAdmin() && m.public_id !== adminId()}>
                                         <button
                                             type="button"
                                             class="cart-member__kick"
@@ -340,33 +365,35 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For
-                        each={items}
-                        key={(item) => `${item.dish_id}:${item.owner_user_id ?? 0}`}
-                    >
+                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}>
                         {(item) => {
                             const dishId = item.dish_id;
                             // Позицию ищем по паре dish_id + владелец: у блюда в
                             // совместной корзине бывает по строке на участника.
-                            const ownerKey = item.owner_user_id ?? 0;
+                            const ownerKey = item.owner_public_id ?? '';
                             // For не перевызывает children при изменении полей позиции,
                             // поэтому актуальную позицию читаем из сигнала items на каждом
                             // тике; если позиция исчезла, держим последний снимок до размонтирования.
                             const currentItem = computed<CartItem>(
                                 () =>
                                     items().find(
-                                        (it) => it.dish_id === dishId && (it.owner_user_id ?? 0) === ownerKey,
+                                        (it) => it.dish_id === dishId && (it.owner_public_id ?? '') === ownerKey,
                                     ) ?? item,
                             );
                             const quantity = computed(() => currentItem().quantity);
                             const priceRub = computed(() => formatItemPriceRub(currentItem()));
                             const ownerText = computed(() =>
-                                ownerLabel(currentItem().owner_user_id, currentUserId(), adminId()),
+                                ownerLabel(
+                                    currentItem().owner_public_id,
+                                    currentItem().owner_name,
+                                    currentUserId(),
+                                    adminId(),
+                                ),
                             );
                             // Гость правит только свои позиции, в соло-корзине ограничений нет.
                             const canModify = computed(() => {
                                 if (!isShared()) return true;
-                                return currentItem().owner_user_id === currentUserId();
+                                return currentItem().owner_public_id === currentUserId();
                             });
                             return (
                                 <div class="cart-item">
@@ -382,7 +409,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                         <Show when={isShared}>
                                             <div
                                                 class={() =>
-                                                    currentItem().owner_user_id == null
+                                                    currentItem().owner_public_id == null
                                                         ? 'cart-item__owner cart-item__owner_none'
                                                         : 'cart-item__owner'
                                                 }
@@ -393,7 +420,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                     </div>
                                     <div class="cart-item__counter">
                                         <Show
-                                            when={() => isShared() && currentItem().owner_user_id == null}
+                                            when={() => isShared() && currentItem().owner_public_id == null}
                                             fallback={
                                                 <>
                                                     <button
@@ -440,6 +467,92 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             );
                         }}
                     </For>
+                </div>
+
+                <div class="cart-promo">
+                    <Show
+                        when={() => appliedCodeAccessor() !== ''}
+                        fallback={
+                            <Show
+                                when={promoOpen}
+                                fallback={
+                                    <button
+                                        type="button"
+                                        class="cart-promo__toggle"
+                                        onClick={() => promoOpen.set(true)}
+                                    >
+                                        🏷️ Ввести промокод
+                                    </button>
+                                }
+                            >
+                                <>
+                                    <div class="cart-promo__row">
+                                        <input
+                                            type="text"
+                                            class="cart-promo__input"
+                                            placeholder="Промокод"
+                                            autocomplete="off"
+                                            ref={(el: Element | null) => {
+                                                promoInputEl = el as HTMLInputElement | null;
+                                            }}
+                                            onInput={(e: Event) => {
+                                                promoInput.set((e.target as HTMLInputElement).value);
+                                                promoError.set('');
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            class="cart-promo__submit"
+                                            disabled={() => promoInput().trim() === ''}
+                                            onClick={async () => {
+                                                const code = promoInput.peek().trim();
+                                                if (!code) return;
+                                                promoError.set('');
+                                                try {
+                                                    const resp = await httpClient.post('/promos/validate', {
+                                                        code: code.toUpperCase(),
+                                                        restaurant_brand_id: cartRestaurantId() ?? 0,
+                                                        order_amount: cartTotalCost() ?? 0,
+                                                        delivery_cost: 0,
+                                                        service_fee: 0,
+                                                    });
+                                                    if (!resp.ok) {
+                                                        promoError.set('Промокод не найден');
+                                                        return;
+                                                    }
+                                                    const data = await resp.json();
+                                                    if (!data.valid) {
+                                                        promoError.set(promoReasonToMessage(data.reason ?? ''));
+                                                        return;
+                                                    }
+                                                    applyPromo(code);
+                                                    promoInput.set('');
+                                                    if (promoInputEl) promoInputEl.value = '';
+                                                    promoOpen.set(false);
+                                                } catch {
+                                                    promoError.set('Ошибка проверки промокода');
+                                                }
+                                            }}
+                                        >
+                                            Применить
+                                        </button>
+                                    </div>
+                                    <Show when={() => promoError() !== ''}>
+                                        <div class="error-msg" style="margin-top: 6px; font-size: 12px;">
+                                            {promoError}
+                                        </div>
+                                    </Show>
+                                </>
+                            </Show>
+                        }
+                    >
+                        <div class="cart-promo__applied">
+                            <span class="cart-promo__badge">🏷️ {appliedCodeAccessor}</span>
+                            <button type="button" class="cart-promo__remove" onClick={() => removeAppliedPromo()}>
+                                ✕
+                            </button>
+                        </div>
+                    </Show>
                 </div>
 
                 <div class="cart-footer">

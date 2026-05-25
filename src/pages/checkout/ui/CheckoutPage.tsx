@@ -17,6 +17,17 @@ import { OrderStatusModal, type OrderStatusModalController } from '@widgets/orde
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
+import {
+    applyPromo,
+    removeAppliedPromo,
+    appliedCodeAccessor,
+    loadPromos,
+    promoReasonToMessage,
+    promosAccessor,
+    ensureLoaded as ensurePromosLoaded,
+    type Promo,
+} from '@features/profile/manage-promos';
+import { httpClient } from '@shared/api/http/HttpClient';
 
 /** Фиксированный сбор за доставку (рубли). */
 const DELIVERY_FEE_RUB = 360;
@@ -104,8 +115,10 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     // Пустая строка значит "ошибки нет".
     const errorSig = signal<string>('');
     const payProcessingSig = signal<boolean>(false);
+    const promoInputSig = signal<string>('');
+    const promoErrorSig = signal<string>('');
+    let promoInputEl: HTMLInputElement | null = null;
 
-    const cartOpenSig = signal<boolean>(false);
     const addressOpenSig = signal<boolean>(false);
     const paymentOpenSig = signal<boolean>(false);
 
@@ -117,14 +130,59 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     let pickerCtl: AddressPickerController | null = null;
     let orderStatusCtl: OrderStatusModalController | null = null;
 
+    /** Скидка промокода в рублях (заполняется через API validate). */
+    const promoDiscount = signal<number>(0);
+
+    /** Запрашивает скидку у бэкенда при наличии промокода. */
+    const refreshPromoDiscount = async () => {
+        const code = appliedCodeAccessor();
+        if (!code) {
+            promoDiscount.set(0);
+            return;
+        }
+        try {
+            const resp = await httpClient.post('/promos/validate', {
+                code,
+                restaurant_brand_id: props.restaurantId ?? 0,
+                order_amount: toMicros(itemsTotalRub(itemsSig())),
+                delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                service_fee: toMicros(SERVICE_FEE_RUB),
+            });
+            if (!resp.ok) {
+                // Промокод не прошёл проверку — снимаем и сообщаем пользователю.
+                removeAppliedPromo();
+                promoDiscount.set(0);
+                promoErrorSig.set('Промокод недействителен');
+                return;
+            }
+            const data = await resp.json();
+            if (data.valid) {
+                promoDiscount.set(Math.round(data.discount / 1_000_000));
+            } else {
+                removeAppliedPromo();
+                promoDiscount.set(0);
+                promoErrorSig.set(promoReasonToMessage(data.reason ?? ''));
+            }
+        } catch {
+            promoDiscount.set(0);
+        }
+    };
+
+    // Запросить скидку при загрузке.
+    void refreshPromoDiscount();
+    // Подтянуть промокоды пользователя для секции «Ваши промокоды».
+    void ensurePromosLoaded();
+
     /** Форматированные итоговые суммы по текущим позициям. */
     const computeTotals = () => {
         const cartTotal = itemsTotalRub(itemsSig());
-        const grand = cartTotal > 0 ? cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB : 0;
+        const discount = promoDiscount();
+        const grand = cartTotal > 0 ? Math.max(0, cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB - discount) : 0;
         return {
             cartItemsTotal: cartTotal.toFixed(2),
             deliveryFee: DELIVERY_FEE_RUB.toFixed(2),
             serviceFee: SERVICE_FEE_RUB.toFixed(2),
+            discount,
             grandTotal: grand.toFixed(2),
             hasItems: cartTotal > 0,
         };
@@ -161,7 +219,15 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     // Гарантирует, что у всех позиций корзины назначен владелец-плательщик; null если не получилось.
     const ensureAssignedItems = async () => {
         const cart = cartStore.getState();
-        const unassignedItems = cart.items.filter((item) => item.owner_user_id == null);
+
+        // В solo-корзине владелец каждой позиции — сам пользователь, назначать
+        // некого. Ничейные позиции возможны только в shared-корзине (например,
+        // блюда, оставшиеся после кика гостя), поэтому проверку делаем лишь там.
+        if (cart.mode !== 'shared') {
+            return cart.items;
+        }
+
+        const unassignedItems = cart.items.filter((item) => item.owner_public_id == null);
 
         if (!unassignedItems.length) {
             return cart.items;
@@ -170,13 +236,13 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         // Переназначить ничейные позиции (например, оставшиеся после кика
         // гостя) на себя может только организатор корзины.
         const me = userStore.getState().user;
-        const isAdmin = me !== null && cart.adminId !== null && me.id === cart.adminId;
+        const isAdmin = me !== null && cart.adminId !== null && me.public_id === cart.adminId;
 
         if (isAdmin && cart.cartId && cart.adminId !== null) {
             try {
                 await Promise.all(
                     unassignedItems.map((item) =>
-                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as number),
+                        cartApi.reassignOwner(cart.cartId as string, item.dish_id, cart.adminId as string),
                     ),
                 );
 
@@ -184,7 +250,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 const freshCart = cartStore.getState();
                 itemsSig.set(freshCart.items);
 
-                if (freshCart.items.some((item) => item.owner_user_id == null)) {
+                if (freshCart.items.some((item) => item.owner_public_id == null)) {
                     errorSig.set('В корзине остались позиции без владельца. Проверьте корзину.');
                     return null;
                 }
@@ -207,7 +273,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         // блокирует корзину от имени админа, гостю запрос вернёт 403.
         const cartState = cartStore.getState();
         const me = userStore.getState().user;
-        if (cartState.mode === 'shared' && (me === null || me.id !== cartState.adminId)) {
+        if (cartState.mode === 'shared' && (me === null || me.public_id !== cartState.adminId)) {
             errorSig.set('Оформить заказ может только организатор совместной корзины.');
             return;
         }
@@ -228,7 +294,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
         const cartTotal = itemsTotalRub(assignedItems);
         if (cartTotal <= 0) return;
 
-        const grand = cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB;
+        const grand = Math.max(0, cartTotal + DELIVERY_FEE_RUB + SERVICE_FEE_RUB - promoDiscount());
 
         payProcessingSig.set(true);
 
@@ -250,10 +316,12 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     service_fee: toMicros(SERVICE_FEE_RUB),
                     total_cost: toMicros(grand),
                     pay_for_all: payForAll,
+                    promocode: appliedCodeAccessor() || undefined,
                 },
                 idempotencyKey,
             );
 
+            const appliedCodeForOrder = appliedCodeAccessor();
             const orderSnapshot: Order = {
                 order_id: result.order_id,
                 status: 'created',
@@ -271,9 +339,19 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 })),
                 service_fee: toMicros(SERVICE_FEE_RUB),
                 delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                // Без этих полей бейдж «Промокод X · −Y₽» не появляется в
+                // только что открытой модалке статуса; данные подтягиваются позже
+                // из списка заказов, но не сразу — отсюда мигание скидки.
+                applied_promocode: appliedCodeForOrder || undefined,
+                discount_amount: toMicros(promoDiscount()),
             };
 
             await cartStore.clear();
+
+            if (appliedCodeAccessor()) {
+                removeAppliedPromo();
+                void loadPromos();
+            }
 
             // В snapshot нет долей счёта, а для совместного заказа модалке
             // нужна секция «Разделение счёта» с кнопкой оплаты. Подтягиваем
@@ -292,11 +370,13 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 orderStatusCtl.open(modalOrder, {
                     subscribe: true,
                     onClose: () => {
-                        void router.go(ROUTES.home);
+                        // replace, а не go: страница оформления уходит из
+                        // history, кнопка «назад» не вернёт на checkout.
+                        void router.replace(ROUTES.profile);
                     },
                 });
             } else {
-                void router.go(ROUTES.profile);
+                void router.replace(ROUTES.profile);
             }
         } catch (e) {
             const msg = e instanceof ApiError ? e.message : 'Ошибка соединения с сервером';
@@ -310,187 +390,356 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             {/* Свой хедер не рендерим: глобальный Header из RootLayout уже
                 показывает логотип и кнопку «Назад» (mode='back'). */}
 
-            <div class="checkout-content">
-                <main class="checkout-main">
-                    <h1 class="checkout-title">Оформление заказа</h1>
+            <div class="checkout-wrapper">
+                <h1 class="checkout-title">Оформление заказа</h1>
 
-                    <div class="checkout-card">
-                        <div class="checkout-card__header">
-                            <h2 class="checkout-card__title">Условия доставки</h2>
-                        </div>
-                        <Show
-                            when={() => selectedAddressSig() !== null}
-                            fallback={
-                                <div class="checkout-warning">
-                                    ⚠️ Необходимо добавить или выбрать адрес доставки
+                <div class="checkout-content">
+                    <main class="checkout-main">
+                        <div class="checkout-card">
+                            <div class="checkout-card__header">
+                                <h2 class="checkout-card__title">Адрес доставки</h2>
+                            </div>
+                            <Show
+                                when={() => selectedAddressSig() !== null}
+                                fallback={
+                                    <div class="checkout-warning">
+                                        ⚠️ Необходимо добавить или выбрать адрес доставки
+                                        <button
+                                            class="button button_primary mt-10"
+                                            style="height: 40px; width: 200px;"
+                                            onClick={() => addressOpenSig.set(true)}
+                                        >
+                                            Выбрать адрес
+                                        </button>
+                                    </div>
+                                }
+                            >
+                                <div class="address-display">
+                                    <div class="address-display__icon">🏠</div>
+                                    <div class="address-display__text">
+                                        {() => {
+                                            const a = selectedAddressSig();
+                                            if (!a) return '';
+                                            const base = a.location.address_text;
+                                            return a.apartment ? `${base}, кв. ${a.apartment}` : base;
+                                        }}
+                                    </div>
                                     <button
-                                        class="button button_primary mt-10"
-                                        style="height: 40px; width: 200px;"
+                                        class="button button_ghost"
+                                        style="height: 30px; margin: 0; padding: 0 10px;"
                                         onClick={() => addressOpenSig.set(true)}
                                     >
-                                        Выбрать адрес
+                                        Изменить
                                     </button>
                                 </div>
-                            }
-                        >
-                            <div class="address-display">
-                                <div class="address-display__icon">🏠</div>
-                                <div class="address-display__text">
+                            </Show>
+                        </div>
+
+                        <div class="checkout-card mt-20">
+                            <h2 class="checkout-card__title">Время доставки</h2>
+                            <div class="time-display">⏱️ 45-55 минут</div>
+                        </div>
+
+                        {(() => {
+                            const canScrollDown = signal(false);
+                            // Скролл-контейнер держим через ref, без завязки на глобальный id.
+                            let scrollEl: HTMLElement | null = null;
+                            const updateHint = () => {
+                                if (!scrollEl) return;
+                                canScrollDown.set(
+                                    scrollEl.scrollTop + scrollEl.clientHeight < scrollEl.scrollHeight - 1,
+                                );
+                            };
+                            return (
+                                <div class="checkout-card mt-20 checkout-card_items">
+                                    <h2 class="checkout-card__title">Состав заказа</h2>
+                                    <div
+                                        class="checkout-items-list"
+                                        ref={(el: Element | null) => {
+                                            scrollEl = el as HTMLElement | null;
+                                            if (scrollEl) {
+                                                scrollEl.addEventListener('scroll', updateHint);
+                                                requestAnimationFrame(updateHint);
+                                            }
+                                        }}
+                                    >
+                                        <For each={itemsSig} key={(i) => `${i.dish_id}:${i.owner_public_id ?? ''}`}>
+                                            {(item) => (
+                                                <div class="checkout-item-row">
+                                                    <img
+                                                        class="checkout-item-row__img"
+                                                        src={item.image_url}
+                                                        onError={imageFallback(
+                                                            'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
+                                                        )}
+                                                    />
+                                                    <div class="checkout-item-row__info">
+                                                        <div class="checkout-item-row__name">{item.name}</div>
+                                                        <div class="checkout-item-row__qty">
+                                                            {`${item.quantity} шт. × ${fromMicros(item.price).toFixed(0)} ₽`}
+                                                        </div>
+                                                    </div>
+                                                    <div class="checkout-item-row__total">
+                                                        {`${(fromMicros(item.price) * item.quantity).toFixed(0)} ₽`}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </For>
+                                    </div>
+                                    <Show when={canScrollDown}>
+                                        <div
+                                            class="checkout-items-scroll-hint"
+                                            onClick={() => {
+                                                if (scrollEl) scrollEl.scrollBy({ top: 80, behavior: 'smooth' });
+                                            }}
+                                        >
+                                            ▼
+                                        </div>
+                                    </Show>
+                                </div>
+                            );
+                        })()}
+
+                        <Show when={isSharedCartSig}>
+                            <div class="checkout-card mt-20">
+                                <h2 class="checkout-card__title">Кто оплачивает</h2>
+                                <div class="selection-list mt-10">
+                                    <div
+                                        class={() =>
+                                            payForAllSig() ? 'selection-item selection-item_active' : 'selection-item'
+                                        }
+                                        onClick={() => payForAllSig.set(true)}
+                                    >
+                                        <div style="font-weight: 600;">💰 Я оплачу весь заказ</div>
+                                        <div style="font-size: 12px; color: #777;">
+                                            Полная сумма спишется с вашей карты.
+                                        </div>
+                                    </div>
+                                    <div
+                                        class={() =>
+                                            payForAllSig() ? 'selection-item' : 'selection-item selection-item_active'
+                                        }
+                                        onClick={() => payForAllSig.set(false)}
+                                    >
+                                        <div style="font-weight: 600;">🧾 Каждый платит за свои блюда</div>
+                                        <div style="font-size: 12px; color: #777;">
+                                            Счёт разделится по участникам, каждый оплатит свою часть в истории заказов.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Show>
+                    </main>
+
+                    <aside class="checkout-sidebar">
+                        <div class="checkout-card">
+                            <div class="checkout-card__header">
+                                <h2 class="checkout-card__title">Способ оплаты</h2>
+                            </div>
+                            <div class="payment-display">
+                                <div class="payment-display__icon">💳</div>
+                                <div class="payment-display__text">
                                     {() => {
-                                        const a = selectedAddressSig();
-                                        if (!a) return '';
-                                        const base = a.location.address_text;
-                                        return a.apartment ? `${base}, кв. ${a.apartment}` : base;
+                                        const c = selectedCardSig();
+                                        return c ? `**${c.last4}` : 'Стандартная оплата (новая карта)';
                                     }}
                                 </div>
                                 <button
                                     class="button button_ghost"
                                     style="height: 30px; margin: 0; padding: 0 10px;"
-                                    onClick={() => addressOpenSig.set(true)}
+                                    onClick={() => paymentOpenSig.set(true)}
                                 >
                                     Изменить
                                 </button>
                             </div>
-                        </Show>
-                    </div>
-
-                    <div class="checkout-card mt-20">
-                        <h2 class="checkout-card__title">Время доставки</h2>
-                        <div class="time-display">⏱️ 45-55 минут</div>
-                        <button
-                            class="button button_secondary mt-20"
-                            style="width: 100%;"
-                            onClick={() => cartOpenSig.set(true)}
-                        >
-                            Посмотреть состав заказа
-                        </button>
-                    </div>
-                </main>
-
-                <aside class="checkout-sidebar">
-                    <div class="checkout-card">
-                        <div class="checkout-card__header">
-                            <h2 class="checkout-card__title">Способ оплаты</h2>
                         </div>
-                        <div class="payment-display">
-                            <div class="payment-display__icon">💳</div>
-                            <div class="payment-display__text">
-                                {() => {
-                                    const c = selectedCardSig();
-                                    return c ? `**${c.last4}` : 'Стандартная оплата (новая карта)';
-                                }}
-                            </div>
-                            <button
-                                class="button button_ghost"
-                                style="height: 30px; margin: 0; padding: 0 10px;"
-                                onClick={() => paymentOpenSig.set(true)}
-                            >
-                                Изменить
-                            </button>
-                        </div>
-                    </div>
 
-                    <Show when={isSharedCartSig}>
                         <div class="checkout-card mt-20">
-                            <h2 class="checkout-card__title">Кто оплачивает</h2>
-                            <div class="selection-list mt-10">
-                                <div
-                                    class={() =>
-                                        payForAllSig() ? 'selection-item selection-item_active' : 'selection-item'
-                                    }
-                                    onClick={() => payForAllSig.set(true)}
-                                >
-                                    <div style="font-weight: 600;">💰 Я оплачу весь заказ</div>
-                                    <div style="font-size: 12px; color: #777;">
-                                        Полная сумма спишется с вашей карты.
+                            <h2 class="checkout-card__title">Промокод</h2>
+                            <Show
+                                when={() => appliedCodeAccessor() !== ''}
+                                fallback={
+                                    <>
+                                        <div class="checkout-promo__row">
+                                            <input
+                                                type="text"
+                                                class="checkout-promo__input"
+                                                placeholder="Введите промокод"
+                                                autocomplete="off"
+                                                ref={(el: Element | null) => {
+                                                    promoInputEl = el as HTMLInputElement | null;
+                                                }}
+                                                onInput={(e: Event) => {
+                                                    promoInputSig.set((e.target as HTMLInputElement).value);
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                class="checkout-promo__btn"
+                                                disabled={() => promoInputSig().trim() === ''}
+                                                onClick={async () => {
+                                                    const code = promoInputSig.peek().trim();
+                                                    if (!code) return;
+                                                    promoErrorSig.set('');
+                                                    try {
+                                                        const resp = await httpClient.post('/promos/validate', {
+                                                            code: code.toUpperCase(),
+                                                            restaurant_brand_id: props.restaurantId ?? 0,
+                                                            order_amount: toMicros(itemsTotalRub(itemsSig())),
+                                                            delivery_cost: toMicros(DELIVERY_FEE_RUB),
+                                                            service_fee: toMicros(SERVICE_FEE_RUB),
+                                                        });
+                                                        if (!resp.ok) {
+                                                            promoErrorSig.set('Промокод не найден');
+                                                            return;
+                                                        }
+                                                        const data = await resp.json();
+                                                        if (!data.valid) {
+                                                            promoErrorSig.set(promoReasonToMessage(data.reason ?? ''));
+                                                            return;
+                                                        }
+                                                        applyPromo(code);
+                                                        promoInputSig.set('');
+                                                        if (promoInputEl) promoInputEl.value = '';
+                                                        promoDiscount.set(Math.round(data.discount / 1_000_000));
+                                                    } catch {
+                                                        promoErrorSig.set('Ошибка проверки промокода');
+                                                    }
+                                                }}
+                                            >
+                                                Применить
+                                            </button>
+                                        </div>
+                                        <Show when={() => promoErrorSig() !== ''}>
+                                            <div class="error-msg" style="margin-top: 6px; font-size: 12px;">
+                                                {promoErrorSig}
+                                            </div>
+                                        </Show>
+
+                                        {/* Чипы из профиля: клик автозаполняет input и сразу применяет промокод. */}
+                                        <Show when={() => promosAccessor().length > 0}>
+                                            <div class="checkout-promo__suggestions">
+                                                <div class="checkout-promo__suggestions-label">Ваши промокоды:</div>
+                                                <div class="checkout-promo__suggestions-list">
+                                                    <For each={promosAccessor} key={(p: Promo) => p.id}>
+                                                        {(p: Promo) => (
+                                                            <button
+                                                                type="button"
+                                                                class="checkout-promo__chip"
+                                                                title={p.title}
+                                                                onClick={async () => {
+                                                                    promoErrorSig.set('');
+                                                                    promoInputSig.set(p.code);
+                                                                    if (promoInputEl) promoInputEl.value = p.code;
+                                                                    try {
+                                                                        const resp = await httpClient.post(
+                                                                            '/promos/validate',
+                                                                            {
+                                                                                code: p.code,
+                                                                                restaurant_brand_id:
+                                                                                    props.restaurantId ?? 0,
+                                                                                order_amount: toMicros(
+                                                                                    itemsTotalRub(itemsSig()),
+                                                                                ),
+                                                                                delivery_cost:
+                                                                                    toMicros(DELIVERY_FEE_RUB),
+                                                                                service_fee: toMicros(SERVICE_FEE_RUB),
+                                                                            },
+                                                                        );
+                                                                        if (!resp.ok) {
+                                                                            promoErrorSig.set('Промокод не найден');
+                                                                            return;
+                                                                        }
+                                                                        const data = await resp.json();
+                                                                        if (!data.valid) {
+                                                                            promoErrorSig.set(
+                                                                                promoReasonToMessage(data.reason ?? ''),
+                                                                            );
+                                                                            return;
+                                                                        }
+                                                                        applyPromo(p.code);
+                                                                        promoInputSig.set('');
+                                                                        if (promoInputEl) promoInputEl.value = '';
+                                                                        promoDiscount.set(
+                                                                            Math.round(data.discount / 1_000_000),
+                                                                        );
+                                                                    } catch {
+                                                                        promoErrorSig.set('Ошибка проверки промокода');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {p.code}
+                                                            </button>
+                                                        )}
+                                                    </For>
+                                                </div>
+                                            </div>
+                                        </Show>
+                                    </>
+                                }
+                            >
+                                <div class="checkout-promo__applied">
+                                    <span class="checkout-promo__badge">🏷️ {appliedCodeAccessor}</span>
+                                    <div class="checkout-promo__actions">
+                                        <button
+                                            type="button"
+                                            class="button button_ghost"
+                                            style="height: 30px; margin: 0; padding: 0 10px; font-size: 12px;"
+                                            onClick={() => {
+                                                removeAppliedPromo();
+                                                promoDiscount.set(0);
+                                            }}
+                                        >
+                                            Удалить
+                                        </button>
                                     </div>
                                 </div>
-                                <div
-                                    class={() =>
-                                        payForAllSig() ? 'selection-item' : 'selection-item selection-item_active'
-                                    }
-                                    onClick={() => payForAllSig.set(false)}
-                                >
-                                    <div style="font-weight: 600;">🧾 Каждый платит за свои блюда</div>
-                                    <div style="font-size: 12px; color: #777;">
-                                        Счёт разделится по участникам, каждый оплатит свою часть в истории заказов.
-                                    </div>
+                            </Show>
+                        </div>
+
+                        <div class="checkout-card mt-20">
+                            <h2 class="checkout-card__title">Что в цене</h2>
+                            <div class="summary-row">
+                                <span>Товары в заказе</span>
+                                <span>{() => `${computeTotals().cartItemsTotal} ₽`}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Доставка</span>
+                                <span>{() => `${computeTotals().deliveryFee} ₽`}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span>Сервисный сбор</span>
+                                <span>{() => `${computeTotals().serviceFee} ₽`}</span>
+                            </div>
+                            <Show when={() => computeTotals().discount > 0}>
+                                <div class="summary-row summary-row_discount">
+                                    <span>Скидка по промокоду</span>
+                                    <span>{() => `−${computeTotals().discount.toFixed(2)} ₽`}</span>
                                 </div>
+                            </Show>
+
+                            <div class="checkout-total-row mt-20">
+                                <button
+                                    class="button button_primary"
+                                    style="width: auto; padding: 0 40px; margin: 0;"
+                                    disabled={() => {
+                                        if (payProcessingSig()) return true;
+                                        if (selectedAddressSig() === null) return true;
+                                        return !computeTotals().hasItems;
+                                    }}
+                                    onClick={() => {
+                                        void handlePayClick();
+                                    }}
+                                >
+                                    {() => (payProcessingSig() ? 'Оформляем...' : 'Оплатить')}
+                                </button>
+                                <div class="checkout-total-price">{() => `${computeTotals().grandTotal} ₽`}</div>
+                            </div>
+                            <div class="error-msg" style="text-align: right; margin-top: 5px;">
+                                {errorSig}
                             </div>
                         </div>
-                    </Show>
-
-                    <div class="checkout-card mt-20">
-                        <h2 class="checkout-card__title">Что в цене</h2>
-                        <div class="summary-row">
-                            <span>Товары в заказе</span>
-                            <span>{() => `${computeTotals().cartItemsTotal} ₽`}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Доставка</span>
-                            <span>{() => `${computeTotals().deliveryFee} ₽`}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span>Сервисный сбор</span>
-                            <span>{() => `${computeTotals().serviceFee} ₽`}</span>
-                        </div>
-
-                        <div class="checkout-total-row mt-20">
-                            <button
-                                class="button button_primary"
-                                style="width: auto; padding: 0 40px; margin: 0;"
-                                disabled={() => {
-                                    if (payProcessingSig()) return true;
-                                    if (selectedAddressSig() === null) return true;
-                                    return !computeTotals().hasItems;
-                                }}
-                                onClick={() => {
-                                    void handlePayClick();
-                                }}
-                            >
-                                {() => (payProcessingSig() ? 'Оформляем...' : 'Оплатить')}
-                            </button>
-                            <div class="checkout-total-price">{() => `${computeTotals().grandTotal} ₽`}</div>
-                        </div>
-                        <div class="error-msg" style="text-align: right; margin-top: 5px;">
-                            {errorSig}
-                        </div>
-                    </div>
-                </aside>
-            </div>
-
-            <div class={overlayClass('modal-overlay', cartOpenSig)}>
-                <div class="checkout-modal">
-                    <div class="checkout-modal__close" onClick={() => cartOpenSig.set(false)}>
-                        &times;
-                    </div>
-                    <h2 class="checkout-modal__title">Состав заказа</h2>
-                    <div class="checkout-modal__content" style="max-height: 400px; overflow-y: auto;">
-                        <Show when={() => itemsSig().length > 0} fallback={<p>Корзина пуста</p>}>
-                            <For each={itemsSig} key={(i) => `${i.dish_id}:${i.owner_user_id ?? 0}`}>
-                                {(item) => (
-                                    <div style="display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;">
-                                        <img
-                                            src={item.image_url}
-                                            style="width: 50px; height: 50px; border-radius: 12px; object-fit: cover; margin-right: 15px;"
-                                            onError={imageFallback(
-                                                'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
-                                            )}
-                                        />
-                                        <div style="flex: 1;">
-                                            <div style="font-weight: 500; font-size: 14px;">{item.name}</div>
-                                            <div style="color: #777; font-size: 12px;">
-                                                {`${item.quantity} шт. x ${(item.price / 1_000_000).toFixed(2)} ₽`}
-                                            </div>
-                                        </div>
-                                        <div style="font-weight: 700;">
-                                            {`${((item.price * item.quantity) / 1_000_000).toFixed(2)} ₽`}
-                                        </div>
-                                    </div>
-                                )}
-                            </For>
-                        </Show>
-                    </div>
+                    </aside>
                 </div>
             </div>
 

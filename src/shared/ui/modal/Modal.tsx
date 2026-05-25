@@ -4,9 +4,9 @@
  * рендерит у себя `<ModalRoot/>`, который через createPortal отправляет
  * содержимое стека в локальный `<div id="modal-root"/>`.
  *
- * Контент open принимает три формы: VNode (используется напрямую), HTMLElement
- * (вставляется через callback-ref на пустой `<div>` через appendChild) и
- * string (HTML-разметка, ставится через `innerHTML` на пустой `<div>`).
+ * Контент open принимает две формы: VNode (используется напрямую) и
+ * HTMLElement (вставляется через callback-ref на пустой `<div>` через
+ * appendChild).
  */
 
 import './modal.scss';
@@ -28,7 +28,7 @@ export interface ModalOptions {
 }
 
 /** Допустимые формы содержимого модалки. */
-export type ModalContent = HTMLElement | string | VNode;
+export type ModalContent = HTMLElement | VNode;
 
 /**
  * Структурная проверка, что значение это VNode (есть поля type, props,
@@ -64,7 +64,7 @@ export class Modal {
      * ничего не делает. Если closeOnOverlayClick не выключено, клик прямо по
      * затемнению закрывает окно.
      *
-     * @param content VNode, HTML-строка или DOM-узел, который кладётся внутрь overlay.
+     * @param content VNode или DOM-узел, который кладётся внутрь overlay.
      */
     open(content: ModalContent): void {
         if (this.pushResult) return;
@@ -112,8 +112,7 @@ export class Modal {
 
     /**
      * Возвращает VNode-обёртку для содержимого: VNode как есть, HTMLElement
-     * через callback-ref с appendChild на пустой `<div>`, строку через
-     * `innerHTML` на пустой `<div>`.
+     * через callback-ref с appendChild на пустой `<div>`.
      *
      * @param content Содержимое, переданное в open.
      * @returns VNode, готовый к монтированию в оверлей.
@@ -121,16 +120,6 @@ export class Modal {
     private renderContent(content: ModalContent): VNode {
         if (isVNode(content)) {
             return content;
-        }
-        if (typeof content === 'string') {
-            const html = content;
-            return (
-                <div
-                    ref={(el: Element | null) => {
-                        if (el) (el as HTMLElement).innerHTML = html;
-                    }}
-                />
-            );
         }
         const node = content;
         return (

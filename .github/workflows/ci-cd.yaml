@@ -1,0 +1,91 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build
+        env:
+          YANDEX_JS_KEY: ${{ secrets.YANDEX_JS_KEY }}
+          YANDEX_SUGGEST_KEY: ${{ secrets.YANDEX_SUGGEST_KEY }}
+        run: |
+          # webpack читает .env через dotenv; собираем его из секретов.
+          printf "YANDEX_JS_KEY=%s\nYANDEX_SUGGEST_KEY=%s\n" \
+            "$YANDEX_JS_KEY" "$YANDEX_SUGGEST_KEY" > .env
+          npm run build
+
+      - name: Upload dist artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  deploy:
+    needs: lint-and-build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-frontend
+      cancel-in-progress: false
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.SERVER_IP }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Rsync dist to staging dir on server
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=no" \
+            dist/ "ubuntu@${{ secrets.SERVER_IP }}:/tmp/foodcourt-dist-new/"
+
+      - name: Swap into /var/www/foodcourt/dist and reload nginx
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -euo pipefail
+            sudo mkdir -p /var/www/foodcourt/dist
+            sudo rsync -a --delete /tmp/foodcourt-dist-new/ /var/www/foodcourt/dist/
+            sudo chown -R www-data:www-data /var/www/foodcourt/dist
+            sudo nginx -t
+            sudo systemctl reload nginx
+            rm -rf /tmp/foodcourt-dist-new
+            echo "Frontend deployed at $(date -u +%FT%TZ)"

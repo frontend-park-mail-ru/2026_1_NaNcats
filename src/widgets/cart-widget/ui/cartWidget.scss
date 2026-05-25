@@ -440,6 +440,109 @@
   }
 }
 
+/* Промокод в корзине */
+.cart-promo {
+  flex-shrink: 0;
+  margin: 0 16px;
+  padding-bottom: 8px;
+}
+
+.cart-promo__toggle {
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-gray);
+  cursor: pointer;
+  border-radius: 8px;
+  transition:
+    color 0.2s,
+    background 0.2s;
+
+  &:hover {
+    color: var(--accent-pink);
+    background: var(--bg-main);
+  }
+}
+
+.cart-promo__row {
+  display: flex;
+  gap: 8px;
+}
+
+.cart-promo__input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-pink);
+  }
+}
+
+.cart-promo__submit {
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent-pink);
+  color: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.2s;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    background: #f0f0f0;
+    color: #aaa;
+    cursor: not-allowed;
+  }
+}
+
+.cart-promo__applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f0faf0;
+  border: 1px solid #18b213;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.cart-promo__badge {
+  font-size: 13px;
+  font-weight: 600;
+  color: #18b213;
+}
+
+.cart-promo__remove {
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: #7d7d7d;
+  cursor: pointer;
+  padding: 2px 4px;
+
+  &:hover {
+    color: #ff4d4d;
+  }
+}
+
 .button_checkout {
   width: 100%;
   background: var(--accent-pink);

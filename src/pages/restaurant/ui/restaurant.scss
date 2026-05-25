@@ -94,9 +94,90 @@
     }
   }
 
+  .restaurant-promo-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    border-radius: 16px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+  }
+
+  .restaurant-promo-banner__info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .restaurant-promo-banner__icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .restaurant-promo-banner__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .restaurant-promo-banner__code {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2e7d32;
+    letter-spacing: 0.5px;
+  }
+
+  .restaurant-promo-banner__desc {
+    font-size: 12px;
+    color: #4a4a4a;
+  }
+
+  .restaurant-promo-banner__btn {
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 17px;
+    background: #4caf50;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    transition: filter 0.15s ease;
+
+    &:hover {
+      filter: brightness(1.05);
+    }
+
+    &_applied {
+      background: #2e7d32;
+      cursor: default;
+
+      &:hover {
+        filter: none;
+      }
+    }
+  }
+
   .restaurant-section-title {
     margin: 0 0 14px 0;
     font-size: 20px;
+
+    &_reco {
+      color: #18b213;
+    }
+  }
+
+  .res-grid_reco {
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #f0f0f0;
   }
 
   .res-grid {
@@ -401,6 +482,9 @@
       grid-template-columns: 1fr;
       gap: 0;
       padding: 8px 16px 16px;
+      /* Сбрасываем десктопные ограничения: на мобилке скролл отдан документу */
+      height: auto;
+      overflow: visible;
     }
 
     .restaurant-menu-column {

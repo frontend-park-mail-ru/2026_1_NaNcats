@@ -88,5 +88,7 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
         delivery_cost,
         total_cost,
         payment_url: raw.payment_url,
+        applied_promocode: raw.applied_promocode ?? undefined,
+        discount_amount: raw.discount_amount ?? 0,
     };
 }

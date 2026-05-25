@@ -320,6 +320,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+
+    &_discount {
+      color: #18b213;
+    }
   }
 
   &__fee-label {

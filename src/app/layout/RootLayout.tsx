@@ -11,6 +11,7 @@
 
 import './layout.scss';
 import { Header } from '@widgets/header';
+import { AddressPicker, addressPickerHandle, type AddressPickerController } from '@widgets/address-picker';
 import { Outlet, router } from '@app/router';
 import { userStore } from '@entities/user';
 import { ROUTES } from '@shared/config/routes';
@@ -28,6 +29,7 @@ export function RootLayout(): VNode {
                 user={user}
                 hideSearch={() => router.currentRoute().path !== ROUTES.home}
                 mode={() => (router.currentRoute().path === ROUTES.home ? 'default' : 'back')}
+                showAddressSelect={() => router.currentRoute().path === ROUTES.home && user() !== null}
                 onLogin={() => {
                     void router.go(ROUTES.login);
                 }}
@@ -39,6 +41,13 @@ export function RootLayout(): VNode {
                 <Outlet />
             </main>
             <OfflineBanner />
+            <AddressPicker
+                hideInput
+                skipDetails={false}
+                controllerRef={(ctl: AddressPickerController | null) => {
+                    addressPickerHandle.set(ctl);
+                }}
+            />
             <div id="modal-root" />
             <ModalRoot />
         </div>

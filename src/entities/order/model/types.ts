@@ -18,6 +18,8 @@ export interface OrderCreatePayload {
     service_fee: number;
     /** Итоговая стоимость заказа в микрорублях. */
     total_cost: number;
+    /** Применённый промокод; бэкенд сам считает по нему скидку. */
+    promocode?: string;
 }
 
 /**
@@ -90,8 +92,10 @@ export type OrderSplitStatus = 'pending' | 'paid' | 'failed' | 'cancelled';
 export interface OrderSplit {
     /** Идентификатор доли счёта. */
     split_id: string;
-    /** Идентификатор пользователя, который должен оплатить долю. */
-    user_id: number;
+    /** Публичный идентификатор (UUID) участника, который оплачивает долю. */
+    user_public_id: string;
+    /** Имя участника, оплачивающего долю (для подписи в UI). */
+    user_name?: string;
     /** Сумма доли в микрорублях. */
     amount: number;
     /** Статус оплаты доли. */
@@ -150,6 +154,10 @@ export interface Order {
     eta_minutes?: number;
     /** URL страницы подтверждения оплаты. */
     payment_url?: string;
+    /** Применённый промокод (если был). */
+    applied_promocode?: string | null;
+    /** Сумма скидки по промокоду в микрорублях. */
+    discount_amount?: number;
     /** Произвольные дополнительные поля бэкенда. */
     [extra: string]: unknown;
 }
@@ -185,6 +193,10 @@ export interface NormalizedOrder {
     payment_url?: string;
     /** Текст последней ошибки, если она была. */
     error?: string;
+    /** Применённый промокод (если был). */
+    applied_promocode?: string;
+    /** Сумма скидки по промокоду в микрорублях. */
+    discount_amount: number;
 }
 
 /**
@@ -198,11 +210,10 @@ export interface GatewayWsEvent {
     /** URL страницы подтверждения оплаты, если бэкенд её сгенерировал. */
     payment_url?: string;
     /**
-     * Идентификатор пользователя, к которому относится событие оплаты.
-     * Нужен, чтобы в совместном заказе отличать свою долю счёта от чужой.
+     * Идентификатор доли счёта, к которой относится событие оплаты. В
+     * совместном заказе по нему отличают свою долю от чужой, сопоставляя
+     * со списком долей заказа (у каждой есть `user_public_id`).
      */
-    user_id?: number;
-    /** Идентификатор доли счёта, к которой относится событие оплаты. */
     split_id?: string;
     /** Текст ошибки, если статус терминальный с ошибкой. */
     error?: string;

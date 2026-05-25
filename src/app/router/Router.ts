@@ -112,7 +112,7 @@ export class Router {
      */
     start(): Promise<void> {
         const initialPath = window.location.pathname + window.location.search;
-        return this.navigate(initialPath, false);
+        return this.navigate(initialPath, 'none');
     }
 
     /**
@@ -125,13 +125,26 @@ export class Router {
      * @returns Промис, разрешающийся после коммита (или после обработки ошибки).
      */
     go(path: string): Promise<void> {
-        return this.navigate(path, true);
+        return this.navigate(path, 'push');
     }
 
-    /** Обрабатывает popstate (кнопки браузера "назад"/"вперёд"): то же, что go, но без pushState. */
+    /**
+     * Программный переход с заменой текущей записи в history (replaceState).
+     *
+     * Нужен, когда на текущую страницу не должна возвращать кнопка «назад»
+     * (например, страница оформления заказа после успешной оплаты).
+     *
+     * @param path Целевой путь.
+     * @returns Промис, разрешающийся после коммита роута.
+     */
+    replace(path: string): Promise<void> {
+        return this.navigate(path, 'replace');
+    }
+
+    /** Обрабатывает popstate (кнопки браузера "назад"/"вперёд"): то же, что go, но без записи в history. */
     private handlePopState = () => {
         const path = window.location.pathname + window.location.search;
-        void this.navigate(path, false);
+        void this.navigate(path, 'none');
     };
 
     /** Снимает системные обработчики, привязанные роутером к окну (нужно для тестов и hot-reload). */
@@ -149,12 +162,15 @@ export class Router {
      * для ошибочного перехода не запускается.
      *
      * @param path Целевой путь с query.
-     * @param push Нужно ли добавить запись в history (true для go, false для popstate/start).
+     * @param history Как изменить history: `push` (новая запись), `replace`
+     *   (замена текущей) или `none` (без изменений, для popstate/start).
      * @returns Промис, разрешающийся после коммита состояния (ready или error).
      */
-    private async navigate(path: string, push: boolean): Promise<void> {
-        if (push) {
+    private async navigate(path: string, history: 'push' | 'replace' | 'none'): Promise<void> {
+        if (history === 'push') {
             window.history.pushState(null, '', path);
+        } else if (history === 'replace') {
+            window.history.replaceState(null, '', path);
         }
 
         const { route, params, query } = matchPath(path, this.routes);
