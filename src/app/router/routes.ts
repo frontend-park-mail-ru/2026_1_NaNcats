@@ -7,7 +7,15 @@
  */
 
 import { ROUTES } from '@shared/config/routes';
-import type { Component, VNodeProps } from '@shared/lib/vdom';
+import type { Component, VNode, VNodeProps } from '@shared/lib/vdom';
+import {
+    AuthPageSkeleton,
+    CheckoutPageSkeleton,
+    HomePageSkeleton,
+    NotFoundPageSkeleton,
+    ProfilePageSkeleton,
+    RestaurantPageSkeleton,
+} from '@shared/ui/skeleton';
 
 /** Идентификатор layout-shell-а страницы: 'root' (Header, Outlet, OfflineBanner) или 'auth' (центр-форма, логотип). */
 export type LayoutKind = 'root' | 'auth';
@@ -53,6 +61,8 @@ export interface RouteDescriptor {
     readonly loader?: () => Promise<unknown>;
     /** Идентификатор layout-shell-а; если опущен, считается 'root'. */
     readonly layout?: LayoutKind;
+    /** Фабрика скелетона: рендерится Outlet-ом, пока import/loader не разрешились. */
+    readonly skeleton?: () => VNode;
 }
 
 /**
@@ -68,38 +78,45 @@ export const ROUTES_TABLE: RouteDescriptor[] = [
         layout: 'root',
         component: lazyPage(() => import('@pages/home')),
         loader: async () => (await import('@pages/home')).load(),
+        skeleton: HomePageSkeleton,
     },
     {
         path: ROUTES.restaurant,
         layout: 'root',
         component: lazyPage(() => import('@pages/restaurant')),
         loader: async () => (await import('@pages/restaurant')).load(),
+        skeleton: RestaurantPageSkeleton,
     },
     {
         path: ROUTES.login,
         layout: 'auth',
         component: lazyPage(() => import('@pages/login')),
+        skeleton: AuthPageSkeleton,
     },
     {
         path: ROUTES.register,
         layout: 'auth',
         component: lazyPage(() => import('@pages/register')),
+        skeleton: AuthPageSkeleton,
     },
     {
         path: ROUTES.profile,
         layout: 'root',
         component: lazyPage(() => import('@pages/profile')),
         loader: async () => (await import('@pages/profile')).load(),
+        skeleton: ProfilePageSkeleton,
     },
     {
         path: ROUTES.checkout,
         layout: 'root',
         component: lazyPage(() => import('@pages/checkout')),
         loader: async () => (await import('@pages/checkout')).load(),
+        skeleton: CheckoutPageSkeleton,
     },
     {
         path: ROUTES.notFound,
         layout: 'root',
         component: lazyPage(() => import('@pages/not-found')),
+        skeleton: NotFoundPageSkeleton,
     },
 ];

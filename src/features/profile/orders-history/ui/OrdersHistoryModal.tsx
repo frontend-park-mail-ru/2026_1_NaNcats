@@ -51,6 +51,25 @@ function formatHumanDate(value: string | undefined): string {
     return `${day} ${month} ${year}`;
 }
 
+/**
+ * Бэкенд отдаёт `created_at` в формате `DD.MM.YYYY` (а свежесозданный заказ
+ * фронт ставит в `toLocaleDateString('ru-RU')` — тот же формат), который
+ * `Date.parse` не понимает. Возвращаем UTC-таймстамп, чтобы сортировка по
+ * датам работала в обе стороны.
+ */
+function parseOrderDate(value: string | undefined): number {
+    if (!value) return 0;
+    const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value);
+    if (m) {
+        const day = Number(m[1]);
+        const month = Number(m[2]);
+        const year = Number(m[3]);
+        return Date.UTC(year, month - 1, day);
+    }
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 /** Перечисляет позиции заказа в читаемую строку («Пицца, Бургер ×2, Кола»). */
 function formatItems(order: Order): string {
     const items = order.items ?? [];
@@ -93,8 +112,8 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
 
         const sorted = filtered.slice();
         sorted.sort((a, b) => {
-            const ta = a.created_at ? Date.parse(a.created_at) : 0;
-            const tb = b.created_at ? Date.parse(b.created_at) : 0;
+            const ta = parseOrderDate(a.created_at);
+            const tb = parseOrderDate(b.created_at);
             return sortKey() === 'newest' ? tb - ta : ta - tb;
         });
         return sorted;
