@@ -33,7 +33,6 @@ module.exports = (env, argv) => {
           : (isProduction ? '[name].[contenthash].js' : '[name].js');
       },
       chunkFilename: isProduction ? '[name].[contenthash].js' : '[name].js',
-      // Images: use content hash for long-term caching
       assetModuleFilename: isProduction
         ? 'assets/[name].[contenthash][ext]'
         : 'assets/[name][ext]',
@@ -58,8 +57,6 @@ module.exports = (env, argv) => {
         {
           test: /\.(css|scss)$/i,
           use: [
-            // In production: extract CSS into separate file for minification & caching
-            // In development: inject styles at runtime for fast HMR
             isProduction ? MiniCssExtractPlugin.loader : 'style-loader',
             'css-loader',
             'sass-loader',
@@ -71,7 +68,6 @@ module.exports = (env, argv) => {
           exclude: /node_modules/,
         },
         {
-          // Handle image imports as asset modules (webpack 5 built-in)
           test: /\.(png|jpe?g|gif|svg|webp|ico)$/i,
           type: 'asset/resource',
         },
@@ -80,17 +76,16 @@ module.exports = (env, argv) => {
 
     optimization: {
       minimizer: [
-        // JS minification is handled by TerserPlugin (webpack default in prod)
+        // JS minification 
         '...',
         // CSS minification
         new CssMinimizerPlugin(),
-        // Image minification (uses sharp)
+        // Image minification 
         new ImageMinimizerPlugin({
           minimizer: {
             implementation: ImageMinimizerPlugin.sharpMinify,
             options: {
               encodeOptions: {
-                // Rasterize with high quality
                 jpeg: { quality: 85 },
                 webp: { quality: 85 },
                 png: { quality: 85 },
@@ -98,7 +93,6 @@ module.exports = (env, argv) => {
               },
             },
           },
-          // Convert raster images to WebP for modern browsers
           generator: [
             {
               preset: 'webp',
@@ -130,18 +124,16 @@ module.exports = (env, argv) => {
 
       new webpack.DefinePlugin(envKeys),
 
-      // Extract CSS into a separate file in production (enables caching & minification)
       ...(isProduction ? [
         new MiniCssExtractPlugin({
           filename: '[name].[contenthash].css',
           chunkFilename: '[name].[contenthash].css',
         }),
 
-        // Pre-compress assets with gzip (nginx uses these via gzip_static on)
         new CompressionPlugin({
           algorithm: 'gzip',
           test: /\.(js|css|html|svg)$/,
-          threshold: 1024,  // Only compress files > 1 KB
+          threshold: 1024, 
           minRatio: 0.8,
         }),
       ] : []),
