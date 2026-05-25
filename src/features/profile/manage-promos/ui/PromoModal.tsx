@@ -8,16 +8,21 @@ import { Popup } from '@shared/ui/popup';
 import { For, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal } from '@shared/lib/signals';
-import { promosAccessor, appliedCodeAccessor, applyPromo, addPromo, loadPromos } from '../model/promoStore';
+import { promosAccessor, appliedCodeAccessor, tryApplyPromo, addPromo, loadPromos } from '../model/promoStore';
+import { promoReasonToMessage } from '../lib/promoMessage';
 import type { Promo } from '../model/types';
 
 export interface PromoModalProps {
     onClose: () => void;
 }
 
-function handleApply(promo: Promo) {
-    applyPromo(promo.code);
-    void Popup.alert(`Промокод ${promo.code} применён к корзине`);
+async function handleApply(promo: Promo) {
+    const res = await tryApplyPromo(promo.code);
+    if (res.ok) {
+        void Popup.alert(`Промокод ${promo.code} применён к корзине`);
+        return;
+    }
+    void Popup.alert(promoReasonToMessage(res.reason));
 }
 
 export function PromoModal(props: PromoModalProps): VNode {
@@ -99,7 +104,7 @@ export function PromoModal(props: PromoModalProps): VNode {
                                 type="button"
                                 class={() => applyBtnClass(promo)}
                                 onClick={() => {
-                                    handleApply(promo);
+                                    void handleApply(promo);
                                 }}
                             >
                                 {() => applyBtnText(promo)}

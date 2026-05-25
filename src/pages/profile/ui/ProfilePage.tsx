@@ -9,6 +9,7 @@ import { Popup } from '@shared/ui/popup';
 import { userStore, type User } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore } from '@entities/card';
+import { cartStore } from '@entities/cart';
 import {
     orderApi,
     connectOrderTracker,
@@ -63,9 +64,9 @@ const DEFAULT_AVATAR_URL = 'https://nancats-bucket.storage.yandexcloud.net/avata
 /** Запасная картинка для заказа, если у ресторана не пришёл логотип. */
 const ORDER_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
 
-/** Бонусы, дата сгорания и срок подписки пока не приходят с бэка; держим заглушку. */
-const STUB_BONUSES = 67;
-const STUB_BONUSES_EXPIRE = '01.04.2026';
+// Бонусы временно скрыты в UI — оживим, когда подтянем настоящие данные.
+// const STUB_BONUSES = 67;
+// const STUB_BONUSES_EXPIRE = '01.04.2026';
 
 const RU_MONTHS_SHORT = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
@@ -127,6 +128,7 @@ export async function load(): Promise<ProfilePageProps> {
 
 export function ProfilePage(props: ProfilePageProps): VNode {
     const userSig = useStoreSignal(userStore, (s) => s.user);
+    const cartItemsCount = useStoreSignal(cartStore, (s) => s.items.reduce((sum, it) => sum + it.quantity, 0));
     // Стрим статусов точечно подменяет записи в этом списке.
     const ordersSig = signal<OrderRowView[]>(props.orders);
     const savedAddresses = useStoreSignal(addressStore, (s) => s.saved);
@@ -478,6 +480,8 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                         </div>
                     </div>
 
+                    {/* Блок «Бонусы» скрыт до появления реальных данных с бэка. */}
+                    {/*
                     <div class="profile-card profile-card_row">
                         <div class="card-side-label">Бонусы</div>
                         <div class="card-side-content card-subtext">
@@ -485,6 +489,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                             до <span class="text-danger">сгорания {STUB_BONUSES_EXPIRE}</span>
                         </div>
                     </div>
+                    */}
 
                     <div class="profile-card profile-card_row">
                         <div class="card-side-label">Промокоды</div>
@@ -495,6 +500,24 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                             </button>
                         </div>
                     </div>
+
+                    <Show when={() => cartItemsCount() > 0}>
+                        <div class="profile-card profile-card_row">
+                            <div class="card-side-label">Корзина</div>
+                            <div class="card-side-content profile-card__promo-row">
+                                <span class="card-subtext">{() => `${cartItemsCount()} товара(ов)`}</span>
+                                <button
+                                    type="button"
+                                    class="profile-card__promo-button"
+                                    onClick={() => {
+                                        void router.go(ROUTES.checkout);
+                                    }}
+                                >
+                                    Оформить
+                                </button>
+                            </div>
+                        </div>
+                    </Show>
                 </aside>
 
                 <main class="profile-main">

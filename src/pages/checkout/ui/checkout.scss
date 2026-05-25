@@ -502,6 +502,38 @@
   gap: 8px;
 }
 
+.checkout-promo__suggestions {
+  margin-top: 10px;
+}
+
+.checkout-promo__suggestions-label {
+  font-size: 12px;
+  color: #7d7d7d;
+  margin-bottom: 6px;
+}
+
+.checkout-promo__suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.checkout-promo__chip {
+  border: 1px solid #f57f17;
+  background: #fff5ec;
+  color: #f57f17;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #ffe8d2;
+  }
+}
+
 @media (max-width: 900px) {
   .checkout-header {
     height: 56px;

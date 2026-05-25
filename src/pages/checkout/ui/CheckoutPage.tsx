@@ -17,7 +17,16 @@ import { OrderStatusModal, type OrderStatusModalController } from '@widgets/orde
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
-import { applyPromo, removeAppliedPromo, appliedCodeAccessor, loadPromos } from '@features/profile/manage-promos';
+import {
+    applyPromo,
+    removeAppliedPromo,
+    appliedCodeAccessor,
+    loadPromos,
+    promoReasonToMessage,
+    promosAccessor,
+    ensureLoaded as ensurePromosLoaded,
+    type Promo,
+} from '@features/profile/manage-promos';
 import { httpClient } from '@shared/api/http/HttpClient';
 
 /** Фиксированный сбор за доставку (рубли). */
@@ -124,20 +133,6 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     /** Скидка промокода в рублях (заполняется через API validate). */
     const promoDiscount = signal<number>(0);
 
-    /** Переводит reason из бэкенда в читаемое сообщение. */
-    const promoReasonToMessage = (reason: string): string => {
-        const map: Record<string, string> = {
-            'promo already used': 'Промокод уже был использован',
-            'promo has expired': 'Срок действия промокода истёк',
-            'order amount is below minimum': 'Сумма заказа ниже минимальной для этого промокода',
-            'max uses reached': 'Промокод исчерпал лимит использований',
-            'promo is not valid for this restaurant': 'Промокод не действует в этом ресторане',
-            'promo not found': 'Промокод не найден',
-            'promo is tied to another user': 'Промокод предназначен другому пользователю',
-        };
-        return map[reason] ?? 'Промокод недействителен';
-    };
-
     /** Запрашивает скидку у бэкенда при наличии промокода. */
     const refreshPromoDiscount = async () => {
         const code = appliedCodeAccessor();
@@ -175,6 +170,8 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
 
     // Запросить скидку при загрузке.
     void refreshPromoDiscount();
+    // Подтянуть промокоды пользователя для секции «Ваши промокоды».
+    void ensurePromosLoaded();
 
     /** Форматированные итоговые суммы по текущим позициям. */
     const computeTotals = () => {
@@ -592,11 +589,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                                         }
                                                         const data = await resp.json();
                                                         if (!data.valid) {
-                                                            promoErrorSig.set(
-                                                                data.reason === 'promo not found'
-                                                                    ? 'Промокод не найден'
-                                                                    : 'Промокод недействителен',
-                                                            );
+                                                            promoErrorSig.set(promoReasonToMessage(data.reason ?? ''));
                                                             return;
                                                         }
                                                         applyPromo(code);
@@ -614,6 +607,66 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                         <Show when={() => promoErrorSig() !== ''}>
                                             <div class="error-msg" style="margin-top: 6px; font-size: 12px;">
                                                 {promoErrorSig}
+                                            </div>
+                                        </Show>
+
+                                        {/* Чипы из профиля: клик автозаполняет input и сразу применяет промокод. */}
+                                        <Show when={() => promosAccessor().length > 0}>
+                                            <div class="checkout-promo__suggestions">
+                                                <div class="checkout-promo__suggestions-label">Ваши промокоды:</div>
+                                                <div class="checkout-promo__suggestions-list">
+                                                    <For each={promosAccessor} key={(p: Promo) => p.id}>
+                                                        {(p: Promo) => (
+                                                            <button
+                                                                type="button"
+                                                                class="checkout-promo__chip"
+                                                                title={p.title}
+                                                                onClick={async () => {
+                                                                    promoErrorSig.set('');
+                                                                    promoInputSig.set(p.code);
+                                                                    if (promoInputEl) promoInputEl.value = p.code;
+                                                                    try {
+                                                                        const resp = await httpClient.post(
+                                                                            '/promos/validate',
+                                                                            {
+                                                                                code: p.code,
+                                                                                restaurant_brand_id:
+                                                                                    props.restaurantId ?? 0,
+                                                                                order_amount: toMicros(
+                                                                                    itemsTotalRub(itemsSig()),
+                                                                                ),
+                                                                                delivery_cost:
+                                                                                    toMicros(DELIVERY_FEE_RUB),
+                                                                                service_fee: toMicros(SERVICE_FEE_RUB),
+                                                                            },
+                                                                        );
+                                                                        if (!resp.ok) {
+                                                                            promoErrorSig.set('Промокод не найден');
+                                                                            return;
+                                                                        }
+                                                                        const data = await resp.json();
+                                                                        if (!data.valid) {
+                                                                            promoErrorSig.set(
+                                                                                promoReasonToMessage(data.reason ?? ''),
+                                                                            );
+                                                                            return;
+                                                                        }
+                                                                        applyPromo(p.code);
+                                                                        promoInputSig.set('');
+                                                                        if (promoInputEl) promoInputEl.value = '';
+                                                                        promoDiscount.set(
+                                                                            Math.round(data.discount / 1_000_000),
+                                                                        );
+                                                                    } catch {
+                                                                        promoErrorSig.set('Ошибка проверки промокода');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {p.code}
+                                                            </button>
+                                                        )}
+                                                    </For>
+                                                </div>
                                             </div>
                                         </Show>
                                     </>

@@ -8,7 +8,12 @@ import './cartWidget.scss';
 import { cartStore, fromMicros, type CartItem, type CartMember } from '@entities/cart';
 import { userStore } from '@entities/user';
 import { clearCart } from '@features/cart/clear-cart';
-import { applyPromo, removeAppliedPromo, appliedCodeAccessor } from '@features/profile/manage-promos';
+import {
+    applyPromo,
+    removeAppliedPromo,
+    appliedCodeAccessor,
+    promoReasonToMessage,
+} from '@features/profile/manage-promos';
 import { router } from '@app/router';
 import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';
@@ -517,11 +522,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                                     }
                                                     const data = await resp.json();
                                                     if (!data.valid) {
-                                                        promoError.set(
-                                                            data.reason === 'promo not found'
-                                                                ? 'Промокод не найден'
-                                                                : 'Промокод недействителен',
-                                                        );
+                                                        promoError.set(promoReasonToMessage(data.reason ?? ''));
                                                         return;
                                                     }
                                                     applyPromo(code);

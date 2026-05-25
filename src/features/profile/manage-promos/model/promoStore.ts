@@ -3,6 +3,7 @@
 
 import { signal } from '@shared/lib/signals';
 import { httpClient } from '@shared/api/http/HttpClient';
+import { cartStore } from '@entities/cart';
 import { dtoToPromo, type Promo, type PromoDTO } from './types';
 
 /** Список промокодов пользователя. */
@@ -91,6 +92,46 @@ export function applyPromo(code: string): void {
             .catch(() => {
                 // Сетевая ошибка —  validate на чекауте исправит.
             });
+    }
+}
+
+/** Результат проверки и применения промокода против текущей корзины. */
+export interface ApplyPromoResult {
+    ok: boolean;
+    /** Бэкендовский reason при ok=false; пустая строка при ok=true. */
+    reason: string;
+}
+
+/**
+ * Валидирует промокод против текущего состояния корзины и применяет его,
+ * если валидация прошла. В отличие от {@link applyPromo}, не даёт «пустого»
+ * apply, который потом тихо снимается на чекауте.
+ *
+ * Используется в местах, где у пользователя ещё нет визуального
+ * подтверждения скидки (модалка профиля, поле ввода промокода в корзине).
+ */
+export async function tryApplyPromo(code: string): Promise<ApplyPromoResult> {
+    const c = code.toUpperCase().trim();
+    if (!c) return { ok: false, reason: 'promo not found' };
+
+    const snap = cartStore.getState();
+    try {
+        const resp = await httpClient.post('/promos/validate', {
+            code: c,
+            restaurant_brand_id: snap.restaurantId,
+            order_amount: snap.totalCost,
+            delivery_cost: 0,
+            service_fee: 0,
+        });
+        if (!resp.ok) return { ok: false, reason: 'promo not found' };
+        const data = await resp.json();
+        if (data.valid !== true) {
+            return { ok: false, reason: String(data.reason ?? '') };
+        }
+        applyPromo(c);
+        return { ok: true, reason: '' };
+    } catch {
+        return { ok: false, reason: 'promo not found' };
     }
 }
 

@@ -5,6 +5,7 @@ export {
     getPromos,
     getAppliedCode,
     applyPromo,
+    tryApplyPromo,
     removeAppliedPromo,
     addPromo,
     isApplied,
@@ -13,3 +14,4 @@ export {
     loadPromos,
     ensureLoaded,
 } from './model/promoStore';
+export { promoReasonToMessage } from './lib/promoMessage';

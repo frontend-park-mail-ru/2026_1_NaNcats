@@ -191,7 +191,15 @@ export function Header(props: HeaderProps): VNode {
             props.onBack();
             return;
         }
-        window.history.back();
+        // history.back() уведёт на предыдущую запись истории, которой может
+        // оказаться внешняя страница (например, ЮKassa после оплаты). Если
+        // предыдущая запись не с нашего домена — отправляем на главную.
+        const fromOurOrigin = document.referrer !== '' && document.referrer.startsWith(window.location.origin);
+        if (window.history.length > 1 && fromOurOrigin) {
+            window.history.back();
+            return;
+        }
+        void router.go(ROUTES.home);
     };
 
     const handleLoginClick = () => {
