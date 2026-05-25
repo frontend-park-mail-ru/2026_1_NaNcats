@@ -127,9 +127,7 @@ export function AddressSelect(): VNode {
                     <div class="address-select__menu-title">Мои адреса</div>
                     <Show
                         when={() => savedAddresses().length > 0}
-                        fallback={
-                            <div class="address-select__empty">У вас пока нет сохранённых адресов</div>
-                        }
+                        fallback={<div class="address-select__empty">У вас пока нет сохранённых адресов</div>}
                     >
                         <div class="address-select__items">
                             <For each={savedAddresses} key={(a) => a.id}>
@@ -153,16 +151,12 @@ export function AddressSelect(): VNode {
                                         />
                                         <span class="address-select__item-body">
                                             <span class="address-select__item-head">
-                                                <span class="address-select__item-label">
-                                                    {addr.label ?? 'Адрес'}
-                                                </span>
+                                                <span class="address-select__item-label">{addr.label ?? 'Адрес'}</span>
                                                 <Show when={() => isActive(addr)}>
                                                     <span class="address-select__primary-tag">Основной</span>
                                                 </Show>
                                             </span>
-                                            <span class="address-select__item-text">
-                                                {addr.location.address_text}
-                                            </span>
+                                            <span class="address-select__item-text">{addr.location.address_text}</span>
                                         </span>
                                     </button>
                                 )}

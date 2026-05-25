@@ -370,115 +370,125 @@ export function Header(props: HeaderProps): VNode {
 
             <div class="header__controls">
                 <Show when={authResolved}>
-                <Show
-                    when={props.user}
-                    fallback={
-                        <>
-                            <div class="auth-guest-controls">
-                                <button class="button button_header-login" onClick={handleLoginClick}>
-                                    Войти
-                                </button>
-                                <button class="button button_header-reg" onClick={handleRegisterClick}>
-                                    Регистрация
-                                </button>
-                            </div>
-                            <div
-                                class={() =>
-                                    mobileMenuOpen()
-                                        ? 'mobile-auth-guest-controls mobile-auth-guest-controls_open'
-                                        : 'mobile-auth-guest-controls'
-                                }
-                            >
-                                <button
-                                    type="button"
-                                    class="mobile-auth-guest-controls__trigger"
-                                    aria-label="Открыть меню авторизации"
-                                    onClick={handleMobileToggle}
-                                >
-                                    <svg width="50" height="50" viewBox="0 0 50 50" xmlns="http://www.w3.org/2000/svg">
-                                        <circle cx="25" cy="25" r="13" stroke="#FFC1C1" stroke-width="2" fill="none" />
-                                        <circle cx="20" cy="25" r="1.5" fill="#FFC1C1" />
-                                        <circle cx="25" cy="25" r="1.5" fill="#FFC1C1" />
-                                        <circle cx="30" cy="25" r="1.5" fill="#FFC1C1" />
-                                    </svg>
-                                </button>
-                                <div class="mobile-auth-guest-controls__menu">
-                                    <button
-                                        class="mobile-auth-guest-controls__item"
-                                        type="button"
-                                        onClick={handleLoginClick}
-                                    >
+                    <Show
+                        when={props.user}
+                        fallback={
+                            <>
+                                <div class="auth-guest-controls">
+                                    <button class="button button_header-login" onClick={handleLoginClick}>
                                         Войти
                                     </button>
-                                    <button
-                                        class="mobile-auth-guest-controls__item"
-                                        type="button"
-                                        onClick={handleRegisterClick}
-                                    >
+                                    <button class="button button_header-reg" onClick={handleRegisterClick}>
                                         Регистрация
                                     </button>
                                 </div>
-                            </div>
-                        </>
-                    }
-                >
-                    <div class="notif-btn">
-                        <div class="notif-btn__icon">
-                            <svg width="21" height="24" viewBox="0 0 21 24" fill="none">
-                                <path
-                                    d="M10.5422 23.89C11.6667 23.89 12.5714 22.9852 12.5714 21.8608H8.513C8.513 22.9852 9.41776 23.89 10.5422 23.89ZM18.6589 16.7878V10.7003C18.6589 7.54519 16.9748 4.88725 14.0933 4.18721V3.59554C14.0933 1.63751 12.5002 0.0444336 10.5422 0.0444336C8.58414 0.0444336 6.99105 1.63751 6.99105 3.59554V4.18721C4.10955 4.88725 2.42546 7.53504 2.42546 10.7003V16.7878L0.396286 18.8169V19.8315H20.6881V18.8169L18.6589 16.7878ZM16.6297 17.8024H4.45463V10.7003C4.45463 8.01188 6.07792 5.62804 8.513 5.62804H12.5714C15.0065 5.62804 16.6297 8.01188 16.6297 10.7003V17.8024Z"
-                                    fill="#FFC1C1"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <div
-                        class="user-menu-wrapper"
-                        ref={(el: Element | null) => {
-                            userMenuEl = el as HTMLElement | null;
-                        }}
+                                <div
+                                    class={() =>
+                                        mobileMenuOpen()
+                                            ? 'mobile-auth-guest-controls mobile-auth-guest-controls_open'
+                                            : 'mobile-auth-guest-controls'
+                                    }
+                                >
+                                    <button
+                                        type="button"
+                                        class="mobile-auth-guest-controls__trigger"
+                                        aria-label="Открыть меню авторизации"
+                                        onClick={handleMobileToggle}
+                                    >
+                                        <svg
+                                            width="50"
+                                            height="50"
+                                            viewBox="0 0 50 50"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                        >
+                                            <circle
+                                                cx="25"
+                                                cy="25"
+                                                r="13"
+                                                stroke="#FFC1C1"
+                                                stroke-width="2"
+                                                fill="none"
+                                            />
+                                            <circle cx="20" cy="25" r="1.5" fill="#FFC1C1" />
+                                            <circle cx="25" cy="25" r="1.5" fill="#FFC1C1" />
+                                            <circle cx="30" cy="25" r="1.5" fill="#FFC1C1" />
+                                        </svg>
+                                    </button>
+                                    <div class="mobile-auth-guest-controls__menu">
+                                        <button
+                                            class="mobile-auth-guest-controls__item"
+                                            type="button"
+                                            onClick={handleLoginClick}
+                                        >
+                                            Войти
+                                        </button>
+                                        <button
+                                            class="mobile-auth-guest-controls__item"
+                                            type="button"
+                                            onClick={handleRegisterClick}
+                                        >
+                                            Регистрация
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        }
                     >
-                        <button
-                            type="button"
-                            class="user-profile"
-                            aria-label="Меню профиля"
-                            onClick={handleProfileToggle}
-                        >
-                            <img
-                                src={() => props.user()?.avatar_url ?? ''}
-                                class="user-profile__avatar"
-                                onError={imageFallback(
-                                    'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp',
-                                )}
-                            />
-                        </button>
-                        <div
-                            class={() =>
-                                profileMenuOpen() ? 'user-dropdown user-dropdown_open' : 'user-dropdown'
-                            }
-                        >
-                            <button
-                                class="user-dropdown__profile"
-                                type="button"
-                                onClick={() => {
-                                    profileMenuOpen.set(false);
-                                    void router.go(ROUTES.profile);
-                                }}
-                            >
-                                Профиль
-                            </button>
-                            <button
-                                class="user-dropdown__logout"
-                                type="button"
-                                onClick={() => {
-                                    void handleLogout();
-                                }}
-                            >
-                                Выйти
-                            </button>
+                        <div class="notif-btn">
+                            <div class="notif-btn__icon">
+                                <svg width="21" height="24" viewBox="0 0 21 24" fill="none">
+                                    <path
+                                        d="M10.5422 23.89C11.6667 23.89 12.5714 22.9852 12.5714 21.8608H8.513C8.513 22.9852 9.41776 23.89 10.5422 23.89ZM18.6589 16.7878V10.7003C18.6589 7.54519 16.9748 4.88725 14.0933 4.18721V3.59554C14.0933 1.63751 12.5002 0.0444336 10.5422 0.0444336C8.58414 0.0444336 6.99105 1.63751 6.99105 3.59554V4.18721C4.10955 4.88725 2.42546 7.53504 2.42546 10.7003V16.7878L0.396286 18.8169V19.8315H20.6881V18.8169L18.6589 16.7878ZM16.6297 17.8024H4.45463V10.7003C4.45463 8.01188 6.07792 5.62804 8.513 5.62804H12.5714C15.0065 5.62804 16.6297 8.01188 16.6297 10.7003V17.8024Z"
+                                        fill="#FFC1C1"
+                                    />
+                                </svg>
+                            </div>
                         </div>
-                    </div>
-                </Show>
+                        <div
+                            class="user-menu-wrapper"
+                            ref={(el: Element | null) => {
+                                userMenuEl = el as HTMLElement | null;
+                            }}
+                        >
+                            <button
+                                type="button"
+                                class="user-profile"
+                                aria-label="Меню профиля"
+                                onClick={handleProfileToggle}
+                            >
+                                <img
+                                    src={() => props.user()?.avatar_url ?? ''}
+                                    class="user-profile__avatar"
+                                    onError={imageFallback(
+                                        'https://nancats-bucket.storage.yandexcloud.net/avatars/default-avatar.webp',
+                                    )}
+                                />
+                            </button>
+                            <div
+                                class={() => (profileMenuOpen() ? 'user-dropdown user-dropdown_open' : 'user-dropdown')}
+                            >
+                                <button
+                                    class="user-dropdown__profile"
+                                    type="button"
+                                    onClick={() => {
+                                        profileMenuOpen.set(false);
+                                        void router.go(ROUTES.profile);
+                                    }}
+                                >
+                                    Профиль
+                                </button>
+                                <button
+                                    class="user-dropdown__logout"
+                                    type="button"
+                                    onClick={() => {
+                                        void handleLogout();
+                                    }}
+                                >
+                                    Выйти
+                                </button>
+                            </div>
+                        </div>
+                    </Show>
                 </Show>
             </div>
         </header>

@@ -77,7 +77,10 @@ sw.addEventListener('fetch', (event) => {
             fetch(event.request)
                 .then((response) => {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+                    caches
+                        .open(CACHE_NAME)
+                        .then((cache) => cache.put(event.request, clone))
+                        .catch(() => {});
                     return response;
                 })
                 .catch(() => caches.match(event.request) as Promise<Response>),
@@ -90,7 +93,10 @@ sw.addEventListener('fetch', (event) => {
             fetch(event.request)
                 .then((response) => {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+                    caches
+                        .open(CACHE_NAME)
+                        .then((cache) => cache.put(event.request, clone))
+                        .catch(() => {});
                     return response;
                 })
                 .catch(() => caches.match('/') as Promise<Response>),
@@ -103,7 +109,10 @@ sw.addEventListener('fetch', (event) => {
             if (cachedResponse) {
                 fetch(event.request)
                     .then((response) => {
-                        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response)).catch(() => {});
+                        caches
+                            .open(CACHE_NAME)
+                            .then((cache) => cache.put(event.request, response))
+                            .catch(() => {});
                     })
                     .catch(() => {});
                 return cachedResponse;
@@ -112,7 +121,10 @@ sw.addEventListener('fetch', (event) => {
             return fetch(event.request)
                 .then((response) => {
                     const clone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
+                    caches
+                        .open(CACHE_NAME)
+                        .then((cache) => cache.put(event.request, clone))
+                        .catch(() => {});
                     return response;
                 })
                 .catch(() => {

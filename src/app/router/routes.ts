@@ -35,8 +35,7 @@ export type ChunkLoader = () => Promise<ComponentChunk>;
 
 // Обёртка над динамическим import-ом страницы: единственное место с кастом
 // типа модуля к ChunkLoader (страницы экспортируют ещё load/типы, чего нет в ComponentChunk).
-const lazyPage = (loader: () => Promise<unknown>): ChunkLoader =>
-    loader as unknown as ChunkLoader;
+const lazyPage = (loader: () => Promise<unknown>): ChunkLoader => loader as unknown as ChunkLoader;
 
 /**
  * Дескриптор одного роута в таблице.

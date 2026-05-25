@@ -55,9 +55,7 @@ function formatHumanDate(value: string | undefined): string {
 function formatItems(order: Order): string {
     const items = order.items ?? [];
     if (items.length === 0) return '';
-    return items
-        .map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name))
-        .join(', ');
+    return items.map((item) => (item.quantity > 1 ? `${item.name} ×${item.quantity}` : item.name)).join(', ');
 }
 
 /** Цена из микрорублей в строку «1 248₽». */
@@ -102,9 +100,7 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
         return sorted;
     });
 
-    const total = computed<number>(() =>
-        filteredOrders().reduce((sum, order) => sum + (order.total_cost ?? 0), 0),
-    );
+    const total = computed<number>(() => filteredOrders().reduce((sum, order) => sum + (order.total_cost ?? 0), 0));
 
     const handleSearchInput = (event: Event) => {
         search.set((event.target as HTMLInputElement).value);
@@ -123,12 +119,7 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
         <div class="orders-history-modal">
             <div class="orders-history-modal__header">
                 <div class="orders-history-modal__title">Все заказы</div>
-                <button
-                    type="button"
-                    class="orders-history-modal__close"
-                    aria-label="Закрыть"
-                    onClick={props.onClose}
-                >
+                <button type="button" class="orders-history-modal__close" aria-label="Закрыть" onClick={props.onClose}>
                     ✕
                 </button>
             </div>
@@ -201,9 +192,7 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
                                         <div class="orders-history-modal__row-items">{formatItems(order)}</div>
                                     </Show>
                                 </div>
-                                <div class="orders-history-modal__row-price">
-                                    {formatRubles(order.total_cost ?? 0)}
-                                </div>
+                                <div class="orders-history-modal__row-price">{formatRubles(order.total_cost ?? 0)}</div>
                             </div>
                         )}
                     </For>

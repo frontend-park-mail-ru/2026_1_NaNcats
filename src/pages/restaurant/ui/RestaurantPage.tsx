@@ -525,12 +525,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             <div class="reviews-modal">
                 <div class="reviews-modal__header">
                     <h2 class="reviews-modal__title">Отзывы</h2>
-                    <button
-                        type="button"
-                        class="reviews-modal__close"
-                        aria-label="Закрыть"
-                        onClick={close}
-                    >
+                    <button type="button" class="reviews-modal__close" aria-label="Закрыть" onClick={close}>
                         ×
                     </button>
                 </div>
@@ -577,12 +572,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         maxlength="500"
                         onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
                     />
-                    <button
-                        type="button"
-                        class="reviews-form__submit"
-                        disabled={() => submitting()}
-                        onClick={submit}
-                    >
+                    <button type="button" class="reviews-form__submit" disabled={() => submitting()} onClick={submit}>
                         Отправить
                     </button>
                     <Show when={() => error() !== ''}>
