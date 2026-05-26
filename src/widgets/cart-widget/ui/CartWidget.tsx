@@ -335,21 +335,9 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                             void handleCopyInvite();
                                         }}
                                     >
-                                        {() =>
-                                            copied() ? (
-                                                <svg
-                                                    width="18"
-                                                    height="18"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-width="2.4"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                >
-                                                    <polyline points="20 6 9 17 4 12" />
-                                                </svg>
-                                            ) : (
+                                        <Show
+                                            when={copied}
+                                            fallback={
                                                 <svg
                                                     width="18"
                                                     height="18"
@@ -363,8 +351,21 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
                                                 </svg>
-                                            )
-                                        }
+                                            }
+                                        >
+                                            <svg
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2.4"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        </Show>
                                     </button>
                                     <button
                                         type="button"
@@ -706,7 +707,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             ×
                         </button>
                         <div class="cart-qr-modal__title">QR-код приглашения</div>
-                        <img class="cart-qr-modal__image" src={qrDataUrl} alt="QR-код" />
+                        <img class="cart-qr-modal__image" src={() => qrDataUrl()} alt="QR-код" />
                         <div class="cart-qr-modal__hint">Отсканируйте, чтобы присоединиться к совместной корзине</div>
                     </div>
                 </div>
