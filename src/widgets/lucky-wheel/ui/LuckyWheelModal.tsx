@@ -128,6 +128,9 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     const spinError = signal<string>('');
     /** Накопленный угол вращения колеса в градусах. */
     const rotation = signal<number>(0);
+    /** Флаг короткой обратной связи на кнопке «Скопировать». */
+    const promoCopied = signal<boolean>(false);
+    let promoCopiedTimer: ReturnType<typeof setTimeout> | null = null;
     /** Сообщение от пиццули. Меняется в зависимости от состояния. */
     const characterMessage = computed<string>(() => {
         if (spinError() !== '') return spinError();
@@ -186,6 +189,12 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                 /* ignore */
             });
         }
+        promoCopied.set(true);
+        if (promoCopiedTimer !== null) clearTimeout(promoCopiedTimer);
+        promoCopiedTimer = setTimeout(() => {
+            promoCopied.set(false);
+            promoCopiedTimer = null;
+        }, 1800);
     };
 
     const open = () => {
@@ -193,11 +202,21 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
         isOpen.set(true);
         result.set(null);
         spinError.set('');
+        promoCopied.set(false);
+        if (promoCopiedTimer !== null) {
+            clearTimeout(promoCopiedTimer);
+            promoCopiedTimer = null;
+        }
         void ensureSectors();
     };
     const close = () => {
         if (!isOpen.peek()) return;
         isOpen.set(false);
+        if (promoCopiedTimer !== null) {
+            clearTimeout(promoCopiedTimer);
+            promoCopiedTimer = null;
+        }
+        promoCopied.set(false);
     };
 
     const controller: LuckyWheelModalController = { open, close };
@@ -276,11 +295,17 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                                             </code>
                                             <button
                                                 type="button"
-                                                class="wheel-speech__promo-copy"
+                                                class={() =>
+                                                    promoCopied()
+                                                        ? 'wheel-speech__promo-copy wheel-speech__promo-copy_copied'
+                                                        : 'wheel-speech__promo-copy'
+                                                }
                                                 onClick={handleCopyPromo}
                                                 title="Копировать промокод"
                                             >
-                                                Скопировать
+                                                <Show when={promoCopied} fallback={'Скопировать'}>
+                                                    ✓ Скопировано
+                                                </Show>
                                             </button>
                                         </div>
                                     </div>
