@@ -298,11 +298,16 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         if (!shouldOpen || !orderStatusCtl) return;
 
         const myId = props.user.public_id;
+        // Берём самый свежий нетерминальный заказ, в котором пользователь
+        // фигурирует как владелец позиции либо как плательщик доли. Старые
+        // заказы (например, отменённые с подвисшей pending-долей) отсекаются
+        // через TERMINAL_STATUSES, поэтому модалка не покажет стейл-данные.
         const target = ordersSig.peek().find((o) => {
+            if (TERMINAL_STATUSES.has(o.status)) return false;
             const splits = o.splits ?? [];
-            if (splits.length <= 1) return false;
-            const mine = splits.find((s) => s.user_public_id === myId);
-            return mine !== undefined && mine.status === 'pending';
+            const hasOwnSplit = splits.some((s) => s.user_public_id === myId);
+            const hasOwnItem = (o.items ?? []).some((it) => it.owner_public_id === myId);
+            return hasOwnSplit || hasOwnItem;
         });
         if (target) {
             orderStatusCtl.open(target, { subscribe: !TERMINAL_STATUSES.has(target.status) });

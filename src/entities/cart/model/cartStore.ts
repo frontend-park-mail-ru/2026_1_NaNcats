@@ -399,11 +399,9 @@ class CartStore extends Store<CartState> {
             console.warn('cartStore: sessionStorage unavailable', e);
         }
 
-        void Popup.alert('Организатор оформил совместный заказ. Откроем его, чтобы вы оплатили свою часть.').then(
-            () => {
-                window.location.assign(ROUTES.profile);
-            },
-        );
+        void Popup.alert('Организатор оформил совместный заказ. Откроем его в вашем профиле.').then(() => {
+            window.location.assign(ROUTES.profile);
+        });
     }
 
     /**
