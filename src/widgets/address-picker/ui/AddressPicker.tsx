@@ -495,7 +495,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     <h2 class="address-modal__title">Детали адреса</h2>
                     <form
                         class="auth-form"
-                        style="max-width:100%"
+                        style="width:100%; max-width:100%"
                         onSubmit={(e: Event) => {
                             void handleDetailsSubmit(e);
                         }}

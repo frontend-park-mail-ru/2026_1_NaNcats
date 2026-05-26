@@ -71,6 +71,7 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
 
     return {
         order_id: raw.order_id ?? seed,
+        admin_public_id: raw.admin_public_id,
         status,
         raw_status: raw.status ?? '',
         created_at: raw.created_at ?? '',

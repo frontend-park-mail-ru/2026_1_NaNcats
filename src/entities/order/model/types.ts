@@ -138,6 +138,8 @@ export interface OrderRestaurant {
 export interface Order {
     /** Идентификатор заказа. */
     order_id: string;
+    /** Публичный идентификатор организатора (создателя shared-заказа). */
+    admin_public_id?: string;
     /** Сырой статус заказа. */
     status: string;
     /** Итоговая стоимость в микрорублях. */
@@ -181,6 +183,8 @@ export interface Order {
 export interface NormalizedOrder {
     /** Идентификатор заказа. */
     order_id: string;
+    /** Публичный идентификатор организатора shared-заказа. */
+    admin_public_id?: string;
     /** UI-статус заказа. */
     status: OrderUiStatus;
     /** Сырой статус из бэкенда (для бейджа и трекинга). */

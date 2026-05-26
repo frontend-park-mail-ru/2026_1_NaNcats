@@ -158,37 +158,12 @@ function formatReviews(count: number) {
     return String(count);
 }
 
-/** Подпись статуса доли счёта для UI. */
-const SPLIT_STATUS_TEXT: Record<string, string> = {
-    pending: 'Ожидает оплаты',
-    paid: 'Оплачено',
-    failed: 'Ошибка оплаты',
-    cancelled: 'Отменено',
-};
-
-/** Человекочитаемая подпись статуса доли счёта. */
-function splitStatusText(status: string) {
-    return SPLIT_STATUS_TEXT[status] ?? status;
-}
-
-/** Значок статуса доли счёта: оплачено / ожидание / неудача. */
-function splitStatusIcon(status: string) {
-    if (status === 'paid') return '✓';
-    if (status === 'failed' || status === 'cancelled') return '✕';
-    return '⏳';
-}
-
-/** Подпись участника-плательщика доли относительно текущего пользователя. */
-function splitPayerLabel(split: OrderSplit, currentUserId: string | null) {
-    if (currentUserId !== null && split.user_public_id === currentUserId) return 'Ваша часть';
-    return split.user_name && split.user_name.length > 0 ? split.user_name : 'Участник';
-}
-
 // Применяет событие WS-трекера к заказу: новый статус/URL оплаты, пересборка
 // нормализованного объекта (чтобы UI-статус согласовался с raw), текст ошибки.
 function mergeEvent(current: NormalizedOrder, event: GatewayWsEvent) {
     const merged: Order = {
         order_id: current.order_id,
+        admin_public_id: current.admin_public_id,
         status: event.status,
         total_cost: current.total_cost,
         created_at: current.created_at,
@@ -321,15 +296,35 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         return byRaw ? byRaw(o.eta_minutes) : STATUS_TEXT[o.status](o.eta_minutes);
     });
 
+    /** Текущий пользователь — организатор shared-заказа. */
+    const isOrganizer = computed<boolean>(() => {
+        const id = myId();
+        const adminId = order()?.admin_public_id;
+        if (id === null || adminId === undefined || adminId === '') return false;
+        return id === adminId;
+    });
+
+    /** Сумма к оплате текущим пользователем: своя доля либо общий total. */
+    const myPayAmount = computed<number>(() => {
+        const mine = mySplit();
+        if (mine !== null) return mine.amount;
+        return order()?.total_cost ?? 0;
+    });
+
     const showPaymentButton = computed(() => {
         if (processing()) return false;
         const o = order();
         if (o === null) return false;
         if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
-        // В режиме «каждый платит сам» оплата идёт через split-кнопки,
-        // главную «Оплатить» прячем (для sponsored участников её и без того нет).
-        if (splits().length > 0) return false;
-        return o.status === 'awaiting_payment' || o.status === 'created';
+        if (o.status !== 'awaiting_payment' && o.status !== 'created') return false;
+        // Sponsored участник не платит — его доля уже у организатора.
+        if (isSponsored()) return false;
+        const mine = mySplit();
+        // Если есть splits, но моей нет и я не sponsored — это «чужой» split-заказ.
+        if (splits().length > 0 && mine === null) return false;
+        // Если своя доля уже оплачена — кнопка не нужна.
+        if (mine !== null && mine.status === 'paid') return false;
+        return true;
     });
 
     const showCancelButton = computed(() => {
@@ -337,7 +332,13 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         const o = order();
         if (o === null) return false;
         if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
-        return CANCELLABLE_STATUSES.has(o.status);
+        if (!CANCELLABLE_STATUSES.has(o.status)) return false;
+        // Для shared-заказа отменить может только организатор; для solo
+        // admin_public_id совпадает с моим, так что условие тоже верно.
+        if (o.admin_public_id !== undefined && o.admin_public_id !== '') {
+            return isOrganizer();
+        }
+        return true;
     });
 
     let tracker: OrderTracker | null = null;
@@ -507,9 +508,17 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         if (current.payment_url !== undefined) {
             beginPaymentProcessing();
             window.location.replace(current.payment_url);
-        } else {
-            beginPaymentProcessing();
+            return;
         }
+        // В split-заказе платёж по своей доле инициирует payForSplit, а ссылку
+        // оплаты пришлёт WS — beginPaymentProcessing включит авто-редирект.
+        const mine = mySplit();
+        if (mine !== null && mine.status === 'pending') {
+            beginPaymentProcessing();
+            void handlePaySplit(mine);
+            return;
+        }
+        beginPaymentProcessing();
     };
 
     // Закрывает модалку, только если клик пришёл по самому оверлею, а не по содержимому.
@@ -616,7 +625,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                         </div>
                         <Show when={showPaymentButton}>
                             <button type="button" class="order-status-modal__pay-btn" onClick={handlePay}>
-                                Оплатить
+                                {() => `Оплатить ${formatRubles(myPayAmount())}₽`}
                             </button>
                         </Show>
                         <Show when={processing}>
@@ -641,90 +650,16 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                         </Show>
                     </div>
 
-                    <Show when={() => splits().length > 0}>
+                    <Show when={() => splits().length > 0 && splitSummary() !== null}>
                         <div class="order-status-modal__divider" />
-                        <div class="order-status-modal__section-title">Разделение счёта</div>
-                        <Show when={() => splitSummary() !== null}>
-                            <div
-                                class={() =>
-                                    `order-status-modal__split-summary order-status-modal__split-summary_${
-                                        splitSummary()?.kind ?? 'info'
-                                    }`
-                                }
-                            >
-                                {() => splitSummary()?.text ?? ''}
-                            </div>
-                        </Show>
-                        <div class="order-status-modal__splits">
-                            <For each={splits} key={(s) => s.split_id}>
-                                {(split) => {
-                                    const splitId = split.split_id;
-                                    // For не перевызывает children при смене статуса доли,
-                                    // поэтому актуальную долю читаем из сигнала splits.
-                                    const liveSplit = computed<OrderSplit>(
-                                        () => splits().find((s) => s.split_id === splitId) ?? split,
-                                    );
-                                    const isMine = computed(
-                                        () => myId() !== null && liveSplit().user_public_id === myId(),
-                                    );
-                                    const waiting = computed(() => splitWaiting() === splitId);
-                                    // Оплачивать можно только свою долю: чужие закрывает
-                                    // организатор через payer_mapping ещё при создании заказа.
-                                    const canPay = computed(
-                                        () => isMine() && liveSplit().status === 'pending' && splitWaiting() === '',
-                                    );
-                                    return (
-                                        <div
-                                            class={() => {
-                                                const cls = ['order-status-modal__split'];
-                                                if (isMine()) cls.push('order-status-modal__split_mine');
-                                                if (liveSplit().status === 'paid') {
-                                                    cls.push('order-status-modal__split_paid');
-                                                }
-                                                return cls.join(' ');
-                                            }}
-                                        >
-                                            <div class="order-status-modal__split-info">
-                                                <div class="order-status-modal__split-payer">
-                                                    {() => splitPayerLabel(liveSplit(), myId())}
-                                                </div>
-                                                <div
-                                                    class={() =>
-                                                        `order-status-modal__split-status order-status-modal__split-status_${
-                                                            liveSplit().status
-                                                        }`
-                                                    }
-                                                >
-                                                    {() =>
-                                                        `${splitStatusIcon(liveSplit().status)} ${splitStatusText(
-                                                            liveSplit().status,
-                                                        )}`
-                                                    }
-                                                </div>
-                                            </div>
-                                            <div class="order-status-modal__split-right">
-                                                <div class="order-status-modal__split-amount">
-                                                    {() => `${formatRubles(liveSplit().amount)}₽`}
-                                                </div>
-                                                <Show when={canPay}>
-                                                    <button
-                                                        type="button"
-                                                        class="order-status-modal__split-pay"
-                                                        onClick={() => {
-                                                            void handlePaySplit(liveSplit());
-                                                        }}
-                                                    >
-                                                        Оплатить
-                                                    </button>
-                                                </Show>
-                                                <Show when={waiting}>
-                                                    <span class="order-status-modal__split-wait">Готовим…</span>
-                                                </Show>
-                                            </div>
-                                        </div>
-                                    );
-                                }}
-                            </For>
+                        <div
+                            class={() =>
+                                `order-status-modal__split-summary order-status-modal__split-summary_${
+                                    splitSummary()?.kind ?? 'info'
+                                }`
+                            }
+                        >
+                            {() => splitSummary()?.text ?? ''}
                         </div>
                     </Show>
 

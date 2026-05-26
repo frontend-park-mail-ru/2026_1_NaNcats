@@ -568,24 +568,21 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                         <div style="font-size: 12px; color: #777;">
                                             Счёт разделится по участникам, каждый оплатит свою часть в истории заказов.
                                         </div>
+                                        <Show when={isOrganizerSig}>
+                                            <button
+                                                class="checkout-sponsor-btn"
+                                                disabled={() => payForAllSig()}
+                                                onClick={(e: Event) => {
+                                                    e.stopPropagation();
+                                                    if (payForAllSig.peek()) return;
+                                                    sponsorOpenSig.set(true);
+                                                }}
+                                            >
+                                                Настроить
+                                            </button>
+                                        </Show>
                                     </div>
                                 </div>
-                                <Show when={isOrganizerSig}>
-                                    <button
-                                        class="button button_ghost mt-10"
-                                        style="height: 40px; width: 100%;"
-                                        disabled={() => payForAllSig()}
-                                        onClick={() => {
-                                            if (payForAllSig.peek()) return;
-                                            sponsorOpenSig.set(true);
-                                        }}
-                                    >
-                                        {() => {
-                                            const n = sponsoredIdsSig().length;
-                                            return n > 0 ? `Настроить (доплачу за ${n})` : 'Настроить';
-                                        }}
-                                    </button>
-                                </Show>
                             </div>
                         </Show>
                     </main>
