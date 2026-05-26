@@ -235,10 +235,19 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
 
     const errorText = computed(() => order()?.error ?? '');
 
-    /** Доли счёта показываем только для разделённого заказа (больше одной доли). */
+    /**
+     * Доли счёта показываем, если их больше одной либо если текущий пользователь
+     * — sponsored участник (его долю забрал организатор, но «За вас оплатит
+     * организатор» должно быть видно).
+     */
     const splits = computed<readonly OrderSplit[]>(() => {
         const list = order()?.splits ?? [];
-        return list.length > 1 ? list : [];
+        if (list.length > 1) return list;
+        const id = myId();
+        if (id === null || list.length === 0) return [];
+        const hasOwnItem = (order()?.items ?? []).some((it) => it.owner_public_id === id);
+        const hasOwnSplit = list.some((s) => s.user_public_id === id);
+        return hasOwnItem && !hasOwnSplit ? list : [];
     });
 
     /** Доля счёта текущего пользователя в разделённом заказе либо null. */
