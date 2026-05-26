@@ -21,6 +21,7 @@ import { computed, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
+import qrcode from 'qrcode-generator';
 
 /** Картинка-заглушка блюда при ошибке загрузки `image_url`. */
 const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
@@ -100,6 +101,8 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const busy = signal<boolean>(false);
     // Поле ввода кода приглашения скрыто за ссылкой, пока не понадобится.
     const joinOpen = signal<boolean>(false);
+    // QR-модалка с инвайт-ссылкой: открывается по нажатию на QR-кнопку.
+    const qrOpen = signal<boolean>(false);
 
     // Поле ввода кода неконтролируемое: значение читаем и чистим через ref,
     // потому что проп value у этого VDOM прокидывается через setAttribute.
@@ -126,6 +129,19 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const inviteLink = computed(() => {
         const token = inviteToken();
         return token ? `${window.location.origin}/?cart_invite=${encodeURIComponent(token)}` : '';
+    });
+
+    /**
+     * Data-URL картинки QR-кода для инвайт-ссылки. type=0 включает автоподбор
+     * версии под длину строки; error correction 'M' даёт запас на повреждения.
+     */
+    const qrDataUrl = computed<string>(() => {
+        const link = inviteLink();
+        if (!link) return '';
+        const qr = qrcode(0, 'M');
+        qr.addData(link);
+        qr.make();
+        return qr.createDataURL(6, 4);
     });
 
     const handleCheckout = () => {
@@ -313,16 +329,62 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                 <div class="cart-invite__actions">
                                     <button
                                         type="button"
-                                        class="button button_primary"
+                                        class="button button_primary cart-invite__icon-btn"
+                                        title="Копировать ссылку"
                                         onClick={() => {
                                             void handleCopyInvite();
                                         }}
                                     >
-                                        {() => (copied() ? '✓ Скопировано' : 'Копировать')}
+                                        {() =>
+                                            copied() ? (
+                                                <svg
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2.4"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                >
+                                                    <polyline points="20 6 9 17 4 12" />
+                                                </svg>
+                                            ) : (
+                                                <svg
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                >
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                                </svg>
+                                            )
+                                        }
                                     </button>
                                     <button
                                         type="button"
-                                        class="button button_secondary"
+                                        class="button button_secondary cart-invite__icon-btn"
+                                        title="Показать QR-код"
+                                        onClick={() => qrOpen.set(true)}
+                                    >
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm0-4h2v2h-2v-2z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="button button_secondary cart-invite__refresh-btn"
                                         disabled={actionsDisabled}
                                         onClick={() => {
                                             void handleGenerateInvite();
@@ -624,6 +686,29 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             </button>
                         </div>
                     </Show>
+                </div>
+            </Show>
+
+            <Show when={qrOpen}>
+                <div
+                    class="cart-qr-overlay"
+                    onClick={(e: Event) => {
+                        if (e.target === e.currentTarget) qrOpen.set(false);
+                    }}
+                >
+                    <div class="cart-qr-modal">
+                        <button
+                            type="button"
+                            class="cart-qr-modal__close"
+                            aria-label="Закрыть"
+                            onClick={() => qrOpen.set(false)}
+                        >
+                            ×
+                        </button>
+                        <div class="cart-qr-modal__title">QR-код приглашения</div>
+                        <img class="cart-qr-modal__image" src={qrDataUrl} alt="QR-код" />
+                        <div class="cart-qr-modal__hint">Отсканируйте, чтобы присоединиться к совместной корзине</div>
+                    </div>
                 </div>
             </Show>
         </div>
