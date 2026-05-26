@@ -76,6 +76,27 @@
   justify-content: center;
 }
 
+.wheel-launch-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background: rgba(255, 193, 193, 0.18);
+    transform: rotate(20deg);
+  }
+
+  &:active {
+    transform: rotate(40deg);
+  }
+}
+
 .user-profile {
   background: none;
   border: none;

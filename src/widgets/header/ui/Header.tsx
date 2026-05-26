@@ -14,6 +14,7 @@ import type { VNode } from '@shared/lib/vdom';
 import { Logo } from '@shared/ui/logo';
 import { imageFallback } from '@shared/lib/img';
 import { AddressSelect } from '@widgets/address-select';
+import { LuckyWheelModal, type LuckyWheelModalController } from '@widgets/lucky-wheel';
 
 /** `default` - шапка с поиском и адресом, `back` - с кнопкой возврата. */
 export type HeaderMode = 'default' | 'back';
@@ -68,6 +69,7 @@ export function Header(props: HeaderProps): VNode {
     let searchInputEl: HTMLInputElement | null = null;
     let suggestEl: HTMLElement | null = null;
     let userMenuEl: HTMLElement | null = null;
+    let luckyWheelCtl: LuckyWheelModalController | null = null;
 
     // Header живёт в shell-е и переживает навигацию между страницами, поэтому
     // searchValue нужно синхронизировать с URL: иначе после поиска и возврата
@@ -442,16 +444,23 @@ export function Header(props: HeaderProps): VNode {
                             </>
                         }
                     >
-                        <div class="notif-btn">
-                            <div class="notif-btn__icon">
-                                <svg width="21" height="24" viewBox="0 0 21 24" fill="none">
-                                    <path
-                                        d="M10.5422 23.89C11.6667 23.89 12.5714 22.9852 12.5714 21.8608H8.513C8.513 22.9852 9.41776 23.89 10.5422 23.89ZM18.6589 16.7878V10.7003C18.6589 7.54519 16.9748 4.88725 14.0933 4.18721V3.59554C14.0933 1.63751 12.5002 0.0444336 10.5422 0.0444336C8.58414 0.0444336 6.99105 1.63751 6.99105 3.59554V4.18721C4.10955 4.88725 2.42546 7.53504 2.42546 10.7003V16.7878L0.396286 18.8169V19.8315H20.6881V18.8169L18.6589 16.7878ZM16.6297 17.8024H4.45463V10.7003C4.45463 8.01188 6.07792 5.62804 8.513 5.62804H12.5714C15.0065 5.62804 16.6297 8.01188 16.6297 10.7003V17.8024Z"
-                                        fill="#FFC1C1"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
+                        <button
+                            type="button"
+                            class="wheel-launch-btn"
+                            aria-label="Колесо пиццули"
+                            title="Колесо пиццули"
+                            onClick={() => {
+                                luckyWheelCtl?.open();
+                            }}
+                        >
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="#FFC1C1" stroke-width="2" />
+                                <path d="M12 2 V12 L19.5 7" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <path d="M12 12 L4.5 17" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <path d="M12 12 L20 17.5" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <circle cx="12" cy="12" r="1.5" fill="#FFC1C1" />
+                            </svg>
+                        </button>
                         <div
                             class="user-menu-wrapper"
                             ref={(el: Element | null) => {
@@ -499,6 +508,11 @@ export function Header(props: HeaderProps): VNode {
                     </Show>
                 </Show>
             </div>
+            <LuckyWheelModal
+                controllerRef={(ctl: LuckyWheelModalController | null) => {
+                    luckyWheelCtl = ctl;
+                }}
+            />
         </header>
     );
 }
