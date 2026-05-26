@@ -249,24 +249,49 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
     });
 
     /**
+     * Пользователь оказался в shared-заказе как владелец позиций, но его долю
+     * взял на себя организатор (payer_mapping): у него нет собственного split.
+     */
+    const isSponsored = computed<boolean>(() => {
+        const id = myId();
+        if (id === null) return false;
+        if (splits().length === 0) return false;
+        if (mySplit() !== null) return false;
+        const items = order()?.items ?? [];
+        return items.some((it) => it.owner_public_id === id);
+    });
+
+    /**
      * Подпись над списком долей: статус оплаты текущего пользователя и сколько
      * участников уже заплатили.
      */
     const splitSummary = computed<{ kind: 'warn' | 'done' | 'info'; text: string } | null>(() => {
         const list = splits();
         if (list.length === 0) return null;
+        const paidCount = list.filter((s) => s.status === 'paid').length;
+        if (isSponsored()) {
+            if (paidCount === list.length) {
+                return { kind: 'done', text: 'Счёт оплачен полностью.' };
+            }
+            return {
+                kind: 'info',
+                text: `За вас оплатит организатор. Оплачено ${paidCount} из ${list.length} участников.`,
+            };
+        }
         const mine = mySplit();
         if (mine !== null && mine.status === 'pending') {
-            return { kind: 'warn', text: `Вы ещё не оплатили свою часть: ${formatRubles(mine.amount)}₽` };
+            return {
+                kind: 'warn',
+                text: `Вы ещё не оплатили свою часть: ${formatRubles(mine.amount)}₽. Оплачено ${paidCount} из ${list.length} участников.`,
+            };
         }
-        const paidCount = list.filter((s) => s.status === 'paid').length;
         if (paidCount === list.length) {
             return { kind: 'done', text: 'Счёт оплачен полностью.' };
         }
         if (mine !== null && mine.status === 'paid') {
             return {
                 kind: 'done',
-                text: `Вы оплатили свою часть. Оплачено ${paidCount} из ${list.length}, ждём остальных.`,
+                text: `Вы оплатили свою часть. Оплачено ${paidCount} из ${list.length} участников, ждём остальных.`,
             };
         }
         return { kind: 'info', text: `Оплачено ${paidCount} из ${list.length} участников.` };
@@ -292,6 +317,9 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         const o = order();
         if (o === null) return false;
         if (PAYMENT_SETTLED_RAW_STATUSES.has(o.raw_status)) return false;
+        // В режиме «каждый платит сам» оплата идёт через split-кнопки,
+        // главную «Оплатить» прячем (для sponsored участников её и без того нет).
+        if (splits().length > 0) return false;
         return o.status === 'awaiting_payment' || o.status === 'created';
     });
 
@@ -631,9 +659,10 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                         () => myId() !== null && liveSplit().user_public_id === myId(),
                                     );
                                     const waiting = computed(() => splitWaiting() === splitId);
-                                    // Платить можно любую неоплаченную долю: и свою, и чужую.
+                                    // Оплачивать можно только свою долю: чужие закрывает
+                                    // организатор через payer_mapping ещё при создании заказа.
                                     const canPay = computed(
-                                        () => liveSplit().status === 'pending' && splitWaiting() === '',
+                                        () => isMine() && liveSplit().status === 'pending' && splitWaiting() === '',
                                     );
                                     return (
                                         <div
@@ -676,7 +705,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                                             void handlePaySplit(liveSplit());
                                                         }}
                                                     >
-                                                        {() => (isMine() ? 'Оплатить' : 'Оплатить за участника')}
+                                                        Оплатить
                                                     </button>
                                                 </Show>
                                                 <Show when={waiting}>
