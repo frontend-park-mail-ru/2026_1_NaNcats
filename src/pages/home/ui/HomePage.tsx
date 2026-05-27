@@ -381,11 +381,17 @@ export function HomePage(props: HomePageProps): VNode {
     };
 
     // Подгружает следующую страницу при приближении к низу; пропускается при фильтрах и во время запроса.
-    const handleScroll = async () => {
+    // На десктопе скроллится внутренний .center-column (см. layout.scss: body/#root/.root-main = overflow:hidden),
+    // на мобиле (≤900px) — обычный document. Обработчик висит на обоих, читаем из того, кто реально скроллится.
+    const handleScroll = async (e?: Event) => {
         if (isFetching() || !hasMore() || searchQuery() || activeCategory()) return;
 
-        const doc = document.documentElement;
-        const distanceFromBottom = doc.scrollHeight - doc.scrollTop - doc.clientHeight;
+        const targetEl = e?.currentTarget as HTMLElement | undefined;
+        const el =
+            targetEl && targetEl.scrollHeight > targetEl.clientHeight
+                ? targetEl
+                : document.scrollingElement || document.documentElement;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
         if (distanceFromBottom > 200) return;
 
         isFetching.set(true);
@@ -564,7 +570,7 @@ export function HomePage(props: HomePageProps): VNode {
                     </div>
                 </aside>
 
-                <main class="center-column">
+                <main class="center-column" onScroll={handleScroll}>
                     <div class="sheet">
                         <Show when={() => searchQuery() === '' && activeCategory() === ''}>
                             <Show when={() => props.pastBrands.length > 0}>
