@@ -26,6 +26,7 @@ import { OrdersHistoryModal } from '@features/profile/orders-history';
 import { AchievementsModal, achievementsAccessor, ensureAchievementsLoaded } from '@features/profile/achievements';
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
+import { wordleApi } from '@entities/wordle';
 import { OrderStatusModal, type OrderStatusModalController } from '@widgets/order-status';
 import { For, onCleanup, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
@@ -131,7 +132,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     const ordersSig = signal<OrderRowView[]>(props.orders);
     const savedAddresses = useStoreSignal(addressStore, (s) => s.saved);
     const currentAddress = useStoreSignal(addressStore, (s) => s.current);
-    const wordleSolved = signal<boolean>(localStorage.getItem('wordle_solved') === 'true');
+    const wordleSolved = signal<boolean>(false);
     const wordleOpen = signal<boolean>(false);
 
     let orderStatusCtl: OrderStatusModalController | null = null;
@@ -210,9 +211,19 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     const handleWordleWin = () => {
-        localStorage.setItem('wordle_solved', 'true');
         wordleSolved.set(true);
     };
+
+    // При маунте профиля подгружаем актуальное состояние партии «5 букв»,
+    // чтобы карточка сразу отражала, отгадал ли пользователь сегодня (вне зависимости от localStorage).
+    void wordleApi
+        .getDailyState()
+        .then((state) => {
+            wordleSolved.set(state.status === 'WON');
+        })
+        .catch(() => {
+            /* молча: карточка покажет дефолтный текст */
+        });
 
     // Перечитывает заказы с сервера и обновляет список (с бейджами статусов).
     // Нужно после действий в модалке заказа (например, отмены): WS-событие
