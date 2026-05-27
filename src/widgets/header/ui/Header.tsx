@@ -3,6 +3,7 @@
 import '@pages/home/ui/home.scss';
 
 import { userStore, type User } from '@entities/user';
+import { ownerApi } from '@entities/owner';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
 import { router } from '@app/router';
@@ -60,6 +61,8 @@ export function Header(props: HeaderProps): VNode {
     // До завершения первой проверки авторизации не показываем ни гостевые,
     // ни пользовательские контролы, иначе кнопки «Войти/Регистрация» мигают.
     const authResolved = useStoreSignal(userStore, (s) => s.authResolved);
+    // Флаг видимости кнопки "Панель владельца": проверяется один раз при логине.
+    const isOwner = signal(false);
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -68,6 +71,22 @@ export function Header(props: HeaderProps): VNode {
     let searchInputEl: HTMLInputElement | null = null;
     let suggestEl: HTMLElement | null = null;
     let userMenuEl: HTMLElement | null = null;
+
+    // Проверяем роль owner при смене пользователя (вход/выход).
+    // Результат кешируется в сигнале isOwner — повторных запросов нет.
+    let lastCheckedUserId: string | null = null;
+    effect(() => {
+        const user = props.user();
+        if (!user) {
+            isOwner.set(false);
+            lastCheckedUserId = null;
+            return;
+        }
+        // Проверяем только при смене пользователя (не при каждом ре-рендере)
+        if (lastCheckedUserId === user.public_id) return;
+        lastCheckedUserId = user.public_id;
+        void ownerApi.checkOwnerAccess().then((ok) => isOwner.set(ok));
+    });
 
     // Header живёт в shell-е и переживает навигацию между страницами, поэтому
     // searchValue нужно синхронизировать с URL: иначе после поиска и возврата
@@ -485,6 +504,18 @@ export function Header(props: HeaderProps): VNode {
                                 >
                                     Профиль
                                 </button>
+                                <Show when={isOwner}>
+                                    <button
+                                        class="user-dropdown__profile"
+                                        type="button"
+                                        onClick={() => {
+                                            profileMenuOpen.set(false);
+                                            void router.go(ROUTES.owner);
+                                        }}
+                                    >
+                                        🏪 Панель владельца
+                                    </button>
+                                </Show>
                                 <button
                                     class="user-dropdown__logout"
                                     type="button"

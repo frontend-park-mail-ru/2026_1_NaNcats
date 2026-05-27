@@ -6,4 +6,5 @@ export {
     CheckoutPageSkeleton,
     AuthPageSkeleton,
     NotFoundPageSkeleton,
+    OwnerPageSkeleton,
 } from './pageSkeletons';
