@@ -23,7 +23,12 @@ import { AddressesModal, removeAddress } from '@features/profile/manage-addresse
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { PromoModal, promosAccessor, ensureLoaded as ensurePromosLoaded } from '@features/profile/manage-promos';
 import { OrdersHistoryModal } from '@features/profile/orders-history';
-import { AchievementsModal, achievementsAccessor, ensureAchievementsLoaded } from '@features/profile/achievements';
+import {
+    AchievementsModal,
+    achievementsAccessor,
+    ensureAchievementsLoaded,
+    refreshAchievements,
+} from '@features/profile/achievements';
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
 import { wordleApi } from '@entities/wordle';
@@ -212,6 +217,9 @@ export function ProfilePage(props: ProfilePageProps): VNode {
 
     const handleWordleWin = () => {
         wordleSolved.set(true);
+        // Бэк только что мог выдать ачивку (first_win / winner_10 / streak_30) —
+        // подтягиваем свежий список, чтобы счётчик «N из M» обновился без F5.
+        void refreshAchievements();
     };
 
     // При маунте профиля подгружаем актуальное состояние партии «5 букв»,

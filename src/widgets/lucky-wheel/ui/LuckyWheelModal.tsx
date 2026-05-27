@@ -7,6 +7,7 @@ import './luckyWheelModal.scss';
 
 import { ApiError } from '@shared/api/http';
 import { wheelApi, type WheelSector, type WheelSpinResult } from '@entities/wheel';
+import { refreshAchievements } from '@features/profile/achievements';
 import { computed, signal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
@@ -174,6 +175,9 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                 result.set(r);
                 isSpinning.set(false);
             }, SPIN_DURATION_MS);
+            // Бэк после спина мог выдать first_spin / lucky_wheel_winner —
+            // обновляем кэш ачивок, чтобы счётчик в профиле сразу подтянулся.
+            void refreshAchievements();
         } catch (e) {
             const msg = e instanceof ApiError ? e.message : 'Не удалось крутануть колесо';
             spinError.set(msg);
