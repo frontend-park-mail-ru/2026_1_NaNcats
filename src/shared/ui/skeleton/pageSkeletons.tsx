@@ -127,3 +127,28 @@ export function NotFoundPageSkeleton(): VNode {
         </div>
     );
 }
+
+/** Скелетон панели владельца: боковое меню + основной контент. */
+export function OwnerPageSkeleton(): VNode {
+    return (
+        <div class="page-skel" aria-busy="true" aria-live="polite">
+            <div class="page-skel__col page-skel__col_sidebar">
+                <div class="page-skel__line page-skel__line_lg" />
+                <div class="page-skel__box page-skel__box_card" />
+                <div class="page-skel__box page-skel__box_card" />
+                <div class="page-skel__box page-skel__box_strip" />
+            </div>
+            <div class="page-skel__col page-skel__col_main">
+                <div class="page-skel__line page-skel__line_lg" />
+                <div class="page-skel__grid">
+                    <div class="page-skel__tile" />
+                    <div class="page-skel__tile" />
+                    <div class="page-skel__tile" />
+                    <div class="page-skel__tile" />
+                </div>
+                <div class="page-skel__box page-skel__box_card" />
+                <div class="page-skel__box page-skel__box_card" />
+            </div>
+        </div>
+    );
+}

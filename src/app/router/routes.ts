@@ -13,6 +13,7 @@ import {
     CheckoutPageSkeleton,
     HomePageSkeleton,
     NotFoundPageSkeleton,
+    OwnerPageSkeleton,
     ProfilePageSkeleton,
     RestaurantPageSkeleton,
 } from '@shared/ui/skeleton';
@@ -112,6 +113,13 @@ export const ROUTES_TABLE: RouteDescriptor[] = [
         component: lazyPage(() => import('@pages/checkout')),
         loader: async () => (await import('@pages/checkout')).load(),
         skeleton: CheckoutPageSkeleton,
+    },
+    {
+        path: ROUTES.owner,
+        layout: 'root',
+        component: lazyPage(() => import('@pages/owner')),
+        loader: async () => (await import('@pages/owner')).load(),
+        skeleton: OwnerPageSkeleton,
     },
     {
         path: ROUTES.notFound,

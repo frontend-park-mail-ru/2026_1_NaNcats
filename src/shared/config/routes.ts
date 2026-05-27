@@ -19,6 +19,8 @@ export const ROUTES = {
     profile: '/profile',
     /** Страница оформления заказа. */
     checkout: '/checkout',
+    /** Панель владельца ресторана (роль owner). */
+    owner: '/owner',
     /** Страница для несуществующих маршрутов. */
     notFound: '/404',
 } as const;
