@@ -505,7 +505,13 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     >
                         <div class="input-group">
                             <label>Название</label>
-                            <input name="label" class="input-field" value="Адрес" placeholder="Например: Дом, Работа" />
+                            <input
+                                name="label"
+                                class="input-field"
+                                value="Адрес"
+                                placeholder="Например: Дом, Работа"
+                                maxlength="60"
+                            />
                         </div>
                         <div class="input-group">
                             <label>Адрес</label>
