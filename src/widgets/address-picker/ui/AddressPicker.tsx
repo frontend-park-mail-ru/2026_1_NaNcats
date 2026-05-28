@@ -9,9 +9,11 @@ import { yandexMaps, type MapInstance } from '@shared/api/yandex';
 import { addressStore, type Coordinates } from '@entities/address';
 import { userStore } from '@entities/user';
 import { pickAddress } from '@features/address/pick-address';
-import { onCleanup, signal } from '@shared/lib/signals';
+import { effect, onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import { validateAddressDetails } from '@shared/lib/validation';
 
 /** Императивный API пикера, отдаваемый наружу через {@link AddressPickerProps.controllerRef}. */
 export interface AddressPickerController {
@@ -56,6 +58,23 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     const detailsModalOpen = signal<boolean>(false);
     const modalSuggestions = signal<readonly string[]>([]);
     const modalSuggestionsActive = signal<boolean>(false);
+    /** Ошибки валидации формы деталей по именам полей. */
+    const detailsErrors = signal<Record<string, string>>({});
+
+    // Блокируем фоновый скролл, пока открыта любая модалка пикера (карта или
+    // детали). Эффект надёжнее ручных lock/unlock в каждом open/close: два
+    // независимых сигнала переключаются между собой без рассинхрона счётчика.
+    let pickerScrollLocked = false;
+    effect(() => {
+        const anyOpen = mapModalOpen() || detailsModalOpen();
+        if (anyOpen && !pickerScrollLocked) {
+            lockScroll();
+            pickerScrollLocked = true;
+        } else if (!anyOpen && pickerScrollLocked) {
+            unlockScroll();
+            pickerScrollLocked = false;
+        }
+    });
 
     /** Текущие выбранные координаты (центр карты или координаты подсказки). */
     let selectedCoords: Coordinates = DEFAULT_COORDS;
@@ -114,6 +133,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     const openDetailsModal = (text: string, coords: Coordinates) => {
         if (detailsFormEl !== null) detailsFormEl.reset();
         if (detailsDisplayEl !== null) detailsDisplayEl.value = text;
+        detailsErrors.set({});
         pendingAddressText = text;
         selectedCoords = coords;
         detailsModalOpen.set(true);
@@ -184,6 +204,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             setField('courier_comment', target.courier_comment);
         }
         if (detailsDisplayEl !== null) detailsDisplayEl.value = target.location.address_text;
+        detailsErrors.set({});
         detailsModalOpen.set(true);
     };
 
@@ -311,6 +332,10 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             courier_comment: (formData.get('courier_comment') as string) || undefined,
             label: (formData.get('label') as string) || 'Адрес',
         };
+
+        const errors = validateAddressDetails(details);
+        detailsErrors.set(errors);
+        if (Object.keys(errors).length > 0) return;
 
         closeDetailsModal();
         await finalize(text, selectedCoords, details);
@@ -506,6 +531,9 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                 placeholder="Например: Дом, Работа"
                                 maxlength="60"
                             />
+                            <Show when={() => detailsErrors().label !== undefined}>
+                                <span class="address-modal__field-error">{() => detailsErrors().label}</span>
+                            </Show>
                         </div>
                         <div class="input-group">
                             <label>Адрес</label>
@@ -524,24 +552,39 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                             <div class="input-group">
                                 <label>Квартира</label>
-                                <input name="apartment" class="input-field" />
+                                <input name="apartment" class="input-field" inputmode="numeric" maxlength="10" />
+                                <Show when={() => detailsErrors().apartment !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().apartment}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Подъезд</label>
-                                <input name="entrance" class="input-field" />
+                                <input name="entrance" class="input-field" inputmode="numeric" maxlength="3" />
+                                <Show when={() => detailsErrors().entrance !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().entrance}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Этаж</label>
-                                <input name="floor" class="input-field" />
+                                <input name="floor" class="input-field" inputmode="numeric" maxlength="4" />
+                                <Show when={() => detailsErrors().floor !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().floor}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Код</label>
-                                <input name="door_code" class="input-field" />
+                                <input name="door_code" class="input-field" maxlength="20" />
+                                <Show when={() => detailsErrors().door_code !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().door_code}</span>
+                                </Show>
                             </div>
                         </div>
                         <div class="input-group">
                             <label>Комментарий курьеру</label>
-                            <input name="courier_comment" class="input-field" />
+                            <input name="courier_comment" class="input-field" maxlength="300" />
+                            <Show when={() => detailsErrors().courier_comment !== undefined}>
+                                <span class="address-modal__field-error">{() => detailsErrors().courier_comment}</span>
+                            </Show>
                         </div>
                         <button type="submit" class="button button_primary">
                             Сохранить

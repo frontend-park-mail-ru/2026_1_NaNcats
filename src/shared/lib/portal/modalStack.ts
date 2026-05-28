@@ -9,6 +9,7 @@
 import { signal } from '@shared/lib/signals';
 import type { Signal } from '@shared/lib/signals';
 import type { VNode } from '@shared/lib/vdom';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
 
 /** Описание одной модалки в стеке. */
 export interface ModalEntry {
@@ -50,6 +51,7 @@ export function pushModal(vnode: VNode, onClose?: () => void): PushResult {
     nextId += 1;
     const entry: ModalEntry = { id, vnode, onClose };
     modalStack.set((prev) => [...prev, entry]);
+    lockScroll();
     return {
         id,
         close: () => popModal(id),
@@ -70,6 +72,7 @@ export function popModal(id: number): void {
     const removed = current[index];
     const next = current.slice(0, index).concat(current.slice(index + 1));
     modalStack.set(next);
+    unlockScroll();
     if (removed.onClose) {
         try {
             removed.onClose();

@@ -17,6 +17,8 @@ import { applyPromo, appliedCodeAccessor } from '@features/profile/manage-promos
 import { CartWidget } from '@widgets/cart-widget';
 import { imageFallback } from '@shared/lib/img';
 import { httpClient } from '@shared/api/http';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import { pluralRu } from '@shared/lib/plural';
 
 /** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
@@ -35,6 +37,14 @@ export interface RestaurantPromoBanner {
     title: string;
 }
 
+/** Сводка отзывов ресторана для баннера. */
+export interface ReviewSummary {
+    /** Средняя оценка (0, если отзывов нет). */
+    rating: number;
+    /** Количество отзывов. */
+    count: number;
+}
+
 export interface RestaurantPageProps {
     restaurant: Restaurant;
     dishes: DishView[];
@@ -43,6 +53,12 @@ export interface RestaurantPageProps {
     restaurantPromo: RestaurantPromoBanner | null;
     /** Топ блюд этого ресторана (бэк подбирает эвристикой по продажам за 30 дней). */
     recommendedDishes: DishView[];
+    /** Сводка отзывов (рейтинг + количество) для баннера. */
+    reviewSummary: ReviewSummary;
+    /** Базовое время доставки в минутах (фронт-мок: бэк его не отдаёт). */
+    deliveryMinutes: number;
+    /** Существует ли бренд: false, если getBrand вернул ошибку (удалён/недоступен). */
+    brandExists: boolean;
 }
 
 /** Эвристические правила группировки блюд по секциям. */
@@ -121,6 +137,25 @@ const FALLBACK_RESTAURANT: Restaurant = {
 
 const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) });
 
+/**
+ * Детерминированное «время доставки» в минутах по id ресторана. Бэкенд время
+ * доставки не отдаёт, поэтому считаем стабильный мок в диапазоне 25–45 мин,
+ * чтобы у одного ресторана оно не прыгало между заходами.
+ */
+function mockDeliveryMinutes(id: string | number): number {
+    const s = String(id);
+    let hash = 0;
+    for (let i = 0; i < s.length; i += 1) hash = (hash * 31 + s.charCodeAt(i)) % 1000;
+    return 25 + (hash % 21); // 25..45
+}
+
+/** Считает сводку отзывов (средний рейтинг и количество). */
+function summarizeReviews(reviews: Review[]): ReviewSummary {
+    if (reviews.length === 0) return { rating: 0, count: 0 };
+    const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+    return { rating: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+}
+
 /** Loader: грузит пользователя (и корзину для авторизованного), бренд и первую страницу блюд. */
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
@@ -131,6 +166,9 @@ export async function load(): Promise<RestaurantPageProps> {
             sections: buildSections([]),
             restaurantPromo: null,
             recommendedDishes: [],
+            reviewSummary: { rating: 0, count: 0 },
+            deliveryMinutes: 35,
+            brandExists: false,
         };
     }
 
@@ -147,16 +185,19 @@ export async function load(): Promise<RestaurantPageProps> {
     }
     await Promise.all(aux);
 
-    const [brandRes, dishesRes, promoRes, recoRes] = await Promise.allSettled([
+    const [brandRes, dishesRes, promoRes, recoRes, reviewsRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
         restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
         httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
         restaurantApi.listRecommendedDishes(idParam, 4),
+        restaurantApi.getReviews(idParam),
     ]);
 
+    const brandExists = brandRes.status === 'fulfilled';
     const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
     const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
     const recommendedDishes = recoRes.status === 'fulfilled' ? recoRes.value.map(toView) : [];
+    const reviewSummary = summarizeReviews(reviewsRes.status === 'fulfilled' ? reviewsRes.value : []);
 
     // Баннер промокода — необязательная деталь: ошибку запроса молча игнорируем.
     let restaurantPromo: RestaurantPromoBanner | null = null;
@@ -171,7 +212,16 @@ export async function load(): Promise<RestaurantPageProps> {
         }
     }
 
-    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo, recommendedDishes };
+    return {
+        restaurant,
+        dishes,
+        sections: buildSections(dishes),
+        restaurantPromo,
+        recommendedDishes,
+        reviewSummary,
+        deliveryMinutes: mockDeliveryMinutes(idParam),
+        brandExists,
+    };
 }
 
 // Возвращает видимую цель для анимации полёта в корзину: на мобильной вёрстке
@@ -463,6 +513,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         const overlay = document.createElement('div');
         overlay.className = 'reviews-overlay';
         document.body.appendChild(overlay);
+        lockScroll();
 
         const rating = signal(0);
         const hover = signal(0);
@@ -472,9 +523,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         const submitting = signal(false);
 
         let unmount: (() => void) | null = null;
+        let closed = false;
 
         const close = () => {
+            if (closed) return;
+            closed = true;
             closeActiveReviews = null;
+            unlockScroll();
             overlay.classList.remove('reviews-overlay_open');
             overlay.addEventListener(
                 'transitionend',
@@ -544,41 +599,52 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         ))
                     )}
                 </div>
-                <div class="reviews-modal__form">
-                    <h3 class="reviews-form__title">Оставить отзыв</h3>
-                    <input
-                        type="text"
-                        class="reviews-form__input"
-                        placeholder="Ваше имя"
-                        maxlength="60"
-                        onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
-                    />
-                    <div class="star-picker" aria-label="Оценка">
-                        {[0, 1, 2, 3, 4].map((i) => (
-                            <span
-                                class={starClass(i)}
-                                onMouseEnter={() => hover.set(i + 1)}
-                                onMouseLeave={() => hover.set(0)}
-                                onClick={() => rating.set(i + 1)}
-                            >
-                                ★
-                            </span>
-                        ))}
+                {props.brandExists ? (
+                    <div class="reviews-modal__form">
+                        <h3 class="reviews-form__title">Оставить отзыв</h3>
+                        <input
+                            type="text"
+                            class="reviews-form__input"
+                            placeholder="Ваше имя"
+                            maxlength="60"
+                            onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
+                        />
+                        <div class="star-picker" aria-label="Оценка">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <span
+                                    class={starClass(i)}
+                                    onMouseEnter={() => hover.set(i + 1)}
+                                    onMouseLeave={() => hover.set(0)}
+                                    onClick={() => rating.set(i + 1)}
+                                >
+                                    ★
+                                </span>
+                            ))}
+                        </div>
+                        <textarea
+                            class="reviews-form__textarea"
+                            placeholder="Ваш комментарий"
+                            rows="3"
+                            maxlength="500"
+                            onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
+                        />
+                        <button
+                            type="button"
+                            class="reviews-form__submit"
+                            disabled={() => submitting()}
+                            onClick={submit}
+                        >
+                            Отправить
+                        </button>
+                        <Show when={() => error() !== ''}>
+                            <p class="reviews-form__error">{() => error()}</p>
+                        </Show>
                     </div>
-                    <textarea
-                        class="reviews-form__textarea"
-                        placeholder="Ваш комментарий"
-                        rows="3"
-                        maxlength="500"
-                        onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
-                    />
-                    <button type="button" class="reviews-form__submit" disabled={() => submitting()} onClick={submit}>
-                        Отправить
-                    </button>
-                    <Show when={() => error() !== ''}>
-                        <p class="reviews-form__error">{() => error()}</p>
-                    </Show>
-                </div>
+                ) : (
+                    <div class="reviews-modal__form">
+                        <p class="reviews-empty">Этот ресторан больше недоступен — оставить отзыв нельзя.</p>
+                    </div>
+                )}
             </div>
         ) as VNode;
 
@@ -760,6 +826,38 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                     'https://nancats-bucket.storage.yandexcloud.net/restaurants/default-restaurant-logo.webp',
                                 )}
                             />
+                            <div class="restaurant-hero__overlay">
+                                <div class="restaurant-hero__meta">
+                                    <button
+                                        type="button"
+                                        class="restaurant-hero__chip restaurant-hero__chip_rating"
+                                        onClick={() => {
+                                            void openReviews();
+                                        }}
+                                    >
+                                        <Show
+                                            when={() => props.reviewSummary.count > 0}
+                                            fallback={<span>☆ Нет отзывов</span>}
+                                        >
+                                            <span class="restaurant-hero__star">★</span>
+                                            <span class="restaurant-hero__rating-val">
+                                                {() => props.reviewSummary.rating.toFixed(1)}
+                                            </span>
+                                            <span class="restaurant-hero__rating-count">
+                                                {() =>
+                                                    `${props.reviewSummary.count} ${pluralRu(props.reviewSummary.count, ['отзыв', 'отзыва', 'отзывов'])}`
+                                                }
+                                            </span>
+                                        </Show>
+                                    </button>
+                                    <span class="restaurant-hero__chip">
+                                        🕒 {props.deliveryMinutes}–{props.deliveryMinutes + 10} мин
+                                    </span>
+                                </div>
+                                <Show when={() => (props.restaurant.description ?? '') !== ''}>
+                                    <p class="restaurant-hero__info">{props.restaurant.description}</p>
+                                </Show>
+                            </div>
                         </div>
 
                         <Show when={() => props.restaurantPromo !== null}>
@@ -772,6 +870,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         </span>
                                         <span class="restaurant-promo-banner__desc">
                                             {() => props.restaurantPromo?.title ?? ''}
+                                        </span>
+                                        <span class="restaurant-promo-banner__scope">
+                                            {() => `Действует в «${props.restaurant.name}»`}
                                         </span>
                                     </div>
                                 </div>

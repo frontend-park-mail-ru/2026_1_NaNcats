@@ -1,4 +1,5 @@
 export { PageLoadingSkeleton } from './PageLoadingSkeleton';
+export { PizzaLoader } from './PizzaLoader';
 export {
     HomePageSkeleton,
     RestaurantPageSkeleton,

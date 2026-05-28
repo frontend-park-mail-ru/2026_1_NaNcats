@@ -415,6 +415,94 @@
   }
 }
 
+/* Сканер QR-кода приглашения (камера). */
+.cart-scan-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;
+  padding: 16px;
+}
+
+.cart-scan-modal {
+  position: relative;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 28px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+
+  &__close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    border: none;
+    background: transparent;
+    font-size: 28px;
+    line-height: 1;
+    color: #616161;
+    cursor: pointer;
+    padding: 0 4px;
+
+    &:hover {
+      color: #000;
+    }
+  }
+
+  &__title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark, #0e1117);
+    margin: 0;
+  }
+
+  &__viewport {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+  }
+
+  &__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  &__frame {
+    position: absolute;
+    inset: 18%;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.25);
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--text-gray);
+    text-align: center;
+    max-width: 260px;
+  }
+
+  &__error {
+    font-size: 13px;
+    color: #d23b3b;
+    text-align: center;
+    max-width: 280px;
+  }
+}
+
 /* Бейдж владельца позиции */
 .cart-item__owner {
   margin-top: 2px;
@@ -470,6 +558,43 @@
   &:hover {
     color: var(--accent-pink);
     background: var(--bg-main);
+  }
+}
+
+/* Свёрнутый вид: ссылка «войти по коду» + кнопка-сканер (только на мобилках). */
+.cart-join__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cart-join__scan {
+  // На десктопе камеры обычно нет — кнопка только для мобильных.
+  display: none;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--accent-pink);
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    background 0.2s;
+
+  &:hover {
+    border-color: var(--accent-pink);
+    background: var(--bg-main);
+  }
+}
+
+@media (max-width: 900px) {
+  .cart-join__scan {
+    display: inline-flex;
   }
 }
 

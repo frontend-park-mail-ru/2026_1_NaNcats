@@ -176,7 +176,12 @@ export async function load(): Promise<HomePageProps> {
             : Promise.resolve(),
     ]);
 
-    const pastBrands = pastBrandsFromOrders(orders);
+    // Убираем из «Вы заказывали» рестораны, которых больше нет (удалены
+    // владельцем): заказ хранит снимок ресторана, поэтому удалённый бренд иначе
+    // продолжал бы висеть в секции. Проверяем существование через getBrand.
+    const pastBrandsRaw = pastBrandsFromOrders(orders);
+    const existence = await Promise.allSettled(pastBrandsRaw.map((b) => restaurantApi.getBrand(b.id)));
+    const pastBrands = pastBrandsRaw.filter((_, i) => existence[i].status === 'fulfilled');
     const descMap = new Map(restaurants.map((r) => [String(r.id), r.description ?? '']));
     for (const pb of pastBrands) {
         if (!pb.description) pb.description = descMap.get(String(pb.id)) ?? '';

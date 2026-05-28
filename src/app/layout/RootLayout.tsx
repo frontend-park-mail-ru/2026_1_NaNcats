@@ -36,6 +36,11 @@ export function RootLayout(): VNode {
                 onRegister={() => {
                     void router.go(ROUTES.register);
                 }}
+                onLoggedOut={() => {
+                    // После выхода всегда уводим на главную, иначе на странице
+                    // профиля осталась бы устаревшая инфо вышедшего пользователя.
+                    void router.go(ROUTES.home);
+                }}
             />
             <main class="root-main">
                 <Outlet />

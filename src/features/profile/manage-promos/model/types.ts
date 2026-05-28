@@ -59,13 +59,20 @@ function checkExpiringSoon(iso: string): { soon: boolean; text: string } {
     return { soon: false, text: '' };
 }
 
-/** Собирает строку условий промокода: рестораны и минимальный чек. */
-function buildCondition(dto: PromoDTO): string {
+/**
+ * Собирает строку условий промокода: ресторан(ы) и минимальный чек. Если
+ * передана карта названий брендов, подставляет имя ресторана — чтобы было
+ * понятно, где действует промокод.
+ */
+function buildCondition(dto: PromoDTO, brandNames?: Record<string, string>): string {
     const parts: string[] = [];
-    if (dto.restaurant_brand_ids.length === 1) {
-        parts.push('Только в одном ресторане');
-    } else if (dto.restaurant_brand_ids.length > 1) {
-        parts.push('Только в избранных ресторанах');
+    const ids = dto.restaurant_brand_ids;
+    if (ids.length === 1) {
+        const name = brandNames?.[String(ids[0])];
+        parts.push(name ? `Только в ресторане «${name}»` : 'Только в одном ресторане');
+    } else if (ids.length > 1) {
+        const names = ids.map((id) => brandNames?.[String(id)]).filter((n): n is string => Boolean(n));
+        parts.push(names.length === ids.length ? `Рестораны: ${names.join(', ')}` : 'Только в избранных ресторанах');
     } else {
         parts.push('Любой ресторан');
     }
@@ -75,14 +82,19 @@ function buildCondition(dto: PromoDTO): string {
     return parts.join(' · ');
 }
 
-/** Преобразует DTO бэкенда в UI Promo. */
-export function dtoToPromo(dto: PromoDTO): Promo {
+/**
+ * Преобразует DTO бэкенда в UI Promo.
+ *
+ * @param dto Промокод с бэкенда.
+ * @param brandNames Карта «id бренда → название» для пояснения, где действует.
+ */
+export function dtoToPromo(dto: PromoDTO, brandNames?: Record<string, string>): Promo {
     const expiry = checkExpiringSoon(dto.expires_at);
     return {
         id: String(dto.id),
         code: dto.code,
         title: dto.title,
-        condition: buildCondition(dto),
+        condition: buildCondition(dto, brandNames),
         expiresAt: formatExpiry(dto.expires_at),
         expiringSoon: expiry.soon,
         expiringSoonText: expiry.text,

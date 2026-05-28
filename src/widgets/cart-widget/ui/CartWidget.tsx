@@ -17,14 +17,27 @@ import {
 import { router } from '@app/router';
 import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';
-import { computed, signal, useStoreSignal } from '@shared/lib/signals';
-import { For, Show } from '@shared/lib/vdom';
+import { computed, effect, signal, useStoreSignal } from '@shared/lib/signals';
+import { For, onCleanup, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
 import qrcode from 'qrcode-generator';
 
 /** Картинка-заглушка блюда при ошибке загрузки `image_url`. */
 const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
+
+/** Один распознанный штрихкод (минимум, который нам нужен от BarcodeDetector). */
+interface DetectedBarcode {
+    rawValue?: string;
+}
+
+/** Конструктор нативного BarcodeDetector (есть в Chrome/Android, нет в iOS Safari). */
+interface BarcodeDetectorCtor {
+    new (options?: { formats?: string[] }): {
+        detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
+    };
+}
 
 export interface CartWidgetProps {
     /** Колбэк после перехода к оформлению (например, чтобы закрыть боковую панель). */
@@ -103,6 +116,24 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const joinOpen = signal<boolean>(false);
     // QR-модалка с инвайт-ссылкой: открывается по нажатию на QR-кнопку.
     const qrOpen = signal<boolean>(false);
+    // Модалка сканера QR (только на мобилках): открывается по кнопке-камере.
+    const scanOpen = signal<boolean>(false);
+    const scanError = signal<string>('');
+    let scanStream: MediaStream | null = null;
+    let scanRaf: number | null = null;
+
+    // Блокируем фоновый скролл, пока открыта любая модалка корзины (QR-код или сканер).
+    let cartScrollLocked = false;
+    effect(() => {
+        const anyOpen = qrOpen() || scanOpen();
+        if (anyOpen && !cartScrollLocked) {
+            lockScroll();
+            cartScrollLocked = true;
+        } else if (!anyOpen && cartScrollLocked) {
+            unlockScroll();
+            cartScrollLocked = false;
+        }
+    });
 
     // Поле ввода кода неконтролируемое: значение читаем и чистим через ref,
     // потому что проп value у этого VDOM прокидывается через setAttribute.
@@ -193,12 +224,8 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
         }
     };
 
-    // Присоединяет пользователя к совместной корзине по введённому коду.
-    // Принимает как «голый» токен, так и полную ссылку-приглашение.
-    const handleJoin = async () => {
-        const raw = joinCode().trim();
-        if (!raw) return;
-        const token = extractInviteToken(raw);
+    // Присоединяет пользователя к совместной корзине по уже распознанному токену.
+    const joinWithToken = async (token: string) => {
         if (!token) {
             await Popup.alert('Не удалось распознать код приглашения.');
             return;
@@ -215,6 +242,85 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
             busy.set(false);
         }
     };
+
+    // Присоединяется по введённому коду. Принимает как «голый» токен, так и
+    // полную ссылку-приглашение.
+    const handleJoin = async () => {
+        const raw = joinCode().trim();
+        if (!raw) return;
+        await joinWithToken(extractInviteToken(raw));
+    };
+
+    // Останавливает камеру и цикл распознавания сканера.
+    const stopScan = () => {
+        if (scanRaf !== null) {
+            cancelAnimationFrame(scanRaf);
+            scanRaf = null;
+        }
+        if (scanStream !== null) {
+            scanStream.getTracks().forEach((track) => track.stop());
+            scanStream = null;
+        }
+    };
+
+    const closeScanner = () => {
+        stopScan();
+        scanOpen.set(false);
+        scanError.set('');
+    };
+
+    const openScanner = () => {
+        scanError.set('');
+        scanOpen.set(true);
+    };
+
+    // Запускает камеру и распознавание QR на смонтированном <video>. Использует
+    // нативный BarcodeDetector (Android Chrome); где его нет (iOS Safari) —
+    // подсказываем ввести код вручную через поле ниже.
+    const startScan = async (video: HTMLVideoElement) => {
+        const DetectorCtor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+        if (typeof navigator.mediaDevices?.getUserMedia !== 'function') {
+            scanError.set('Камера недоступна. Введите код вручную.');
+            return;
+        }
+        if (DetectorCtor === undefined) {
+            scanError.set('Сканирование QR не поддерживается этим браузером. Введите код вручную.');
+            return;
+        }
+        try {
+            scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = scanStream;
+            await video.play();
+        } catch {
+            scanError.set('Не удалось получить доступ к камере. Разрешите доступ или введите код вручную.');
+            return;
+        }
+        const detector = new DetectorCtor({ formats: ['qr_code'] });
+        const tick = async () => {
+            if (!scanOpen.peek()) return;
+            try {
+                const codes = await detector.detect(video);
+                if (codes.length > 0) {
+                    const token = extractInviteToken(String(codes[0].rawValue ?? ''));
+                    if (token) {
+                        closeScanner();
+                        await joinWithToken(token);
+                        return;
+                    }
+                }
+            } catch {
+                // Временные ошибки детектора игнорируем и пробуем следующий кадр.
+            }
+            scanRaf = requestAnimationFrame(() => {
+                void tick();
+            });
+        };
+        scanRaf = requestAnimationFrame(() => {
+            void tick();
+        });
+    };
+
+    onCleanup(stopScan);
 
     const handleKick = async (member: CartMember) => {
         if (!(await Popup.confirm('Удалить участника из корзины? Его блюда останутся, но станут ничейными.'))) {
@@ -657,9 +763,28 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                     <Show
                         when={joinOpen}
                         fallback={
-                            <button type="button" class="cart-join__toggle" onClick={() => joinOpen.set(true)}>
-                                🔗 Войти в корзину по коду
-                            </button>
+                            <div class="cart-join__entry">
+                                <button type="button" class="cart-join__toggle" onClick={() => joinOpen.set(true)}>
+                                    🔗 Войти в корзину по коду
+                                </button>
+                                <button
+                                    type="button"
+                                    class="cart-join__scan"
+                                    aria-label="Отсканировать QR-код"
+                                    title="Отсканировать QR-код"
+                                    onClick={openScanner}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path
+                                            d="M4 9V5.5C4 4.67 4.67 4 5.5 4H9M15 4h3.5c.83 0 1.5.67 1.5 1.5V9M20 15v3.5c0 .83-.67 1.5-1.5 1.5H15M9 20H5.5C4.67 20 4 19.33 4 18.5V15"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                        />
+                                        <rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" />
+                                    </svg>
+                                </button>
+                            </div>
                         }
                     >
                         <div class="cart-join__row">
@@ -709,6 +834,44 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                         <div class="cart-qr-modal__title">QR-код приглашения</div>
                         <img class="cart-qr-modal__image" src={() => qrDataUrl()} alt="QR-код" />
                         <div class="cart-qr-modal__hint">Отсканируйте, чтобы присоединиться к совместной корзине</div>
+                    </div>
+                </div>
+            </Show>
+
+            <Show when={scanOpen}>
+                <div
+                    class="cart-scan-overlay"
+                    onClick={(e: Event) => {
+                        if (e.target === e.currentTarget) closeScanner();
+                    }}
+                >
+                    <div class="cart-scan-modal">
+                        <button
+                            type="button"
+                            class="cart-scan-modal__close"
+                            aria-label="Закрыть"
+                            onClick={closeScanner}
+                        >
+                            ×
+                        </button>
+                        <div class="cart-scan-modal__title">Сканируйте QR-код</div>
+                        <div class="cart-scan-modal__viewport">
+                            <video
+                                class="cart-scan-modal__video"
+                                muted
+                                playsinline
+                                ref={(el: Element | null) => {
+                                    if (el !== null) void startScan(el as HTMLVideoElement);
+                                }}
+                            />
+                            <div class="cart-scan-modal__frame" aria-hidden="true" />
+                        </div>
+                        <Show
+                            when={() => scanError() !== ''}
+                            fallback={<div class="cart-scan-modal__hint">Наведите камеру на QR-код приглашения</div>}
+                        >
+                            <div class="cart-scan-modal__error">{() => scanError()}</div>
+                        </Show>
                     </div>
                 </div>
             </Show>

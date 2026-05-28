@@ -4,7 +4,40 @@
 import { signal } from '@shared/lib/signals';
 import { httpClient } from '@shared/api/http/HttpClient';
 import { cartStore } from '@entities/cart';
+import { restaurantApi } from '@entities/restaurant';
 import { dtoToPromo, type Promo, type PromoDTO } from './types';
+
+/** Кэш названий брендов по id, чтобы не запрашивать одно и то же дважды. */
+const brandNameCache = new Map<string, string>();
+
+/**
+ * Возвращает карту «id бренда → название» для брендов из промокодов. Запрашивает
+ * только незнакомые id; неизвестные (например, удалённые) молча пропускаются —
+ * для них останется обобщённый текст условия.
+ *
+ * @param dtos Промокоды, из которых берутся id брендов.
+ * @returns Карта «id → название бренда».
+ */
+async function resolveBrandNames(dtos: PromoDTO[]): Promise<Record<string, string>> {
+    const ids = [...new Set(dtos.flatMap((d) => d.restaurant_brand_ids ?? []).map(String))];
+    const missing = ids.filter((id) => !brandNameCache.has(id));
+    await Promise.all(
+        missing.map(async (id) => {
+            try {
+                const brand = await restaurantApi.getBrand(id);
+                brandNameCache.set(id, brand.name);
+            } catch {
+                // Бренд не найден/удалён — оставляем без названия.
+            }
+        }),
+    );
+    const result: Record<string, string> = {};
+    for (const id of ids) {
+        const name = brandNameCache.get(id);
+        if (name !== undefined) result[id] = name;
+    }
+    return result;
+}
 
 /** Список промокодов пользователя. */
 const promos = signal<Promo[]>([]);
@@ -31,7 +64,8 @@ export async function loadPromos(): Promise<void> {
         const resp = await httpClient.get('/promos');
         if (!resp.ok) return;
         const dtos: PromoDTO[] = await resp.json();
-        promos.set(dtos.map(dtoToPromo));
+        const brandNames = await resolveBrandNames(dtos);
+        promos.set(dtos.map((dto) => dtoToPromo(dto, brandNames)));
     } catch (e) {
         console.warn('promoStore: loadPromos failed', e);
     } finally {
@@ -160,7 +194,8 @@ export async function addPromo(code: string): Promise<boolean> {
         const resp = await httpClient.post('/promos/bind', { code: trimmed });
         if (!resp.ok) return false;
         const dto: PromoDTO = await resp.json();
-        promos.set([...promos.peek(), dtoToPromo(dto)]);
+        const brandNames = await resolveBrandNames([dto]);
+        promos.set([...promos.peek(), dtoToPromo(dto, brandNames)]);
         return true;
     } catch {
         return false;

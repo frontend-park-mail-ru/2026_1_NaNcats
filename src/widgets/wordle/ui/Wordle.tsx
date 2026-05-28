@@ -102,15 +102,18 @@ export function Wordle(props: WordleProps): VNode {
         });
         tileColors.set(nextColors);
 
-        // Подсветка экранной клавиатуры: correct никогда не понижается.
+        // Подсветка экранной клавиатуры: оставляем состояние с наивысшим
+        // приоритетом по всем догадкам (correct > present > absent). Без этого
+        // буква, отмеченная present в одной попытке, могла «понизиться» до absent
+        // в следующей (другая позиция той же буквы), и наоборот.
+        const KEY_PRIORITY: Record<TileColor, number> = { correct: 3, present: 2, absent: 1 };
         const nextKeys: Record<string, TileColor | undefined> = { ...keyStates() };
         const upper = word.toUpperCase();
         for (let i = 0; i < WORD_LENGTH; i += 1) {
             const letter = upper[i];
             const prevColor = nextKeys[letter];
             const nextColor = letters[i];
-            if (prevColor === 'correct') continue;
-            if (nextColor === 'correct' || prevColor !== nextColor) {
+            if (prevColor === undefined || KEY_PRIORITY[nextColor] > KEY_PRIORITY[prevColor]) {
                 nextKeys[letter] = nextColor;
             }
         }

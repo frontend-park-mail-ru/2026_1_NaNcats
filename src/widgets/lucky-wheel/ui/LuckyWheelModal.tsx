@@ -11,12 +11,11 @@ import { refreshAchievements } from '@features/profile/achievements';
 import { computed, signal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import { PIZZULYA_DEFAULT_GIF, PIZZULYA_KNOCKOUT_GIF } from '@shared/lib/img/pizzulya';
 
-/**
- * Стикер «пиццуля» — внешняя гифка. Если URL станет недоступен, используем
- * fallback-эмодзи в onError.
- */
-const PIZZULYA_GIF_URL = 'https://cdn.dprofile.ru/public/60222/109261/5023ee194828983.6606f5d69fbe5.gif';
+/** Сколько держать стикер «в нокауте» после клика по пиццуле (мс). */
+const KNOCKOUT_DURATION_MS = 1000;
 
 /** Палитра из 9 пастельных цветов; подобрана так, чтобы соседние сектора отличались. */
 const SECTOR_COLORS = [
@@ -132,6 +131,21 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     /** Флаг короткой обратной связи на кнопке «Скопировать». */
     const promoCopied = signal<boolean>(false);
     let promoCopiedTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Показывать ли стикер «пиццуля в нокауте» (включается на 1с по клику). */
+    const knockout = signal<boolean>(false);
+    let knockoutTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Текущая гифка стикера: обычная либо «в нокауте» сразу после клика. */
+    const stickerSrc = computed<string>(() => (knockout() ? PIZZULYA_KNOCKOUT_GIF : PIZZULYA_DEFAULT_GIF));
+
+    const handleStickerClick = () => {
+        if (knockout.peek()) return;
+        knockout.set(true);
+        if (knockoutTimer !== null) clearTimeout(knockoutTimer);
+        knockoutTimer = setTimeout(() => {
+            knockout.set(false);
+            knockoutTimer = null;
+        }, KNOCKOUT_DURATION_MS);
+    };
     /** Сообщение от пиццули. Меняется в зависимости от состояния. */
     const characterMessage = computed<string>(() => {
         if (spinError() !== '') return spinError();
@@ -204,6 +218,9 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     const open = () => {
         if (isOpen.peek()) return;
         isOpen.set(true);
+        lockScroll();
+        // Прячем плавающие кнопки категорий/корзины (FAB) на время показа колеса.
+        document.body.classList.add('wheel-modal-open');
         result.set(null);
         spinError.set('');
         promoCopied.set(false);
@@ -216,10 +233,17 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     const close = () => {
         if (!isOpen.peek()) return;
         isOpen.set(false);
+        unlockScroll();
+        document.body.classList.remove('wheel-modal-open');
         if (promoCopiedTimer !== null) {
             clearTimeout(promoCopiedTimer);
             promoCopiedTimer = null;
         }
+        if (knockoutTimer !== null) {
+            clearTimeout(knockoutTimer);
+            knockoutTimer = null;
+        }
+        knockout.set(false);
         promoCopied.set(false);
     };
 
@@ -317,8 +341,10 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                             </div>
                             <img
                                 class="wheel-character__sticker"
-                                src={PIZZULYA_GIF_URL}
+                                src={stickerSrc}
                                 alt="Пиццуля"
+                                title="Нажми на меня!"
+                                onClick={handleStickerClick}
                                 onError={(e: Event) => {
                                     const img = e.target as HTMLImageElement;
                                     img.style.display = 'none';

@@ -4,6 +4,13 @@
   max-width: calc(100vw - 24px);
   background: var(--bg-main);
 
+  &__field-error {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #d23b3b;
+  }
+
   &_narrow {
     width: 500px;
   }

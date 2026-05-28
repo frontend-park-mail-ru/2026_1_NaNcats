@@ -1,3 +1,13 @@
+// Пока открыто колесо, прячем плавающие кнопки категорий и корзины,
+// чтобы они не просвечивали сквозь затемнение модалки.
+body.wheel-modal-open {
+  .menu-fab,
+  .cart-fab,
+  .category-fab {
+    display: none !important;
+  }
+}
+
 .wheel-modal-overlay {
   position: fixed;
   inset: 0;
@@ -163,7 +173,13 @@
   font-size: 14px;
   line-height: 1.35;
   color: #0e1117;
-  min-height: 60px;
+  // Фиксированная высота под самое «высокое» состояние (сообщение + промокод),
+  // чтобы модалка не раздвигалась при смене текста или появлении промокода.
+  height: 156px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   text-align: center;
 

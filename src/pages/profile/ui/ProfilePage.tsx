@@ -37,6 +37,7 @@ import { For, onCleanup, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
 import { imageFallback } from '@shared/lib/img';
+import { pluralRu } from '@shared/lib/plural';
 
 /** Заказ с предвычисленным бейджем статуса. */
 interface OrderRowView extends Order {
@@ -696,7 +697,12 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                     <div class="profile-card profile-card_main profile-card_orders">
                         <div class="orders-section-head">
                             <h2 class="section-title">История заказов</h2>
-                            <span class="orders-section-head__count">{() => `${ordersSig().length} заказов`}</span>
+                            <span class="orders-section-head__count">
+                                {() => {
+                                    const n = ordersSig().length;
+                                    return `${n} ${pluralRu(n, ['заказ', 'заказа', 'заказов'])}`;
+                                }}
+                            </span>
                         </div>
                         <Show
                             when={() => ordersSig().length > 0}

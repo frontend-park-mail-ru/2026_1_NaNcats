@@ -585,6 +585,8 @@
 
 .profile-card__promo-button {
   height: 32px;
+  // Фиксированная ширина, чтобы «Посмотреть» и «Смотреть» были одинаковыми.
+  width: 120px;
   padding: 0 16px;
   border: none;
   border-radius: 16px;
@@ -594,6 +596,7 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+  text-align: center;
   transition: filter 0.15s ease;
 
   &:hover {

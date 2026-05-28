@@ -7,6 +7,9 @@ html {
   margin: 0;
   padding: 0;
   height: 100vh;
+  // dvh учитывает динамическую панель адреса в Safari iOS, иначе 100vh выше
+  // видимой области и низ контента уезжает под панель.
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   font-family: "Inter", sans-serif;
@@ -16,6 +19,7 @@ html {
 
 .page-wrapper {
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -29,11 +33,21 @@ html {
     overflow-y: auto;
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .page-wrapper {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  // iOS Safari зумит страницу при фокусе на инпуте с font-size < 16px.
+  // Держим 16px на мобилке, чтобы не было нежелательного зума.
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 
