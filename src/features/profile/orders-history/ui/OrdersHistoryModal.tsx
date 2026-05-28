@@ -168,8 +168,8 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
                         </For>
                     </select>
                     <select class="orders-history-modal__select" value={sortKey()} onChange={handleSortChange}>
-                        <option value="newest">Сначала новые</option>
-                        <option value="oldest">Сначала старые</option>
+                        <option value="newest">Дата доставки ⬇️</option>
+                        <option value="oldest">Дата доставки ⬆️</option>
                     </select>
                 </div>
             </div>

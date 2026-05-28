@@ -466,18 +466,26 @@ export function Header(props: HeaderProps): VNode {
                         <button
                             type="button"
                             class="wheel-launch-btn"
-                            aria-label="Колесо пиццули"
-                            title="Колесо пиццули"
+                            aria-label="Колесо Пиццули"
+                            title="Колесо Пиццули"
                             onClick={() => {
                                 luckyWheelCtl?.open();
                             }}
                         >
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                            {/* <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
                                 <circle cx="12" cy="12" r="10" stroke="#FFC1C1" stroke-width="2" />
                                 <path d="M12 2 V12 L19.5 7" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
                                 <path d="M12 12 L4.5 17" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
                                 <path d="M12 12 L20 17.5" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
                                 <circle cx="12" cy="12" r="1.5" fill="#FFC1C1" />
+                            </svg> */}
+                            <svg fill="#fa9b9b" width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <g id="Pizza">
+                                <g>
+                                <path d="M20.807,13.437l-.01-.04a19.05,19.05,0,0,0-10.23-10.21,1.574,1.574,0,0,0-2.08.93l-5.32,14.69a1.58,1.58,0,0,0,1.48,2.12,1.654,1.654,0,0,0,.54-.09l14.7-5.32a1.585,1.585,0,0,0,.91-.85A1.547,1.547,0,0,0,20.807,13.437Zm-6.98,2.98a1,1,0,0,0,.2.16L4.847,19.9a.582.582,0,0,1-.6-.14.556.556,0,0,1-.14-.61l2.39-6.6a1,1,0,0,0,.16.2,1.81,1.81,0,0,0,2.56-2.56,1.782,1.782,0,0,0-1.7-.47l1.09-2.98a17.346,17.346,0,0,1,6.82,5.57,2.447,2.447,0,0,0-1.6.71A2.4,2.4,0,0,0,13.827,16.417Zm6.05-2.15a.592.592,0,0,1-.33.31l-1.32.47c-.11-.23-.22-.45-.33-.67-.12-.24-.25-.48-.38-.71-.31-.55-.65-1.08-1-1.58a18.655,18.655,0,0,0-7.57-6.3l.48-1.33a.561.561,0,0,1,.31-.33.456.456,0,0,1,.23-.05.793.793,0,0,1,.25.05,18.013,18.013,0,0,1,9.67,9.68v.02A.561.561,0,0,1,19.877,14.267Z"/>
+                                <circle cx="7.835" cy="16.489" r="1.075"/>
+                                </g>
+                            </g>
                             </svg>
                         </button>
                         <div

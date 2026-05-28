@@ -316,12 +316,6 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         await finalize(text, selectedCoords, details);
     };
 
-    // Кнопка смены адреса в модалке деталей: закрывает детали, возвращает в модалку карты.
-    const handleChangeAddress = () => {
-        closeDetailsModal();
-        void openMapModal();
-    };
-
     // Клик по документу: закрывает инлайн-выпадашку подсказок при клике вне корня виджета.
     const handleDocClick = (event: Event) => {
         const target = event.target as Node | null;
@@ -525,14 +519,6 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                         detailsDisplayEl = el as HTMLInputElement | null;
                                     }}
                                 />
-                                <button
-                                    type="button"
-                                    class="button"
-                                    style="width: 48px; background: #eee; border-radius: 12px;"
-                                    onClick={handleChangeAddress}
-                                >
-                                    ✏️
-                                </button>
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">

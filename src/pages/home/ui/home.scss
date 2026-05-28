@@ -13,7 +13,7 @@
   &__controls {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
     margin-left: auto;
     position: relative;
     z-index: 2;
@@ -85,15 +85,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition: background 0.15s ease;
+  outline: 1px solid #fa9b9b;
 
   &:hover {
     background: rgba(255, 193, 193, 0.18);
-    transform: rotate(20deg);
-  }
-
-  &:active {
-    transform: rotate(40deg);
   }
 }
 

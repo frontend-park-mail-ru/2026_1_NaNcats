@@ -246,7 +246,7 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                 <button type="button" class="wheel-modal__close" aria-label="Закрыть" onClick={close}>
                     ×
                 </button>
-                <h2 class="wheel-modal__title">Колесо пиццули</h2>
+                <h2 class="wheel-modal__title">Колесо Пиццули</h2>
 
                 <Show
                     when={() => sectorsError() === ''}
