@@ -26,6 +26,8 @@ export interface Dish {
     image_url: string;
     /** Описание блюда. */
     description?: string;
+    /** Раздел меню ресторана (напр. «Супы»); пусто — фронт сгруппирует эвристикой по названию. */
+    section?: string;
 }
 
 /**

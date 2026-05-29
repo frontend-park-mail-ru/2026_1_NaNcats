@@ -94,8 +94,12 @@ const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
     },
 ];
 
-// Имя секции по ключевым словам в названии блюда; без совпадений - "Основное меню".
+// Имя секции: берём раздел из данных (dish.section), иначе — эвристика по ключевым
+// словам в названии; без совпадений - "Основное меню".
 const categorize = (dish: DishView): string => {
+    const section = dish.section?.trim();
+    if (section) return section;
+
     const name = dish.name.toLowerCase();
     for (const rule of CATEGORY_RULES) {
         if (rule.keywords.some((kw) => name.includes(kw))) return rule.name;
@@ -117,16 +121,14 @@ const buildSections = (dishes: DishView[]): DishSection[] => {
     return Array.from(groups.entries()).map(([name, ds]) => ({ name, dishes: ds }));
 };
 
-/** Размер страницы выдачи блюд. */
-const PAGE_SIZE = 20;
+/** Меню грузим целиком одним запросом (пагинации на странице нет); картинки — лениво. */
+const ALL_DISHES_LIMIT = 1000;
 /** Выше этой ширины мобильные шторки автоматически закрываются. */
 const TABLET_BREAKPOINT = 1200;
 /** Ниже этой ширины работают мобильные шторки. */
 const MOBILE_BREAKPOINT = 900;
 /** Дебаунс поиска блюд по меню. */
 const SEARCH_DEBOUNCE_MS = 300;
-/** Лимит подгружаемых страниц при поиске блюда по якорю. */
-const MAX_ANCHOR_PAGES = 20;
 
 /** Заглушка ресторана, когда id в URL отсутствует. */
 const FALLBACK_RESTAURANT: Restaurant = {
@@ -156,7 +158,7 @@ function summarizeReviews(reviews: Review[]): ReviewSummary {
     return { rating: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
 }
 
-/** Loader: грузит пользователя (и корзину для авторизованного), бренд и первую страницу блюд. */
+/** Loader: грузит пользователя (и корзину для авторизованного), бренд и всё меню целиком. */
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
@@ -187,7 +189,7 @@ export async function load(): Promise<RestaurantPageProps> {
 
     const [brandRes, dishesRes, promoRes, recoRes, reviewsRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
-        restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
+        restaurantApi.listDishes(idParam, ALL_DISHES_LIMIT, 0),
         httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
         restaurantApi.listRecommendedDishes(idParam, 4),
         restaurantApi.getReviews(idParam),
@@ -342,9 +344,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
         return picks;
     });
-    const offset = signal<number>(props.dishes.length);
-    const hasMore = signal<boolean>(props.dishes.length === PAGE_SIZE);
-    const isFetching = signal<boolean>(false);
     const searchValue = signal<string>('');
     const menuOpen = signal<boolean>(false);
     const cartOpen = signal<boolean>(false);
@@ -358,31 +357,10 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Handle закрытия активной модалки отзывов (если она открыта): нужен Escape'у и cleanup-у страницы.
     let closeActiveReviews: (() => void) | null = null;
 
-    // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
-    const fetchNextPage = async () => {
-        if (isFetching() || !hasMore() || !restaurantId) return;
-        isFetching.set(true);
-        try {
-            const next = await restaurantApi.listDishes(restaurantId, PAGE_SIZE, offset());
-            const nextView = next.map(toView);
-            allDishes.set((prev) => {
-                const merged = [...prev, ...nextView];
-                sections.set(buildSections(merged));
-                return merged;
-            });
-            offset.set((prev) => prev + next.length);
-            if (next.length < PAGE_SIZE) hasMore.set(false);
-        } catch (e) {
-            console.error('restaurant: fetchNextPage failed', e);
-            hasMore.set(false);
-        } finally {
-            isFetching.set(false);
-        }
-    };
-
-    // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
+    // Прокручивает к блюду по id. Меню загружено целиком, поэтому ждём лишь отрисовку
+    // карточки (несколько кадров после монтирования), без подгрузки страниц.
     const scrollToDishById = async (dishId: string) => {
-        for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
+        for (let i = 0; i < 10; i += 1) {
             // Исключаем карточки секции «Рекомендуем» (тот же data-dish-id),
             // чтобы якорь вёл к блюду в основном меню, а не в рекомендациях.
             const card = document.querySelector(
@@ -392,14 +370,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 highlightAndScroll(card);
                 return;
             }
-            if (!hasMore() || isFetching()) {
-                if (isFetching()) {
-                    await new Promise((r) => setTimeout(r, 150));
-                    continue;
-                }
-                return;
-            }
-            await fetchNextPage();
+            await new Promise((r) => requestAnimationFrame(() => r(null)));
         }
     };
 
@@ -652,15 +623,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
     };
 
-    // Подгружает следующую страницу блюд при приближении к низу.
-    const handleScroll = () => {
-        if (isFetching() || !hasMore() || !restaurantId) return;
-        const doc = document.documentElement;
-        const distance = doc.scrollHeight - doc.scrollTop - doc.clientHeight;
-        if (distance > 200) return;
-        void fetchNextPage();
-    };
-
     // Escape закрывает мобильные панели и модалку отзывов.
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key !== 'Escape') return;
@@ -681,7 +643,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     onMount(() => {
-        window.addEventListener('scroll', handleScroll, { passive: true });
         document.addEventListener('keydown', handleKeyDown);
         window.addEventListener('resize', handleResize);
 
@@ -692,7 +653,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     });
 
     onCleanup(() => {
-        window.removeEventListener('scroll', handleScroll);
         document.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('resize', handleResize);
         if (searchTimer !== null) {
@@ -973,6 +933,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                     class="dish-card__img"
                                                     src={d.image_url}
                                                     alt={d.name}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     onError={imageFallback(
                                                         'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
                                                     )}
@@ -1054,6 +1016,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                                 class="dish-card__img"
                                                                 src={d.image_url}
                                                                 alt={d.name}
+                                                                loading="lazy"
+                                                                decoding="async"
                                                                 onError={imageFallback(
                                                                     'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
                                                                 )}
