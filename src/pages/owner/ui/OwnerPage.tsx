@@ -390,7 +390,7 @@ function AnalyticsTab({ getBrandId }: AnalyticsTabProps): VNode {
                     <div class="owner-section__head">
                         <h3 class="owner-section__title">Динамика выручки по дням</h3>
                     </div>
-                    <LineChart data={chartData()} />
+                    {() => <LineChart data={chartData()} />}
                 </div>
 
                 {/* Топ блюд */}
@@ -1098,18 +1098,21 @@ export function OwnerPage({ isOwner }: OwnerPageProps): VNode {
     // Синхронизируем список брендов с сервером при монтировании.
     // Это исправляет «призраков» в localStorage (бренды, удалённые из БД вне фронта).
     onMount(() => {
-        void ownerApi.getMyBrands().then((serverBrands) => {
-            brands.set(serverBrands);
-            // Если текущий выбранный бренд исчез с сервера — выбираем первый из актуальных
-            const currentId = selectedId.peek();
-            if (currentId && !serverBrands.find((b) => b.id === currentId)) {
-                selectedId.set(serverBrands[0]?.id ?? null);
-            } else if (!currentId && serverBrands.length > 0) {
-                selectedId.set(serverBrands[0].id);
-            }
-        }).catch(() => {
-            // При недоступности API оставляем данные из localStorage без изменений
-        });
+        void ownerApi
+            .getMyBrands()
+            .then((serverBrands) => {
+                brands.set(serverBrands);
+                // Если текущий выбранный бренд исчез с сервера — выбираем первый из актуальных
+                const currentId = selectedId.peek();
+                if (currentId && !serverBrands.find((b) => b.id === currentId)) {
+                    selectedId.set(serverBrands[0]?.id ?? null);
+                } else if (!currentId && serverBrands.length > 0) {
+                    selectedId.set(serverBrands[0].id);
+                }
+            })
+            .catch(() => {
+                // При недоступности API оставляем данные из localStorage без изменений
+            });
     });
 
     const selectedBrand = (): OwnerBrand | null => brands().find((b) => b.id === selectedId()) ?? null;
