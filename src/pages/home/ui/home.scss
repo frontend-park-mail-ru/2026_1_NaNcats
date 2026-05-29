@@ -1034,9 +1034,15 @@
     height: min(78vh, 680px);
     border-radius: 24px 24px 0 0;
     background: var(--white);
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
     padding: 0;
     overflow: hidden;
+  }
+
+  /* Тень-вверх рисуем только когда шторка открыта. Иначе скрытая
+     (translateY 100%) шторка-корзина оставляла тень у нижнего края экрана —
+     на iOS Safari она вылезала «полосой» при сворачивании нижнего тулбара. */
+  .home-page_sheet-cart .side-column_right .card_cart {
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
   }
 }
 
