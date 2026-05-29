@@ -29,7 +29,7 @@ export function PizzaLoader(): VNode {
                 }}
             />
             <div class="pizza-loader__fallback">🍕</div>
-            <div class="pizza-loader__caption">Готовим…</div>
+            <div class="pizza-loader__caption">Загрузка...</div>
         </div>
     );
 }
