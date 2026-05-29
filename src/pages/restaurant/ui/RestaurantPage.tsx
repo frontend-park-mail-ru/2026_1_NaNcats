@@ -780,7 +780,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div class="restaurant-hero">
                             <img
                                 class="restaurant-hero__img"
-                                src={props.restaurant.logo_url}
+                                src={props.restaurant.banner_url || props.restaurant.logo_url}
                                 alt={props.restaurant.name}
                                 onError={imageFallback(
                                     'https://nancats-bucket.storage.yandexcloud.net/restaurants/default-restaurant-logo.webp',

@@ -8,6 +8,8 @@ export interface Restaurant {
     name: string;
     /** Ссылка на логотип. */
     logo_url: string;
+    /** Широкая обложка для баннера на странице ресторана; пусто — фронт берёт логотип. */
+    banner_url?: string;
     /** Описание бренда. */
     description?: string;
 }
