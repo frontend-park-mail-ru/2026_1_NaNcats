@@ -8,6 +8,7 @@ import { signal, effect, onCleanup } from '@shared/lib/signals';
 import { For, Show, onMount } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
+import { translateError } from '@shared/lib/errors';
 
 // LocalStorage-хелпер для хранения списка ресторанов
 const LS_KEY = 'nancats:owner_brands';
@@ -228,7 +229,7 @@ function AnalyticsTab({ getBrandId }: AnalyticsTabProps): VNode {
             const data = await ownerApi.getAnalytics(id, startDate.peek(), endDate.peek());
             stats.set(data);
         } catch (e) {
-            error.set(e instanceof Error ? e.message : 'Ошибка загрузки статистики');
+            error.set(translateError(e, 'Ошибка загрузки статистики'));
             stats.set(null);
         } finally {
             loading.set(false);
@@ -526,7 +527,7 @@ function MenuTab({ getBrandId }: MenuTabProps): VNode {
         try {
             dishes.set(await ownerApi.getDishes(id));
         } catch (e) {
-            error.set(e instanceof Error ? e.message : 'Ошибка загрузки меню');
+            error.set(translateError(e, 'Ошибка загрузки меню'));
         } finally {
             loading.set(false);
         }
@@ -606,7 +607,7 @@ function MenuTab({ getBrandId }: MenuTabProps): VNode {
             }
             closeModal();
         } catch (e) {
-            formError.set(e instanceof Error ? e.message : 'Ошибка при сохранении');
+            formError.set(translateError(e, 'Ошибка при сохранении'));
         } finally {
             formSaving.set(false);
         }
@@ -619,7 +620,7 @@ function MenuTab({ getBrandId }: MenuTabProps): VNode {
             await ownerApi.deleteDish(dish.id);
             dishes.set(dishes.peek().filter((d) => d.id !== dish.id));
         } catch (e) {
-            void Popup.alert(e instanceof Error ? e.message : 'Ошибка при удалении');
+            void Popup.alert(translateError(e, 'Ошибка при удалении'));
         }
     };
 
@@ -811,7 +812,7 @@ function SettingsTab({ getBrand, onUpdate, onDelete }: SettingsTabProps): VNode 
             saveOk.set(true);
             setTimeout(() => saveOk.set(false), 3000);
         } catch (e) {
-            saveError.set(e instanceof Error ? e.message : 'Ошибка при сохранении');
+            saveError.set(translateError(e, 'Ошибка при сохранении'));
         } finally {
             saving.set(false);
         }
@@ -825,7 +826,7 @@ function SettingsTab({ getBrand, onUpdate, onDelete }: SettingsTabProps): VNode 
         try {
             await ownerApi.updateBrandLogo(getBrand().id, file);
         } catch (e) {
-            void Popup.alert(e instanceof Error ? e.message : 'Ошибка при загрузке логотипа');
+            void Popup.alert(translateError(e, 'Ошибка при загрузке логотипа'));
             logoPreview.set(getBrand().logo_url);
         } finally {
             logoSaving.set(false);
@@ -839,7 +840,7 @@ function SettingsTab({ getBrand, onUpdate, onDelete }: SettingsTabProps): VNode 
             await ownerApi.deleteBrand(getBrand().id);
             onDelete();
         } catch (e) {
-            void Popup.alert(e instanceof Error ? e.message : 'Ошибка при удалении');
+            void Popup.alert(translateError(e, 'Ошибка при удалении'));
         }
     };
 
@@ -989,7 +990,7 @@ function CreateBrandModal({ onCreated, onClose }: CreateBrandModalProps): VNode 
             });
             onCreated({ ...created, id: String(created.id) });
         } catch (e) {
-            error.set(e instanceof Error ? e.message : 'Ошибка при создании');
+            error.set(translateError(e, 'Ошибка при создании'));
         } finally {
             saving.set(false);
         }

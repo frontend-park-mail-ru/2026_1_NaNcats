@@ -15,7 +15,9 @@ import {
     type OrderUiStatus,
 } from '@entities/order';
 import { userStore } from '@entities/user';
+import { restaurantApi } from '@entities/restaurant';
 import { computed, onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
+import { translateError } from '@shared/lib/errors';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 
@@ -450,8 +452,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
             splitWaiting.set('');
             const current = order();
             if (current !== null) {
-                const msg = e instanceof Error && e.message ? e.message : 'Не удалось начать оплату доли';
-                order.set({ ...current, error: msg });
+                order.set({ ...current, error: translateError(e, 'Не удалось начать оплату доли') });
             }
         }
     };
@@ -470,9 +471,28 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
         onCloseCallback = options.onClose ?? null;
         order.set(normalized);
         isActive.set(true);
+        void loadRestaurantRating(normalized.order_id, normalized.restaurant.id);
 
         if (options.subscribe === true && !isTerminalRawStatus(normalized.raw_status)) {
             subscribeToOrder(normalized.order_id);
+        }
+    };
+
+    // Подтягивает реальный рейтинг и количество отзывов ресторана из API
+    // (в самом заказе их нет). Патчим уже открытый заказ, сверяя order_id,
+    // чтобы быстрый переход между заказами не подставил чужие цифры.
+    const loadRestaurantRating = async (orderId: string, restaurantId: number) => {
+        if (!restaurantId) return;
+        try {
+            const reviews = await restaurantApi.getReviews(restaurantId);
+            const cur = order.peek();
+            if (cur === null || cur.order_id !== orderId) return;
+            const count = reviews.length;
+            const rating =
+                count > 0 ? Math.round((reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / count) * 10) / 10 : 0;
+            order.set({ ...cur, restaurant: { ...cur.restaurant, rating, reviews_count: count } });
+        } catch {
+            // Отзывы не загрузились — показываем «Нет отзывов».
         }
     };
 
@@ -497,8 +517,7 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
             await orderApi.cancel(orderId);
             applyEvent({ order_id: orderId, status: 'cancelled' });
         } catch (e) {
-            const msg = e instanceof Error ? e.message : 'Не удалось отменить заказ';
-            window.alert(msg);
+            window.alert(translateError(e, 'Не удалось отменить заказ'));
         }
     };
 
@@ -579,11 +598,16 @@ export function OrderStatusModal(props: OrderStatusModalProps): VNode {
                                 {() => order()?.restaurant.name ?? ''}
                             </div>
                             <div class="order-status-modal__restaurant-rating">
-                                <span class="order-status-modal__star">★</span>
-                                <span>
-                                    {() => String(order()?.restaurant.rating ?? 0)} (
-                                    {() => formatReviews(order()?.restaurant.reviews_count ?? 0)})
-                                </span>
+                                <Show
+                                    when={() => (order()?.restaurant.reviews_count ?? 0) > 0}
+                                    fallback={<span>Нет отзывов</span>}
+                                >
+                                    <span class="order-status-modal__star">★</span>
+                                    <span>
+                                        {() => String(order()?.restaurant.rating ?? 0)} (
+                                        {() => formatReviews(order()?.restaurant.reviews_count ?? 0)})
+                                    </span>
+                                </Show>
                             </div>
                         </div>
                     </div>

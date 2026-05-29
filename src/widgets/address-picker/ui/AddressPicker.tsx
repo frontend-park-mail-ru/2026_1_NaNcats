@@ -85,8 +85,18 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     let editingAddressId: string | null = null;
     /** Адрес, который надо передать в finalize после закрытия модалки деталей. */
     let pendingAddressText = '';
-    /** Следующий actionend карты не должен делать reverseGeocode (программное перемещение). */
-    let suppressNextActionEnd = false;
+    /**
+     * Координаты последнего ПРОГРАММНОГО перемещения карты. Используется, чтобы
+     * отличить наш сдвиг (setCenter/fitToViewport) от жеста пользователя.
+     *
+     * Раньше тут был булев флаг `suppressNextActionEnd`, но он рассинхронизировался
+     * на мобилке: программный сдвиг мог дать 0, 1 или 2 события `actionend`,
+     * из-за чего флаг гасил последующий драг пользователя и адрес не обновлялся.
+     * Сравнение по координатам самокорректирующееся: сколько бы событий ни
+     * пришло на программный сдвиг — все совпадут с этой точкой и будут
+     * пропущены, а реальный жест сместит центр и запустит геокодинг.
+     */
+    let lastProgrammaticCoords: Coordinates | null = null;
 
     let rootEl: HTMLElement | null = null;
     let mapContainerEl: HTMLElement | null = null;
@@ -109,11 +119,17 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         if (modalInputEl !== null) modalInputEl.value = text;
     };
 
-    // Программное перемещение карты: следующий actionend не должен геокодить.
+    /** Близки ли координаты (~1 метр) — допускает погрешность округления карты. */
+    const coordsClose = (a: Coordinates, b: Coordinates): boolean => {
+        return Math.abs(a[0] - b[0]) < 1e-5 && Math.abs(a[1] - b[1]) < 1e-5;
+    };
+
+    // Программное перемещение карты: запоминаем целевую точку, чтобы её
+    // actionend(ы) не запускали reverseGeocode.
     const moveMapProgrammatically = (coords: Coordinates) => {
         selectedCoords = coords;
+        lastProgrammaticCoords = coords;
         if (map === null) return;
-        suppressNextActionEnd = true;
         map.setCenter(coords, 16);
     };
 
@@ -166,14 +182,16 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             return;
         }
 
-        suppressNextActionEnd = true;
+        lastProgrammaticCoords = selectedCoords;
         map = yandexMaps.createMap(mapContainerEl, selectedCoords, 16);
         map.onActionEnd(async (center) => {
             selectedCoords = center;
-            if (suppressNextActionEnd) {
-                suppressNextActionEnd = false;
+            // Пропускаем события нашего же программного сдвига (совпадают с целью);
+            // жест пользователя смещает центр и проходит дальше — геокодим.
+            if (lastProgrammaticCoords !== null && coordsClose(center, lastProgrammaticCoords)) {
                 return;
             }
+            lastProgrammaticCoords = null;
             const address = await yandexMaps.reverseGeocode(center);
             if (address !== null) setModalInputValue(address);
         });

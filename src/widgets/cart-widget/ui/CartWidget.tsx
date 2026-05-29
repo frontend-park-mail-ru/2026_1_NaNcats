@@ -23,6 +23,7 @@ import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
 import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
 import qrcode from 'qrcode-generator';
+import jsQR from 'jsqr';
 
 /** Картинка-заглушка блюда при ошибке загрузки `image_url`. */
 const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
@@ -274,34 +275,73 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
         scanOpen.set(true);
     };
 
-    // Запускает камеру и распознавание QR на смонтированном <video>. Использует
-    // нативный BarcodeDetector (Android Chrome); где его нет (iOS Safari) —
-    // подсказываем ввести код вручную через поле ниже.
-    const startScan = async (video: HTMLVideoElement) => {
+    // Подсказка-фолбэк: когда сканер недоступен (нет доступа к камере или
+    // браузер не даёт), предлагаем навести на QR штатное приложение «Камера» —
+    // оно откроет ссылку-приглашение и сразу присоединит к корзине.
+    const SCAN_HINT_CAMERA_APP = 'Если не сканируется — наведите на QR-код приложение «Камера» на телефоне.';
+
+    // Распознаёт QR в текущем кадре <video>: сначала нативным BarcodeDetector
+    // (Android Chrome), иначе — jsQR по пикселям с canvas (работает в Safari на
+    // iOS, где BarcodeDetector нет). Возвращает прочитанную строку или ''.
+    const detectFromVideo = async (video: HTMLVideoElement, canvas: HTMLCanvasElement): Promise<string> => {
         const DetectorCtor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
-        if (typeof navigator.mediaDevices?.getUserMedia !== 'function') {
-            scanError.set('Камера недоступна. Введите код вручную.');
-            return;
+        if (DetectorCtor !== undefined) {
+            try {
+                const detector = new DetectorCtor({ formats: ['qr_code'] });
+                const codes = await detector.detect(video);
+                if (codes.length > 0) return String(codes[0].rawValue ?? '');
+                return '';
+            } catch {
+                // Падаем на jsQR ниже.
+            }
         }
-        if (DetectorCtor === undefined) {
-            scanError.set('Сканирование QR не поддерживается этим браузером. Введите код вручную.');
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (w === 0 || h === 0) return '';
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx === null) return '';
+        ctx.drawImage(video, 0, 0, w, h);
+        const image = ctx.getImageData(0, 0, w, h);
+        const result = jsQR(image.data, w, h, { inversionAttempts: 'dontInvert' });
+        return result?.data ?? '';
+    };
+
+    // Запускает камеру и распознавание QR. Камеру запрашиваем сразу (это и
+    // вызывает запрос разрешения на iOS), декод — кроссбраузерный (jsQR).
+    const startScan = async (video: HTMLVideoElement) => {
+        if (typeof navigator.mediaDevices?.getUserMedia !== 'function') {
+            scanError.set(`Камера недоступна в этом браузере. ${SCAN_HINT_CAMERA_APP}`);
             return;
         }
         try {
-            scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            scanStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
             video.srcObject = scanStream;
+            video.setAttribute('playsinline', 'true');
             await video.play();
-        } catch {
-            scanError.set('Не удалось получить доступ к камере. Разрешите доступ или введите код вручную.');
+        } catch (err) {
+            const name = err instanceof DOMException ? err.name : '';
+            if (name === 'NotAllowedError' || name === 'SecurityError') {
+                scanError.set(`Нет доступа к камере. Разрешите доступ в настройках браузера. ${SCAN_HINT_CAMERA_APP}`);
+            } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+                scanError.set(`Камера не найдена. ${SCAN_HINT_CAMERA_APP}`);
+            } else {
+                scanError.set(`Не удалось открыть камеру. ${SCAN_HINT_CAMERA_APP}`);
+            }
             return;
         }
-        const detector = new DetectorCtor({ formats: ['qr_code'] });
+
+        const canvas = document.createElement('canvas');
         const tick = async () => {
             if (!scanOpen.peek()) return;
             try {
-                const codes = await detector.detect(video);
-                if (codes.length > 0) {
-                    const token = extractInviteToken(String(codes[0].rawValue ?? ''));
+                const raw = await detectFromVideo(video, canvas);
+                if (raw !== '') {
+                    const token = extractInviteToken(raw);
                     if (token) {
                         closeScanner();
                         await joinWithToken(token);
@@ -309,7 +349,7 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                     }
                 }
             } catch {
-                // Временные ошибки детектора игнорируем и пробуем следующий кадр.
+                // Временные ошибки распознавания игнорируем — пробуем следующий кадр.
             }
             scanRaf = requestAnimationFrame(() => {
                 void tick();

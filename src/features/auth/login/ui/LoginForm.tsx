@@ -1,4 +1,5 @@
 import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { signal } from '@shared/lib/signals';
 import { validateEmail } from '@shared/lib/validation';
 import { Show } from '@shared/lib/vdom';
@@ -49,7 +50,7 @@ export function LoginForm(props: LoginFormProps): VNode {
                 if (e.message === 'Invalid email or password') {
                     errors.set({ password: 'Неверная почта или пароль' });
                 } else {
-                    errors.set({ password: 'Ошибка входа: ' + e.message });
+                    errors.set({ password: translateError(e, 'Не удалось войти') });
                 }
             } else {
                 errors.set({ email: 'Проблема с соединением' });

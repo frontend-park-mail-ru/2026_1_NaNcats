@@ -1,6 +1,9 @@
 .profile-page {
   width: 100%;
+  // dvh, иначе на iOS 100vh = «большой» вьюпорт и снизу остаётся пустое серое
+  // место, когда панель адреса Safari скрывается.
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-main);
   overflow-y: auto;
   font-family: "Inter", sans-serif;
@@ -451,11 +454,18 @@
     font-size: 13px;
     font-weight: 600;
     color: #0e1117;
-    flex-shrink: 0;
+    // Даём названию усекаться: иначе длинная подпись выпирала за карточку.
+    min-width: 0;
+    max-width: 60%;
+    flex-shrink: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   &__sep {
     color: #bebebe;
+    flex-shrink: 0;
   }
 
   &__text {

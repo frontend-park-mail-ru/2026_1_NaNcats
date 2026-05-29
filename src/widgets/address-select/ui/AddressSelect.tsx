@@ -15,7 +15,6 @@ import { removeAddress } from '@features/profile/manage-addresses';
 import { onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
-import { startViewTransition } from '@shared/lib/transitions';
 import { Popup } from '@shared/ui/popup';
 
 /** Подпись на плашке-кнопке (placeholder, когда адрес не выбран). */
@@ -60,25 +59,12 @@ export function AddressSelect(): VNode {
         open.set((prev) => !prev);
     };
 
-    // Список адресов с выбранным наверху — чтобы анимировать «переезд» текущего
-    // адреса в начало списка при выборе.
-    const orderedAddresses = (): Address[] => {
-        const list = savedAddresses();
-        const activeIdx = list.findIndex(isActive);
-        if (activeIdx <= 0) return list;
-        return [list[activeIdx], ...list.slice(0, activeIdx), ...list.slice(activeIdx + 1)];
-    };
-
     const pickSavedAddress = (addr: Address) => {
-        // Меняем активный адрес внутри view-transition: выбранный пункт уезжает
-        // наверх списка с анимацией, оставляя дропдаун открытым, чтобы перемещение
-        // было заметно.
-        startViewTransition(() => {
-            addressStore.setCurrent({
-                text: addr.location.address_text,
-                coords: [addr.location.latitude, addr.location.longitude],
-            });
+        addressStore.setCurrent({
+            text: addr.location.address_text,
+            coords: [addr.location.latitude, addr.location.longitude],
         });
+        open.set(false);
     };
 
     const handleEditAddress = (event: Event, addr: Address) => {
@@ -159,7 +145,7 @@ export function AddressSelect(): VNode {
                         fallback={<div class="address-select__empty">У вас пока нет сохранённых адресов</div>}
                     >
                         <div class="address-select__items">
-                            <For each={orderedAddresses} key={(a) => a.id}>
+                            <For each={savedAddresses} key={(a) => a.id}>
                                 {(addr) => (
                                     <div
                                         class={() =>
@@ -167,7 +153,6 @@ export function AddressSelect(): VNode {
                                                 ? 'address-select__item address-select__item_active'
                                                 : 'address-select__item'
                                         }
-                                        style={`view-transition-name: addr-${String(addr.id)}`}
                                     >
                                         <button
                                             type="button"

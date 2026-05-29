@@ -38,6 +38,7 @@ import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
 import { imageFallback } from '@shared/lib/img';
 import { pluralRu } from '@shared/lib/plural';
+import { startViewTransition } from '@shared/lib/transitions';
 
 /** Заказ с предвычисленным бейджем статуса. */
 interface OrderRowView extends Order {
@@ -374,10 +375,14 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     // Клик по адресу делает его текущим (основным) без открытия модалки.
+    // Меняем активный адрес внутри view-transition: только что выбранный пункт
+    // плавно «переезжает» на первое место — глаз сразу видит, что адрес сменился.
     const handlePickPrimary = (addr: Address) => {
-        addressStore.setCurrent({
-            text: addr.location.address_text,
-            coords: [addr.location.latitude, addr.location.longitude],
+        startViewTransition(() => {
+            addressStore.setCurrent({
+                text: addr.location.address_text,
+                coords: [addr.location.latitude, addr.location.longitude],
+            });
         });
     };
 
@@ -549,6 +554,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                     ? 'address-compact address-compact_primary'
                                                     : 'address-compact'
                                             }
+                                            style={`view-transition-name: addr-${String(addr.id)}`}
                                             role="button"
                                             tabindex="0"
                                             onClick={() => handlePickPrimary(addr)}

@@ -1,4 +1,5 @@
 import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { signal } from '@shared/lib/signals';
 import { validateEmail, validateName, validatePassword } from '@shared/lib/validation';
 import { Show } from '@shared/lib/vdom';
@@ -75,7 +76,7 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                 if (e.status === 409) {
                     errors.set({ email: 'Эта почта уже зарегистрирована' });
                 } else {
-                    errors.set({ name: 'Ошибка регистрации: ' + e.message });
+                    errors.set({ name: translateError(e, 'Не удалось зарегистрироваться') });
                 }
             } else {
                 errors.set({ name: 'Ошибка сети' });

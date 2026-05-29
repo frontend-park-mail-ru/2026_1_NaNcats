@@ -19,6 +19,7 @@ import { imageFallback } from '@shared/lib/img';
 import { httpClient } from '@shared/api/http';
 import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
 import { pluralRu } from '@shared/lib/plural';
+import { translateError } from '@shared/lib/errors';
 
 /** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
@@ -347,6 +348,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     const searchValue = signal<string>('');
     const menuOpen = signal<boolean>(false);
     const cartOpen = signal<boolean>(false);
+    // Сводка отзывов реактивна: после публикации отзыва пересчитываем её,
+    // чтобы рейтинг и количество на баннере обновились без перезагрузки.
+    const reviewSummarySig = signal<ReviewSummary>(props.reviewSummary);
     // Позиции корзины: по ним карточка блюда показывает счётчик вместо кнопки.
     const cartItems = useStoreSignal(cartStore, (s) => s.items);
     // Нужен, чтобы в совместной корзине считать только свою позицию блюда.
@@ -397,8 +401,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             if (dishCard) flyDishToCart(dishCard);
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
-            const msg = e instanceof Error && e.message ? e.message : 'Не удалось добавить блюдо.';
-            await Popup.alert(`Не удалось добавить блюдо: ${msg}`);
+            await Popup.alert(translateError(e, 'Не удалось добавить блюдо'));
         }
     };
 
@@ -529,6 +532,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                     rating: r,
                     comment: c,
                 });
+                // Пересчитываем сводку, чтобы рейтинг/количество на баннере
+                // обновились сразу, без перезагрузки страницы.
+                try {
+                    reviewSummarySig.set(summarizeReviews(await restaurantApi.getReviews(restaurantId)));
+                } catch {
+                    // Если перезапрос не удался — оставляем прежнюю сводку.
+                }
                 close();
                 void Popup.alert('Спасибо! Ваш отзыв опубликован.');
             } catch {
@@ -787,6 +797,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                 )}
                             />
                             <div class="restaurant-hero__overlay">
+                                <Show when={() => (props.restaurant.description ?? '') !== ''}>
+                                    <p class="restaurant-hero__info">{props.restaurant.description}</p>
+                                </Show>
                                 <div class="restaurant-hero__meta">
                                     <button
                                         type="button"
@@ -796,16 +809,16 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         }}
                                     >
                                         <Show
-                                            when={() => props.reviewSummary.count > 0}
+                                            when={() => reviewSummarySig().count > 0}
                                             fallback={<span>☆ Нет отзывов</span>}
                                         >
                                             <span class="restaurant-hero__star">★</span>
                                             <span class="restaurant-hero__rating-val">
-                                                {() => props.reviewSummary.rating.toFixed(1)}
+                                                {() => reviewSummarySig().rating.toFixed(1)}
                                             </span>
                                             <span class="restaurant-hero__rating-count">
                                                 {() =>
-                                                    `${props.reviewSummary.count} ${pluralRu(props.reviewSummary.count, ['отзыв', 'отзыва', 'отзывов'])}`
+                                                    `${reviewSummarySig().count} ${pluralRu(reviewSummarySig().count, ['отзыв', 'отзыва', 'отзывов'])}`
                                                 }
                                             </span>
                                         </Show>
@@ -814,9 +827,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         🕒 {props.deliveryMinutes}–{props.deliveryMinutes + 10} мин
                                     </span>
                                 </div>
-                                <Show when={() => (props.restaurant.description ?? '') !== ''}>
-                                    <p class="restaurant-hero__info">{props.restaurant.description}</p>
-                                </Show>
                             </div>
                         </div>
 
@@ -890,30 +900,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                 </button>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            class="reviews-btn"
-                            onClick={() => {
-                                void openReviews();
-                            }}
-                        >
-                            <svg
-                                class="reviews-btn__icon"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                                    stroke="#FFC1C1"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
-                            Отзывы
-                        </button>
 
                         <Show when={() => recommended().length > 0 && searchValue() === ''}>
                             <h2 class="restaurant-section-title restaurant-section-title_reco">Рекомендуем</h2>

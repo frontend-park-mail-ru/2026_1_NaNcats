@@ -10,6 +10,7 @@ import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
 import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { wordleApi, type WordleDailyState, type WordleGuessResult, type WordleStatus } from '@entities/wordle';
 
 import {
@@ -182,24 +183,13 @@ export function Wordle(props: WordleProps): VNode {
             res = await wordleApi.makeGuess(guess, crypto.randomUUID());
         } catch (e) {
             submitting.set(false);
-            if (e instanceof ApiError) {
-                if (e.message.toLowerCase().includes('dictionary')) {
-                    showToast('Такого слова нет в словаре');
-                    return;
-                }
-                if (e.message.toLowerCase().includes('finished')) {
-                    showToast('Игра на сегодня уже закончена');
-                    void loadState();
-                    return;
-                }
-                if (e.message.toLowerCase().includes('length')) {
-                    showToast('Слишком короткое слово');
-                    return;
-                }
-                showToast(e.message);
+            // Если игра уже закончена — подтягиваем актуальное состояние с бэка.
+            if (e instanceof ApiError && e.message.toLowerCase().includes('finished')) {
+                showToast('Игра на сегодня уже закончена');
+                void loadState();
                 return;
             }
-            showToast('Не удалось отправить попытку');
+            showToast(translateError(e, 'Не удалось отправить попытку'));
             return;
         }
         submitting.set(false);

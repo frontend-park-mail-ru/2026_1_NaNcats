@@ -80,8 +80,11 @@ export function normalizeOrder(raw: Order): NormalizedOrder {
             id: raw.restaurant_id ?? 0,
             name: raw.restaurant_name ?? 'Заказ',
             image_url: raw.restaurant_image_url,
-            rating: raw.restaurant_rating ?? 4.5,
-            reviews_count: raw.restaurant_reviews_count ?? 1000,
+            // Бэкенд в заказе рейтинг/отзывы не присылает. Раньше тут стояла
+            // заглушка 4.5 (1000); теперь оставляем 0 и подтягиваем реальные
+            // значения из API отзывов при открытии модалки заказа.
+            rating: raw.restaurant_rating ?? 0,
+            reviews_count: raw.restaurant_reviews_count ?? 0,
         },
         items,
         splits: raw.splits ?? [],

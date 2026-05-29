@@ -5,7 +5,7 @@
 
 import './luckyWheelModal.scss';
 
-import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { wheelApi, type WheelSector, type WheelSpinResult } from '@entities/wheel';
 import { refreshAchievements } from '@features/profile/achievements';
 import { computed, signal } from '@shared/lib/signals';
@@ -193,8 +193,7 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
             // обновляем кэш ачивок, чтобы счётчик в профиле сразу подтянулся.
             void refreshAchievements();
         } catch (e) {
-            const msg = e instanceof ApiError ? e.message : 'Не удалось крутануть колесо';
-            spinError.set(msg);
+            spinError.set(translateError(e, 'Не удалось крутануть колесо'));
             isSpinning.set(false);
         }
     };

@@ -4,7 +4,7 @@ import './checkout.scss';
 
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
-import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { userStore } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
@@ -419,8 +419,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 void router.replace(ROUTES.profile);
             }
         } catch (e) {
-            const msg = e instanceof ApiError ? e.message : 'Ошибка соединения с сервером';
-            errorSig.set(msg || 'Произошла ошибка при оформлении заказа');
+            errorSig.set(translateError(e, 'Произошла ошибка при оформлении заказа'));
             payProcessingSig.set(false);
         }
     };
