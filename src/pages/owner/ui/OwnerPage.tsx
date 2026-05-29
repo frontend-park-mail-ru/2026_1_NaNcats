@@ -109,7 +109,8 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 // SVG Line Chart (только CSS/SVG, без библиотек)
-function LineChart({ data }: { data: Array<{ label: string; revenue: number }> }): VNode {
+function LineChart({ data: dataAccessor }: { data: () => Array<{ label: string; revenue: number }> }): VNode {
+    const data = dataAccessor();
     if (data.length === 0) {
         return <div class="owner-loading">Нет данных за выбранный период</div>;
     }
@@ -390,7 +391,16 @@ function AnalyticsTab({ getBrandId }: AnalyticsTabProps): VNode {
                     <div class="owner-section__head">
                         <h3 class="owner-section__title">Динамика выручки по дням</h3>
                     </div>
-                    {() => <LineChart data={chartData()} />}
+                    <Show
+                        when={() => !loading() && chartData().length > 0}
+                        fallback={
+                            <div class="owner-loading">
+                                {() => (loading() ? 'Загрузка…' : 'Нет данных за выбранный период')}
+                            </div>
+                        }
+                    >
+                        <LineChart data={chartData} />
+                    </Show>
                 </div>
 
                 {/* Топ блюд */}
