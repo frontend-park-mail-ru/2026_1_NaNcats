@@ -18,8 +18,12 @@ import {
     RestaurantPageSkeleton,
 } from '@shared/ui/skeleton';
 
-/** Идентификатор layout-shell-а страницы: 'root' (Header, Outlet, OfflineBanner) или 'auth' (центр-форма, логотип). */
-export type LayoutKind = 'root' | 'auth';
+/**
+ * Идентификатор layout-shell-а страницы: 'root' (Header, Outlet, OfflineBanner),
+ * 'auth' (центр-форма, логотип) или 'bare' (без шапки, отдельный скролл —
+ * для юридических страниц, открываемых в новой вкладке).
+ */
+export type LayoutKind = 'root' | 'auth' | 'bare';
 
 /**
  * Форма результата динамического import-а чанка страницы.
@@ -120,6 +124,16 @@ export const ROUTES_TABLE: RouteDescriptor[] = [
         component: lazyPage(() => import('@pages/owner')),
         loader: async () => (await import('@pages/owner')).load(),
         skeleton: OwnerPageSkeleton,
+    },
+    {
+        path: ROUTES.privacy,
+        layout: 'bare',
+        component: lazyPage(() => import('@pages/privacy')),
+    },
+    {
+        path: ROUTES.terms,
+        layout: 'bare',
+        component: lazyPage(() => import('@pages/terms')),
     },
     {
         path: ROUTES.notFound,

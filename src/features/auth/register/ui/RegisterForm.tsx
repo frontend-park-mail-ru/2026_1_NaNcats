@@ -1,5 +1,6 @@
 import { ApiError } from '@shared/api/http';
 import { translateError } from '@shared/lib/errors';
+import { ROUTES } from '@shared/config/routes';
 import { signal } from '@shared/lib/signals';
 import { validateEmail, validateName, validatePassword } from '@shared/lib/validation';
 import { Show } from '@shared/lib/vdom';
@@ -103,6 +104,10 @@ export function RegisterForm(props: RegisterFormProps): VNode {
                     id="name"
                     placeholder="Ваше имя"
                     value={name.peek()}
+                    ref={(el: Element | null) => {
+                        // Автофокус на первое поле при открытии формы.
+                        if (el !== null) requestAnimationFrame(() => (el as HTMLInputElement).focus());
+                    }}
                     onInput={(e: Event) => {
                         name.set((e.target as HTMLInputElement).value);
                     }}
@@ -201,8 +206,14 @@ export function RegisterForm(props: RegisterFormProps): VNode {
             <div class="checkbox-group">
                 <input type="checkbox" id="terms" required />
                 <label for="terms">
-                    Я согласен с <span class="secondary-link">условиями использования</span> и{' '}
-                    <span class="secondary-link">политикой конфиденциальности</span>
+                    Я согласен с{' '}
+                    <a href={ROUTES.terms} target="_blank" rel="noopener noreferrer" class="secondary-link">
+                        условиями использования
+                    </a>{' '}
+                    и{' '}
+                    <a href={ROUTES.privacy} target="_blank" rel="noopener noreferrer" class="secondary-link">
+                        политикой конфиденциальности
+                    </a>
                 </label>
             </div>
 

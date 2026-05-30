@@ -8,11 +8,39 @@ import './luckyWheelModal.scss';
 import { translateError } from '@shared/lib/errors';
 import { wheelApi, type WheelSector, type WheelSpinResult } from '@entities/wheel';
 import { refreshAchievements } from '@features/profile/achievements';
+import { ApiError } from '@shared/api/http';
 import { computed, signal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
 import { PIZZULYA_DEFAULT_GIF, PIZZULYA_KNOCKOUT_GIF } from '@shared/lib/img/pizzulya';
+
+/** Кулдаун колеса — 24ч (совпадает с проверкой на бэкенде). */
+const WHEEL_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+/** Ключ localStorage с временем последнего спина (мс). */
+const WHEEL_LAST_SPIN_KEY = 'nancats:wheel_last_spin';
+/** Сектор-реролл: даёт ещё попытку и сбрасывает кулдаун на бэкенде. */
+const REROLL_SECTOR_ID = 8;
+
+/** Читает время последнего спина из localStorage (0, если нет). */
+function readLastSpin(): number {
+    try {
+        const v = localStorage.getItem(WHEEL_LAST_SPIN_KEY);
+        return v ? Number(v) : 0;
+    } catch {
+        return 0;
+    }
+}
+
+/** Сохраняет время последнего спина; ts=0 очищает запись (кулдаун сброшен). */
+function writeLastSpin(ts: number): void {
+    try {
+        if (ts > 0) localStorage.setItem(WHEEL_LAST_SPIN_KEY, String(ts));
+        else localStorage.removeItem(WHEEL_LAST_SPIN_KEY);
+    } catch {
+        /* localStorage недоступен — молча игнорируем */
+    }
+}
 
 /** Сколько держать стикер «в нокауте» после клика по пиццуле (мс). */
 const KNOCKOUT_DURATION_MS = 1000;
@@ -136,6 +164,14 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     let knockoutTimer: ReturnType<typeof setTimeout> | null = null;
     /** Текущая гифка стикера: обычная либо «в нокауте» сразу после клика. */
     const stickerSrc = computed<string>(() => (knockout() ? PIZZULYA_KNOCKOUT_GIF : PIZZULYA_DEFAULT_GIF));
+    /** Активен ли кулдаун (узнаём из localStorage при открытии и после спина). */
+    const onCooldown = signal<boolean>(false);
+
+    /** Пересчитывает флаг кулдауна по сохранённому времени последнего спина. */
+    const refreshCooldown = () => {
+        const last = readLastSpin();
+        onCooldown.set(last > 0 && Date.now() - last < WHEEL_COOLDOWN_MS);
+    };
 
     const handleStickerClick = () => {
         if (knockout.peek()) return;
@@ -152,6 +188,7 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
         const r = result();
         if (r !== null) return r.message;
         if (isSpinning()) return 'Крутим-вертим…';
+        if (onCooldown()) return 'Вы недавно уже крутили, попробуйте позднее 🕒';
         return 'Привет! Нажми «Крутить», чтобы испытать удачу 🎰';
     });
 
@@ -189,10 +226,24 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
                 result.set(r);
                 isSpinning.set(false);
             }, SPIN_DURATION_MS);
+            // Фиксируем кулдаун сразу. Реролл (sector_id=8) сбрасывает его на
+            // бэке и даёт ещё попытку — тогда не блокируем кнопку.
+            if (r.sector_id === REROLL_SECTOR_ID) {
+                writeLastSpin(0);
+                onCooldown.set(false);
+            } else {
+                writeLastSpin(Date.now());
+                onCooldown.set(true);
+            }
             // Бэк после спина мог выдать first_spin / lucky_wheel_winner —
             // обновляем кэш ачивок, чтобы счётчик в профиле сразу подтянулся.
             void refreshAchievements();
         } catch (e) {
+            // 400 от спина = активный кулдаун: запоминаем время и блокируем кнопку.
+            if (e instanceof ApiError && e.status === 400) {
+                writeLastSpin(Date.now());
+                onCooldown.set(true);
+            }
             spinError.set(translateError(e, 'Не удалось крутануть колесо'));
             isSpinning.set(false);
         }
@@ -227,6 +278,7 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
             clearTimeout(promoCopiedTimer);
             promoCopiedTimer = null;
         }
+        refreshCooldown();
         void ensureSectors();
     };
     const close = () => {
@@ -249,12 +301,13 @@ export function LuckyWheelModal(props: LuckyWheelModalProps): VNode {
     const controller: LuckyWheelModalController = { open, close };
     if (props.controllerRef) props.controllerRef(controller);
 
-    /** Класс кнопки спина — disabled пока крутится или нет секторов. */
+    /** Класс кнопки спина — disabled пока крутится, нет секторов или активен кулдаун. */
     const spinBtnDisabled = computed<boolean>(() => {
         if (isSpinning()) return true;
         if (sectors().length === 0) return true;
-        // Дополнительная попытка («реролл», sector_id=8) сбрасывает кулдаун на бэке,
-        // поэтому после неё снова разрешаем спин (result сбрасывается ниже).
+        // Кулдаун: пиццулю уже крутили — не даём крутить повторно. Реролл
+        // (sector_id=8) сбрасывает onCooldown в false, поэтому остаётся доступен.
+        if (onCooldown()) return true;
         return false;
     });
 

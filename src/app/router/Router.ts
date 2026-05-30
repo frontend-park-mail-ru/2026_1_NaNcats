@@ -175,6 +175,11 @@ export class Router {
 
         const { route, params, query } = matchPath(path, this.routes);
 
+        // Сбрасываем заголовок вкладки к дефолтному при каждой навигации;
+        // страницы, которым нужен свой title (юридические страницы), выставят
+        // его в onMount после монтирования.
+        document.title = 'FoodCourt — доставка еды из ресторанов';
+
         this.currentRoute.set({
             status: 'pending',
             path,

@@ -65,6 +65,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    // Кнопка поиска: сброс стилей button + кликабельный вид.
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
   }
 }
 
@@ -796,7 +811,9 @@
   border: none;
   border-radius: 999px;
   background: var(--white);
-  box-shadow: 0 10px 24px rgba(247, 149, 140, 0.22);
+  // Минимальная плотная тень вместо розового «свечения» по краям —
+  // на iPhone цветной глоу выглядел грязно.
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   z-index: 1150;
   align-items: center;
@@ -809,7 +826,7 @@
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(247, 149, 140, 0.28);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
   }
 }
 
@@ -1195,7 +1212,9 @@
   .sheet {
     margin-bottom: 0;
     padding: 24px 16px 20px;
-    border-radius: 24px 24px 0 0;
+    // Скругляем все углы: иначе при коротком списке (выбрана категория) низ
+    // блока с ресторанами обрывался острыми углами.
+    border-radius: 24px;
 
     &__header {
       margin-bottom: 18px;

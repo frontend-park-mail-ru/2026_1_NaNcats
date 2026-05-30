@@ -885,14 +885,47 @@
     padding: 12px 0;
   }
   .owner-sidebar__list {
+    // Горизонтальная лента ресторанов: при многих брендах не громоздится
+    // вертикально, а скроллится вбок.
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     padding: 0 8px;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+  .owner-sidebar__item {
+    flex-shrink: 0;
   }
   .owner-main {
     padding: 0 0 20px;
   }
   .owner-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .owner-section {
+    padding: 16px 14px;
+  }
+  // Фильтр периода: дата-инпуты тянутся на доступную ширину, «Показать» —
+  // на всю строку, чтобы было удобно на узких экранах.
+  .owner-filter {
+    gap: 8px;
+  }
+  .owner-date-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .owner-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .owner-tabs {
+    gap: 4px;
   }
 }

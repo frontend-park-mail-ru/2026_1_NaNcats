@@ -167,6 +167,8 @@
     height: 100dvh;
     max-height: 100vh;
     max-height: 100dvh;
+    // Клипуем содержимое: карта-флекс не должна выталкивать ОК-кнопку за экран.
+    overflow: hidden;
     border-radius: 0;
     padding: 56px 16px 16px;
     gap: 12px;
@@ -200,7 +202,10 @@
 
       .js-yandex-map {
         height: 100% !important;
-        min-height: 280px;
+        // На коротких/landscape экранах жёсткий min-height не давал карте
+        // сжаться и выталкивал ОК-кнопку за экран. Мягкий минимум через min():
+        // на высоких экранах ~280px, на низких — пропорционально меньше.
+        min-height: min(280px, 38vh) !important;
         border-radius: 16px;
       }
     }
@@ -209,5 +214,6 @@
   .button_modal-ok {
     width: 100%;
     height: 44px;
+    flex-shrink: 0;
   }
 }

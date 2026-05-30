@@ -482,6 +482,28 @@ class CartStore extends Store<CartState> {
     }
 
     /**
+     * Выход текущего участника из совместной корзины (самоудаление). На бэкенде
+     * это тот же DELETE /cart/members, но с собственным public_id; после выхода
+     * корзина пользователя возвращается в соло-режим.
+     *
+     * @param ownPublicID Публичный идентификатор (UUID) текущего пользователя.
+     */
+    async leaveShared(ownPublicID: string): Promise<void> {
+        const state = this.getState();
+        if (!state.cartId) return;
+
+        this.setState({ status: 'syncing', error: undefined });
+        try {
+            await cartApi.kickMember(state.cartId, ownPublicID);
+            await this.refresh();
+        } catch (e) {
+            console.error('cartStore.leaveShared', e);
+            this.setState({ status: 'error', error: 'leave failed' });
+            throw e;
+        }
+    }
+
+    /**
      * Закрывает совместную корзину и возвращает её в соло-режим. Доступно
      * только администратору; гости и их блюда удаляются.
      */

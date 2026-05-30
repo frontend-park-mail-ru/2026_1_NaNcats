@@ -395,7 +395,8 @@
     border: none;
     border-radius: 999px;
     background: var(--white);
-    box-shadow: 0 10px 24px rgba(247, 149, 140, 0.22);
+    // Минимальная плотная тень вместо розового «свечения» (на iPhone грязнило).
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
     cursor: pointer;
     z-index: 1150;
     align-items: center;
@@ -408,7 +409,7 @@
 
     &:hover {
       transform: translateY(-1px);
-      box-shadow: 0 12px 28px rgba(247, 149, 140, 0.28);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
     }
   }
 
@@ -743,8 +744,27 @@
 
   &__icon {
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
+    // Кнопка поиска: сброс button + кликабельный вид.
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background 0.15s ease;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
   }
 
   &__input {

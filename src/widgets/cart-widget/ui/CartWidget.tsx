@@ -77,6 +77,65 @@ function ownerLabel(
     return ownerName && ownerName.length > 0 ? ownerName : 'Участник';
 }
 
+/** Группа позиций корзины по владельцу (для совместной корзины). */
+interface CartItemGroup {
+    /** Ключ группы: public_id владельца или `__none` для ничейных. */
+    key: string;
+    /** Заголовок группы (имя участника). */
+    label: string;
+    /** Ничейные позиции (владелец удалён). */
+    isUnowned: boolean;
+    /** Это сам текущий пользователь. */
+    isYou: boolean;
+    items: CartItem[];
+}
+
+/**
+ * Группирует позиции совместной корзины по людям. Порядок: организатор → вы →
+ * остальные участники (по имени) → ничейные. В соло-корзине возвращает одну
+ * группу без заголовка.
+ */
+function buildItemGroups(
+    items: readonly CartItem[],
+    currentUserId: string | null,
+    adminId: string | null,
+    isShared: boolean,
+): CartItemGroup[] {
+    if (!isShared) {
+        return [{ key: '__solo', label: '', isUnowned: false, isYou: false, items: items.slice() }];
+    }
+
+    const map = new Map<string, CartItem[]>();
+    for (const it of items) {
+        const k = it.owner_public_id ?? '__none';
+        const bucket = map.get(k);
+        if (bucket) bucket.push(it);
+        else map.set(k, [it]);
+    }
+
+    const groups: CartItemGroup[] = [];
+    for (const [k, its] of map) {
+        const owner = its[0];
+        groups.push({
+            key: k,
+            label: ownerLabel(owner.owner_public_id, owner.owner_name, currentUserId, adminId),
+            isUnowned: k === '__none',
+            isYou: currentUserId !== null && owner.owner_public_id === currentUserId,
+            items: its,
+        });
+    }
+
+    const rank = (g: CartItemGroup): number => {
+        if (g.isUnowned) return 4;
+        const ownerId = g.items[0].owner_public_id;
+        if (adminId !== null && ownerId === adminId) return 0;
+        if (g.isYou) return 1;
+        return 2;
+    };
+    groups.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
+    return groups;
+}
+
 /**
  * Извлекает токен приглашения из введённой пользователем строки. Принимает
  * как «голый» токен, так и полную ссылку вида `https://.../?cart_invite=TOKEN`.
@@ -149,6 +208,10 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const currentUserId = computed<string | null>(() => user()?.public_id ?? null);
     const hasItems = computed(() => items().length > 0);
     const isShared = computed(() => mode() === 'shared');
+    // Позиции, сгруппированные по людям (организатор → вы → остальные → ничьё).
+    const itemGroups = computed<CartItemGroup[]>(() =>
+        buildItemGroups(items(), currentUserId(), adminId(), isShared()),
+    );
     const isAdmin = computed(() => {
         const uid = currentUserId();
         return uid !== null && adminId() !== null && uid === adminId();
@@ -385,6 +448,19 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
         }
     };
 
+    // Выход участника из совместной корзины (самоудаление).
+    const handleLeaveShared = async () => {
+        const uid = currentUserId();
+        if (uid === null) return;
+        if (!(await Popup.confirm('Выйти из совместной корзины? Ваши блюда станут ничейными.'))) return;
+        try {
+            await cartStore.leaveShared(uid);
+        } catch (err) {
+            console.error('[CartWidget] leaveShared failed:', err);
+            await Popup.alert('Не удалось выйти из корзины.');
+        }
+    };
+
     return (
         <div class="cart-wrapper">
             <div class="cart-header-top">
@@ -448,9 +524,21 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                     <Show
                         when={isAdmin}
                         fallback={
-                            <p class="cart-shared__note">
-                                Вы участник корзины. Заказ оформит организатор, а вы можете добавлять свои блюда.
-                            </p>
+                            <div class="cart-shared__guest">
+                                <p class="cart-shared__note">
+                                    Вы участник корзины. Заказ оформит организатор, а вы можете добавлять свои блюда.
+                                </p>
+                                <button
+                                    type="button"
+                                    class="cart-shared__leave-btn"
+                                    disabled={actionsDisabled}
+                                    onClick={() => {
+                                        void handleLeaveShared();
+                                    }}
+                                >
+                                    Выйти из корзины
+                                </button>
+                            </div>
                         }
                     >
                         <Show
@@ -574,104 +662,122 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}>
-                        {(item) => {
-                            const dishId = item.dish_id;
-                            // Позицию ищем по паре dish_id + владелец: у блюда в
-                            // совместной корзине бывает по строке на участника.
-                            const ownerKey = item.owner_public_id ?? '';
-                            // For не перевызывает children при изменении полей позиции,
-                            // поэтому актуальную позицию читаем из сигнала items на каждом
-                            // тике; если позиция исчезла, держим последний снимок до размонтирования.
-                            const currentItem = computed<CartItem>(
-                                () =>
-                                    items().find(
-                                        (it) => it.dish_id === dishId && (it.owner_public_id ?? '') === ownerKey,
-                                    ) ?? item,
+                    <For each={itemGroups} key={(g) => g.key}>
+                        {(group) => {
+                            const groupKey = group.key;
+                            // Реактивно перечитываем группу из itemGroups, чтобы список
+                            // позиций участника обновлялся при изменении корзины.
+                            const groupItems = computed<CartItem[]>(
+                                () => itemGroups().find((g) => g.key === groupKey)?.items ?? [],
                             );
-                            const quantity = computed(() => currentItem().quantity);
-                            const priceRub = computed(() => formatItemPriceRub(currentItem()));
-                            const ownerText = computed(() =>
-                                ownerLabel(
-                                    currentItem().owner_public_id,
-                                    currentItem().owner_name,
-                                    currentUserId(),
-                                    adminId(),
-                                ),
+                            const groupLabel = computed<string>(
+                                () => itemGroups().find((g) => g.key === groupKey)?.label ?? '',
                             );
-                            // Гость правит только свои позиции, в соло-корзине ограничений нет.
-                            const canModify = computed(() => {
-                                if (!isShared()) return true;
-                                return currentItem().owner_public_id === currentUserId();
-                            });
                             return (
-                                <div class="cart-item">
-                                    <img
-                                        src={item.image_url}
-                                        alt={item.name}
-                                        class="cart-item__img"
-                                        onError={handleImgError}
-                                    />
-                                    <div class="cart-item__info">
-                                        <div class="cart-item__name">{item.name}</div>
-                                        <div class="cart-item__price">{priceRub}</div>
-                                        <Show when={isShared}>
-                                            <div
-                                                class={() =>
-                                                    currentItem().owner_public_id == null
-                                                        ? 'cart-item__owner cart-item__owner_none'
-                                                        : 'cart-item__owner'
-                                                }
-                                            >
-                                                {ownerText}
-                                            </div>
-                                        </Show>
-                                    </div>
-                                    <div class="cart-item__counter">
-                                        <Show
-                                            when={() => isShared() && currentItem().owner_public_id == null}
-                                            fallback={
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        class="counter-btn"
-                                                        disabled={() => !canModify()}
-                                                        onClick={() => {
-                                                            void cartStore.changeQuantity(dishId, -1);
-                                                        }}
-                                                    >
-                                                        −
-                                                    </button>
-                                                    <span class="counter-value">{quantity}</span>
-                                                    <button
-                                                        type="button"
-                                                        class="counter-btn"
-                                                        disabled={() => !canModify()}
-                                                        onClick={() => {
-                                                            void cartStore.changeQuantity(dishId, 1);
-                                                        }}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </>
+                                <div class="cart-group">
+                                    <Show when={() => isShared() && groupKey !== '__solo'}>
+                                        <div
+                                            class={() =>
+                                                group.isUnowned
+                                                    ? 'cart-group__header cart-group__header_none'
+                                                    : 'cart-group__header'
                                             }
                                         >
-                                            {/* Позиция удалённого участника осталась без владельца.
+                                            <span class="cart-group__dot" aria-hidden="true" />
+                                            <span class="cart-group__name">{groupLabel}</span>
+                                            <span class="cart-group__count">{() => `${groupItems().length}`}</span>
+                                        </div>
+                                    </Show>
+                                    <For
+                                        each={groupItems}
+                                        key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}
+                                    >
+                                        {(item) => {
+                                            const dishId = item.dish_id;
+                                            // Позицию ищем по паре dish_id + владелец: у блюда в
+                                            // совместной корзине бывает по строке на участника.
+                                            const ownerKey = item.owner_public_id ?? '';
+                                            // For не перевызывает children при изменении полей позиции,
+                                            // поэтому актуальную позицию читаем из сигнала items на каждом
+                                            // тике; если позиция исчезла, держим последний снимок до размонтирования.
+                                            const currentItem = computed<CartItem>(
+                                                () =>
+                                                    items().find(
+                                                        (it) =>
+                                                            it.dish_id === dishId &&
+                                                            (it.owner_public_id ?? '') === ownerKey,
+                                                    ) ?? item,
+                                            );
+                                            const quantity = computed(() => currentItem().quantity);
+                                            const priceRub = computed(() => formatItemPriceRub(currentItem()));
+                                            // Гость правит только свои позиции, в соло-корзине ограничений нет.
+                                            const canModify = computed(() => {
+                                                if (!isShared()) return true;
+                                                return currentItem().owner_public_id === currentUserId();
+                                            });
+                                            return (
+                                                <div class="cart-item">
+                                                    <img
+                                                        src={item.image_url}
+                                                        alt={item.name}
+                                                        class="cart-item__img"
+                                                        onError={handleImgError}
+                                                    />
+                                                    <div class="cart-item__info">
+                                                        <div class="cart-item__name">{item.name}</div>
+                                                        <div class="cart-item__price">{priceRub}</div>
+                                                    </div>
+                                                    <div class="cart-item__counter">
+                                                        <Show
+                                                            when={() =>
+                                                                isShared() && currentItem().owner_public_id == null
+                                                            }
+                                                            fallback={
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="counter-btn"
+                                                                        disabled={() => !canModify()}
+                                                                        onClick={() => {
+                                                                            void cartStore.changeQuantity(dishId, -1);
+                                                                        }}
+                                                                    >
+                                                                        −
+                                                                    </button>
+                                                                    <span class="counter-value">{quantity}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="counter-btn"
+                                                                        disabled={() => !canModify()}
+                                                                        onClick={() => {
+                                                                            void cartStore.changeQuantity(dishId, 1);
+                                                                        }}
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                </>
+                                                            }
+                                                        >
+                                                            {/* Позиция удалённого участника осталась без владельца.
                                                 Организатор может забрать её себе, иначе оформить
                                                 заказ нельзя. */}
-                                            <Show when={isAdmin}>
-                                                <button
-                                                    type="button"
-                                                    class="cart-item__claim"
-                                                    onClick={() => {
-                                                        void cartStore.claimItem(dishId);
-                                                    }}
-                                                >
-                                                    Забрать себе
-                                                </button>
-                                            </Show>
-                                        </Show>
-                                    </div>
+                                                            <Show when={isAdmin}>
+                                                                <button
+                                                                    type="button"
+                                                                    class="cart-item__claim"
+                                                                    onClick={() => {
+                                                                        void cartStore.claimItem(dishId);
+                                                                    }}
+                                                                >
+                                                                    Забрать себе
+                                                                </button>
+                                                            </Show>
+                                                        </Show>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }}
+                                    </For>
                                 </div>
                             );
                         }}

@@ -81,6 +81,10 @@ export function LoginForm(props: LoginFormProps): VNode {
                     id="email"
                     placeholder="Example@mail.com"
                     value={email.peek()}
+                    ref={(el: Element | null) => {
+                        // Автофокус на первое поле при открытии формы.
+                        if (el !== null) requestAnimationFrame(() => (el as HTMLInputElement).focus());
+                    }}
                     onInput={(e: Event) => {
                         email.set((e.target as HTMLInputElement).value);
                     }}
@@ -95,9 +99,6 @@ export function LoginForm(props: LoginFormProps): VNode {
             <div class="input-group">
                 <div class="label-row">
                     <label for="password">Пароль</label>
-                    <a href="#" class="secondary-link">
-                        Забыли пароль?
-                    </a>
                 </div>
                 <div class="password-wrapper">
                     <input

@@ -866,20 +866,28 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
 
                         <div class="restaurant-search">
                             <div class="restaurant-search__box">
-                                <svg
+                                <button
+                                    type="button"
                                     class="restaurant-search__icon"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
+                                    aria-label="Найти"
+                                    onClick={() => {
+                                        if (searchTimer !== null) {
+                                            clearTimeout(searchTimer);
+                                            searchTimer = null;
+                                        }
+                                        void runDishSearch(searchValue().trim());
+                                    }}
                                 >
-                                    <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8" />
-                                    <path
-                                        d="M16.5 16.5L21 21"
-                                        stroke="#7D7D7D"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                    />
-                                </svg>
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8" />
+                                        <path
+                                            d="M16.5 16.5L21 21"
+                                            stroke="#7D7D7D"
+                                            stroke-width="1.8"
+                                            stroke-linecap="round"
+                                        />
+                                    </svg>
+                                </button>
                                 <input
                                     type="text"
                                     class="restaurant-search__input"
