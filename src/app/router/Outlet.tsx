@@ -9,7 +9,7 @@
 
 import { Suspense } from '@shared/lib/vdom';
 import type { VNode, VNodeProps } from '@shared/lib/vdom';
-import { PageLoadingSkeleton } from '@shared/ui/skeleton';
+import { PizzaLoader } from '@shared/ui/skeleton';
 
 import { router } from './index';
 
@@ -24,20 +24,9 @@ function ActiveRoute() {
     return (<PageComponent {...props} />) as VNode;
 }
 
-/**
- * Pending-плейсхолдер. Suspense вызывает функцию-фолбэк при каждом изменении
- * статуса, поэтому скелетон зависит от текущего матча: для /profile — профильный,
- * для /restaurant — ресторанный и т.д. Если матча нет — общий PageLoadingSkeleton.
- */
-function PendingFallback(): VNode {
-    const state = router.currentRoute();
-    const skel = state.route?.skeleton;
-    return (skel ? skel() : <PageLoadingSkeleton />) as VNode;
-}
-
 export function Outlet(): VNode {
     return (
-        <Suspense pending={() => router.currentRoute().status === 'pending'} fallback={<PendingFallback />}>
+        <Suspense pending={() => router.currentRoute().status === 'pending'} fallback={<PizzaLoader />}>
             <ActiveRoute />
         </Suspense>
     ) as VNode;

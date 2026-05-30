@@ -4,6 +4,8 @@ import '../styles/components.scss';
 
 import { render, type VNode } from '@shared/lib/vdom';
 
+import { preloadPizzulyaGifs } from '@shared/lib/img/pizzulya';
+
 import { App } from './App';
 import { initCsrf, initOnlineStatus, initServiceWorker } from './providers';
 import { router } from './router';
@@ -20,6 +22,7 @@ const init = async () => {
     initOnlineStatus();
     const root = document.getElementById('root') as HTMLElement;
     render((<App />) as VNode, root);
+    preloadPizzulyaGifs();
     await router.start();
 };
 

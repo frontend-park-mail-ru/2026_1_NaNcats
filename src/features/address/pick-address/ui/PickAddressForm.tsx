@@ -69,6 +69,7 @@ export function PickAddressForm(props: PickAddressFormProps): VNode {
                     name="label"
                     class="input-field"
                     type="text"
+                    maxlength="60"
                     value={label.peek()}
                     placeholder="Например: Дом, Работа"
                     onInput={(e: Event) => {

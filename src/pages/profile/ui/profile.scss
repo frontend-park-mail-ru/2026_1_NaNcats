@@ -1,8 +1,14 @@
 .profile-page {
   width: 100%;
+  // dvh, иначе на iOS 100vh = «большой» вьюпорт и снизу остаётся пустое серое
+  // место, когда панель адреса Safari скрывается.
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg-main);
   overflow-y: auto;
+  // Режем любой горизонтальный выезд — из-за него на части мобилок блоки
+  // «уезжали» к правому краю (горизонтальный скролл сдвигал раскладку).
+  overflow-x: hidden;
   font-family: "Inter", sans-serif;
 }
 
@@ -375,6 +381,83 @@
   font-weight: 300;
 }
 
+/* Значок-подсказка «Что такое стрик»: «i»-кнопка + попап-бабл. */
+.streak-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  &__btn {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-orange, #fda522);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: italic;
+    font-family: Georgia, "Times New Roman", serif;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: filter 0.15s ease;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+
+  &__bubble {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 30;
+    width: 240px;
+    max-width: 70vw;
+    background: #0e1117;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    // Родитель .card-side-label имеет white-space: nowrap — сбрасываем,
+    // иначе текст подсказки не переносится и вылезает за границы бабла.
+    white-space: normal;
+    padding: 10px 12px;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease,
+      visibility 0.15s ease;
+    pointer-events: none;
+
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: 100%;
+      left: 12px;
+      border: 6px solid transparent;
+      border-bottom-color: #0e1117;
+    }
+  }
+
+  // Десктоп — по ховеру; тач/клик — закреплённое состояние «_open».
+  &:hover &__bubble,
+  &__bubble_open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+
 .section-header {
   display: flex;
   align-items: center;
@@ -451,11 +534,18 @@
     font-size: 13px;
     font-weight: 600;
     color: #0e1117;
-    flex-shrink: 0;
+    // Даём названию усекаться: иначе длинная подпись выпирала за карточку.
+    min-width: 0;
+    max-width: 60%;
+    flex-shrink: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   &__sep {
     color: #bebebe;
+    flex-shrink: 0;
   }
 
   &__text {
@@ -585,6 +675,8 @@
 
 .profile-card__promo-button {
   height: 32px;
+  // Фиксированная ширина, чтобы «Посмотреть» и «Смотреть» были одинаковыми.
+  width: 120px;
   padding: 0 16px;
   border: none;
   border-radius: 16px;
@@ -594,6 +686,7 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
+  text-align: center;
   transition: filter 0.15s ease;
 
   &:hover {
@@ -1285,7 +1378,9 @@
   .profile-content {
     flex-direction: column;
     gap: 12px;
-    padding: 16px 12px 28px;
+    // Симметричные боковые отступы с учётом «чёлки»/safe-area, чтобы на
+    // вырезных экранах блоки не прилипали к краю.
+    padding: 16px max(12px, env(safe-area-inset-right)) 28px max(12px, env(safe-area-inset-left));
     max-width: none;
   }
 

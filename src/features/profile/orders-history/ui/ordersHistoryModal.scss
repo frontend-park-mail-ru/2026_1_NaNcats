@@ -82,20 +82,33 @@
 
   &__select {
     flex: 1;
-    height: 40px;
-    padding: 0 16px;
-    border: 1px solid #d9d9d9;
+    min-width: 0;
+    min-height: 40px;
+    padding: 0 36px 0 14px;
+    border: none;
     border-radius: 14px;
-    background: white;
+    // Та же серая заливка, что у поля поиска — чтобы фильтры смотрелись единым блоком.
+    background-color: #f2f2f7;
     color: #0e1117;
     font-size: 14px;
     font-family: inherit;
+    font-weight: 500;
     cursor: pointer;
     appearance: none;
+    text-overflow: ellipsis;
     background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237D7D7D' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 14px center;
-    padding-right: 36px;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      background-color: #e8e8ee;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--accent-pink, #f7958c);
+      outline-offset: 1px;
+    }
   }
 
   &__list {
@@ -213,10 +226,6 @@
 
     &__filters {
       padding: 0 12px;
-    }
-
-    &__select-row {
-      flex-direction: column;
     }
 
     &__row {

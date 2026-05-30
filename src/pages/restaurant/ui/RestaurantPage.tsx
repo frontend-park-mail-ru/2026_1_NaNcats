@@ -17,6 +17,9 @@ import { applyPromo, appliedCodeAccessor } from '@features/profile/manage-promos
 import { CartWidget } from '@widgets/cart-widget';
 import { imageFallback } from '@shared/lib/img';
 import { httpClient } from '@shared/api/http';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import { pluralRu } from '@shared/lib/plural';
+import { translateError } from '@shared/lib/errors';
 
 /** Блюдо с предвычисленной ценой в рублях. */
 interface DishView extends Dish {
@@ -35,6 +38,14 @@ export interface RestaurantPromoBanner {
     title: string;
 }
 
+/** Сводка отзывов ресторана для баннера. */
+export interface ReviewSummary {
+    /** Средняя оценка (0, если отзывов нет). */
+    rating: number;
+    /** Количество отзывов. */
+    count: number;
+}
+
 export interface RestaurantPageProps {
     restaurant: Restaurant;
     dishes: DishView[];
@@ -43,6 +54,12 @@ export interface RestaurantPageProps {
     restaurantPromo: RestaurantPromoBanner | null;
     /** Топ блюд этого ресторана (бэк подбирает эвристикой по продажам за 30 дней). */
     recommendedDishes: DishView[];
+    /** Сводка отзывов (рейтинг + количество) для баннера. */
+    reviewSummary: ReviewSummary;
+    /** Базовое время доставки в минутах (фронт-мок: бэк его не отдаёт). */
+    deliveryMinutes: number;
+    /** Существует ли бренд: false, если getBrand вернул ошибку (удалён/недоступен). */
+    brandExists: boolean;
 }
 
 /** Эвристические правила группировки блюд по секциям. */
@@ -78,8 +95,12 @@ const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
     },
 ];
 
-// Имя секции по ключевым словам в названии блюда; без совпадений - "Основное меню".
+// Имя секции: берём раздел из данных (dish.section), иначе — эвристика по ключевым
+// словам в названии; без совпадений - "Основное меню".
 const categorize = (dish: DishView): string => {
+    const section = dish.section?.trim();
+    if (section) return section;
+
     const name = dish.name.toLowerCase();
     for (const rule of CATEGORY_RULES) {
         if (rule.keywords.some((kw) => name.includes(kw))) return rule.name;
@@ -101,16 +122,14 @@ const buildSections = (dishes: DishView[]): DishSection[] => {
     return Array.from(groups.entries()).map(([name, ds]) => ({ name, dishes: ds }));
 };
 
-/** Размер страницы выдачи блюд. */
-const PAGE_SIZE = 20;
+/** Меню грузим целиком одним запросом (пагинации на странице нет); картинки — лениво. */
+const ALL_DISHES_LIMIT = 1000;
 /** Выше этой ширины мобильные шторки автоматически закрываются. */
 const TABLET_BREAKPOINT = 1200;
 /** Ниже этой ширины работают мобильные шторки. */
 const MOBILE_BREAKPOINT = 900;
 /** Дебаунс поиска блюд по меню. */
 const SEARCH_DEBOUNCE_MS = 300;
-/** Лимит подгружаемых страниц при поиске блюда по якорю. */
-const MAX_ANCHOR_PAGES = 20;
 
 /** Заглушка ресторана, когда id в URL отсутствует. */
 const FALLBACK_RESTAURANT: Restaurant = {
@@ -121,7 +140,26 @@ const FALLBACK_RESTAURANT: Restaurant = {
 
 const toView = (d: Dish): DishView => ({ ...d, price_rub: fromMicros(d.price) });
 
-/** Loader: грузит пользователя (и корзину для авторизованного), бренд и первую страницу блюд. */
+/**
+ * Детерминированное «время доставки» в минутах по id ресторана. Бэкенд время
+ * доставки не отдаёт, поэтому считаем стабильный мок в диапазоне 25–45 мин,
+ * чтобы у одного ресторана оно не прыгало между заходами.
+ */
+function mockDeliveryMinutes(id: string | number): number {
+    const s = String(id);
+    let hash = 0;
+    for (let i = 0; i < s.length; i += 1) hash = (hash * 31 + s.charCodeAt(i)) % 1000;
+    return 25 + (hash % 21); // 25..45
+}
+
+/** Считает сводку отзывов (средний рейтинг и количество). */
+function summarizeReviews(reviews: Review[]): ReviewSummary {
+    if (reviews.length === 0) return { rating: 0, count: 0 };
+    const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+    return { rating: Math.round((sum / reviews.length) * 10) / 10, count: reviews.length };
+}
+
+/** Loader: грузит пользователя (и корзину для авторизованного), бренд и всё меню целиком. */
 export async function load(): Promise<RestaurantPageProps> {
     const idParam = getQueryParam('id');
     if (!idParam) {
@@ -131,6 +169,9 @@ export async function load(): Promise<RestaurantPageProps> {
             sections: buildSections([]),
             restaurantPromo: null,
             recommendedDishes: [],
+            reviewSummary: { rating: 0, count: 0 },
+            deliveryMinutes: 35,
+            brandExists: false,
         };
     }
 
@@ -147,16 +188,19 @@ export async function load(): Promise<RestaurantPageProps> {
     }
     await Promise.all(aux);
 
-    const [brandRes, dishesRes, promoRes, recoRes] = await Promise.allSettled([
+    const [brandRes, dishesRes, promoRes, recoRes, reviewsRes] = await Promise.allSettled([
         restaurantApi.getBrand(idParam),
-        restaurantApi.listDishes(idParam, PAGE_SIZE, 0),
+        restaurantApi.listDishes(idParam, ALL_DISHES_LIMIT, 0),
         httpClient.get(`/promos/restaurant?brand_id=${encodeURIComponent(idParam)}`),
         restaurantApi.listRecommendedDishes(idParam, 4),
+        restaurantApi.getReviews(idParam),
     ]);
 
+    const brandExists = brandRes.status === 'fulfilled';
     const restaurant = brandRes.status === 'fulfilled' ? brandRes.value : FALLBACK_RESTAURANT;
     const dishes = dishesRes.status === 'fulfilled' ? dishesRes.value.map(toView) : [];
     const recommendedDishes = recoRes.status === 'fulfilled' ? recoRes.value.map(toView) : [];
+    const reviewSummary = summarizeReviews(reviewsRes.status === 'fulfilled' ? reviewsRes.value : []);
 
     // Баннер промокода — необязательная деталь: ошибку запроса молча игнорируем.
     let restaurantPromo: RestaurantPromoBanner | null = null;
@@ -171,7 +215,16 @@ export async function load(): Promise<RestaurantPageProps> {
         }
     }
 
-    return { restaurant, dishes, sections: buildSections(dishes), restaurantPromo, recommendedDishes };
+    return {
+        restaurant,
+        dishes,
+        sections: buildSections(dishes),
+        restaurantPromo,
+        recommendedDishes,
+        reviewSummary,
+        deliveryMinutes: mockDeliveryMinutes(idParam),
+        brandExists,
+    };
 }
 
 // Возвращает видимую цель для анимации полёта в корзину: на мобильной вёрстке
@@ -292,12 +345,12 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         }
         return picks;
     });
-    const offset = signal<number>(props.dishes.length);
-    const hasMore = signal<boolean>(props.dishes.length === PAGE_SIZE);
-    const isFetching = signal<boolean>(false);
     const searchValue = signal<string>('');
     const menuOpen = signal<boolean>(false);
     const cartOpen = signal<boolean>(false);
+    // Сводка отзывов реактивна: после публикации отзыва пересчитываем её,
+    // чтобы рейтинг и количество на баннере обновились без перезагрузки.
+    const reviewSummarySig = signal<ReviewSummary>(props.reviewSummary);
     // Позиции корзины: по ним карточка блюда показывает счётчик вместо кнопки.
     const cartItems = useStoreSignal(cartStore, (s) => s.items);
     // Нужен, чтобы в совместной корзине считать только свою позицию блюда.
@@ -308,31 +361,10 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     // Handle закрытия активной модалки отзывов (если она открыта): нужен Escape'у и cleanup-у страницы.
     let closeActiveReviews: (() => void) | null = null;
 
-    // Загружает следующую страницу блюд; при ошибке отключает дальнейшую пагинацию.
-    const fetchNextPage = async () => {
-        if (isFetching() || !hasMore() || !restaurantId) return;
-        isFetching.set(true);
-        try {
-            const next = await restaurantApi.listDishes(restaurantId, PAGE_SIZE, offset());
-            const nextView = next.map(toView);
-            allDishes.set((prev) => {
-                const merged = [...prev, ...nextView];
-                sections.set(buildSections(merged));
-                return merged;
-            });
-            offset.set((prev) => prev + next.length);
-            if (next.length < PAGE_SIZE) hasMore.set(false);
-        } catch (e) {
-            console.error('restaurant: fetchNextPage failed', e);
-            hasMore.set(false);
-        } finally {
-            isFetching.set(false);
-        }
-    };
-
-    // Прокручивает к блюду по id; если карточки ещё нет в DOM, подгружает страницы (до лимита), пока она не появится.
+    // Прокручивает к блюду по id. Меню загружено целиком, поэтому ждём лишь отрисовку
+    // карточки (несколько кадров после монтирования), без подгрузки страниц.
     const scrollToDishById = async (dishId: string) => {
-        for (let i = 0; i < MAX_ANCHOR_PAGES; i += 1) {
+        for (let i = 0; i < 10; i += 1) {
             // Исключаем карточки секции «Рекомендуем» (тот же data-dish-id),
             // чтобы якорь вёл к блюду в основном меню, а не в рекомендациях.
             const card = document.querySelector(
@@ -342,14 +374,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                 highlightAndScroll(card);
                 return;
             }
-            if (!hasMore() || isFetching()) {
-                if (isFetching()) {
-                    await new Promise((r) => setTimeout(r, 150));
-                    continue;
-                }
-                return;
-            }
-            await fetchNextPage();
+            await new Promise((r) => requestAnimationFrame(() => r(null)));
         }
     };
 
@@ -376,8 +401,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
             if (dishCard) flyDishToCart(dishCard);
         } catch (e) {
             console.error('restaurant: addToCart failed', e);
-            const msg = e instanceof Error && e.message ? e.message : 'Не удалось добавить блюдо.';
-            await Popup.alert(`Не удалось добавить блюдо: ${msg}`);
+            await Popup.alert(translateError(e, 'Не удалось добавить блюдо'));
         }
     };
 
@@ -463,6 +487,7 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         const overlay = document.createElement('div');
         overlay.className = 'reviews-overlay';
         document.body.appendChild(overlay);
+        lockScroll();
 
         const rating = signal(0);
         const hover = signal(0);
@@ -472,9 +497,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
         const submitting = signal(false);
 
         let unmount: (() => void) | null = null;
+        let closed = false;
 
         const close = () => {
+            if (closed) return;
+            closed = true;
             closeActiveReviews = null;
+            unlockScroll();
             overlay.classList.remove('reviews-overlay_open');
             overlay.addEventListener(
                 'transitionend',
@@ -503,6 +532,13 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                     rating: r,
                     comment: c,
                 });
+                // Пересчитываем сводку, чтобы рейтинг/количество на баннере
+                // обновились сразу, без перезагрузки страницы.
+                try {
+                    reviewSummarySig.set(summarizeReviews(await restaurantApi.getReviews(restaurantId)));
+                } catch {
+                    // Если перезапрос не удался — оставляем прежнюю сводку.
+                }
                 close();
                 void Popup.alert('Спасибо! Ваш отзыв опубликован.');
             } catch {
@@ -544,55 +580,57 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         ))
                     )}
                 </div>
-                <div class="reviews-modal__form">
-                    <h3 class="reviews-form__title">Оставить отзыв</h3>
-                    <input
-                        type="text"
-                        class="reviews-form__input"
-                        placeholder="Ваше имя"
-                        maxlength="60"
-                        onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
-                    />
-                    <div class="star-picker" aria-label="Оценка">
-                        {[0, 1, 2, 3, 4].map((i) => (
-                            <span
-                                class={starClass(i)}
-                                onMouseEnter={() => hover.set(i + 1)}
-                                onMouseLeave={() => hover.set(0)}
-                                onClick={() => rating.set(i + 1)}
-                            >
-                                ★
-                            </span>
-                        ))}
+                {props.brandExists ? (
+                    <div class="reviews-modal__form">
+                        <h3 class="reviews-form__title">Оставить отзыв</h3>
+                        <input
+                            type="text"
+                            class="reviews-form__input"
+                            placeholder="Ваше имя"
+                            maxlength="60"
+                            onInput={(e: Event) => author.set((e.target as HTMLInputElement).value)}
+                        />
+                        <div class="star-picker" aria-label="Оценка">
+                            {[0, 1, 2, 3, 4].map((i) => (
+                                <span
+                                    class={starClass(i)}
+                                    onMouseEnter={() => hover.set(i + 1)}
+                                    onMouseLeave={() => hover.set(0)}
+                                    onClick={() => rating.set(i + 1)}
+                                >
+                                    ★
+                                </span>
+                            ))}
+                        </div>
+                        <textarea
+                            class="reviews-form__textarea"
+                            placeholder="Ваш комментарий"
+                            rows="3"
+                            maxlength="500"
+                            onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
+                        />
+                        <button
+                            type="button"
+                            class="reviews-form__submit"
+                            disabled={() => submitting()}
+                            onClick={submit}
+                        >
+                            Отправить
+                        </button>
+                        <Show when={() => error() !== ''}>
+                            <p class="reviews-form__error">{() => error()}</p>
+                        </Show>
                     </div>
-                    <textarea
-                        class="reviews-form__textarea"
-                        placeholder="Ваш комментарий"
-                        rows="3"
-                        maxlength="500"
-                        onInput={(e: Event) => comment.set((e.target as HTMLTextAreaElement).value)}
-                    />
-                    <button type="button" class="reviews-form__submit" disabled={() => submitting()} onClick={submit}>
-                        Отправить
-                    </button>
-                    <Show when={() => error() !== ''}>
-                        <p class="reviews-form__error">{() => error()}</p>
-                    </Show>
-                </div>
+                ) : (
+                    <div class="reviews-modal__form">
+                        <p class="reviews-empty">Этот ресторан больше недоступен — оставить отзыв нельзя.</p>
+                    </div>
+                )}
             </div>
         ) as VNode;
 
         unmount = render(tree, overlay);
         requestAnimationFrame(() => overlay.classList.add('reviews-overlay_open'));
-    };
-
-    // Подгружает следующую страницу блюд при приближении к низу.
-    const handleScroll = () => {
-        if (isFetching() || !hasMore() || !restaurantId) return;
-        const doc = document.documentElement;
-        const distance = doc.scrollHeight - doc.scrollTop - doc.clientHeight;
-        if (distance > 200) return;
-        void fetchNextPage();
     };
 
     // Escape закрывает мобильные панели и модалку отзывов.
@@ -615,7 +653,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     };
 
     onMount(() => {
-        window.addEventListener('scroll', handleScroll, { passive: true });
         document.addEventListener('keydown', handleKeyDown);
         window.addEventListener('resize', handleResize);
 
@@ -626,7 +663,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
     });
 
     onCleanup(() => {
-        window.removeEventListener('scroll', handleScroll);
         document.removeEventListener('keydown', handleKeyDown);
         window.removeEventListener('resize', handleResize);
         if (searchTimer !== null) {
@@ -754,12 +790,44 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                         <div class="restaurant-hero">
                             <img
                                 class="restaurant-hero__img"
-                                src={props.restaurant.logo_url}
+                                src={props.restaurant.banner_url || props.restaurant.logo_url}
                                 alt={props.restaurant.name}
                                 onError={imageFallback(
                                     'https://nancats-bucket.storage.yandexcloud.net/restaurants/default-restaurant-logo.webp',
                                 )}
                             />
+                            <div class="restaurant-hero__overlay">
+                                <Show when={() => (props.restaurant.description ?? '') !== ''}>
+                                    <p class="restaurant-hero__info">{props.restaurant.description}</p>
+                                </Show>
+                                <div class="restaurant-hero__meta">
+                                    <button
+                                        type="button"
+                                        class="restaurant-hero__chip restaurant-hero__chip_rating"
+                                        onClick={() => {
+                                            void openReviews();
+                                        }}
+                                    >
+                                        <Show
+                                            when={() => reviewSummarySig().count > 0}
+                                            fallback={<span>☆ Нет отзывов</span>}
+                                        >
+                                            <span class="restaurant-hero__star">★</span>
+                                            <span class="restaurant-hero__rating-val">
+                                                {() => reviewSummarySig().rating.toFixed(1)}
+                                            </span>
+                                            <span class="restaurant-hero__rating-count">
+                                                {() =>
+                                                    `${reviewSummarySig().count} ${pluralRu(reviewSummarySig().count, ['отзыв', 'отзыва', 'отзывов'])}`
+                                                }
+                                            </span>
+                                        </Show>
+                                    </button>
+                                    <span class="restaurant-hero__chip">
+                                        🕒 {props.deliveryMinutes}–{props.deliveryMinutes + 10} мин
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <Show when={() => props.restaurantPromo !== null}>
@@ -772,6 +840,9 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                         </span>
                                         <span class="restaurant-promo-banner__desc">
                                             {() => props.restaurantPromo?.title ?? ''}
+                                        </span>
+                                        <span class="restaurant-promo-banner__scope">
+                                            {() => `Действует в «${props.restaurant.name}»`}
                                         </span>
                                     </div>
                                 </div>
@@ -795,20 +866,28 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
 
                         <div class="restaurant-search">
                             <div class="restaurant-search__box">
-                                <svg
+                                <button
+                                    type="button"
                                     class="restaurant-search__icon"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    xmlns="http://www.w3.org/2000/svg"
+                                    aria-label="Найти"
+                                    onClick={() => {
+                                        if (searchTimer !== null) {
+                                            clearTimeout(searchTimer);
+                                            searchTimer = null;
+                                        }
+                                        void runDishSearch(searchValue().trim());
+                                    }}
                                 >
-                                    <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8" />
-                                    <path
-                                        d="M16.5 16.5L21 21"
-                                        stroke="#7D7D7D"
-                                        stroke-width="1.8"
-                                        stroke-linecap="round"
-                                    />
-                                </svg>
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="11" cy="11" r="7" stroke="#7D7D7D" stroke-width="1.8" />
+                                        <path
+                                            d="M16.5 16.5L21 21"
+                                            stroke="#7D7D7D"
+                                            stroke-width="1.8"
+                                            stroke-linecap="round"
+                                        />
+                                    </svg>
+                                </button>
                                 <input
                                     type="text"
                                     class="restaurant-search__input"
@@ -830,30 +909,6 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            class="reviews-btn"
-                            onClick={() => {
-                                void openReviews();
-                            }}
-                        >
-                            <svg
-                                class="reviews-btn__icon"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                            >
-                                <path
-                                    d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-                                    stroke="#FFC1C1"
-                                    stroke-width="1.8"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                            </svg>
-                            Отзывы
-                        </button>
-
                         <Show when={() => recommended().length > 0 && searchValue() === ''}>
                             <h2 class="restaurant-section-title restaurant-section-title_reco">Рекомендуем</h2>
                             <div class="res-grid res-grid_reco">
@@ -872,6 +927,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                     class="dish-card__img"
                                                     src={d.image_url}
                                                     alt={d.name}
+                                                    loading="lazy"
+                                                    decoding="async"
                                                     onError={imageFallback(
                                                         'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
                                                     )}
@@ -953,6 +1010,8 @@ export function RestaurantPage(props: RestaurantPageProps): VNode {
                                                                 class="dish-card__img"
                                                                 src={d.image_url}
                                                                 alt={d.name}
+                                                                loading="lazy"
+                                                                decoding="async"
                                                                 onError={imageFallback(
                                                                     'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp',
                                                                 )}

@@ -9,9 +9,11 @@ import { yandexMaps, type MapInstance } from '@shared/api/yandex';
 import { addressStore, type Coordinates } from '@entities/address';
 import { userStore } from '@entities/user';
 import { pickAddress } from '@features/address/pick-address';
-import { onCleanup, signal } from '@shared/lib/signals';
+import { effect, onCleanup, signal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import { validateAddressDetails } from '@shared/lib/validation';
 
 /** Императивный API пикера, отдаваемый наружу через {@link AddressPickerProps.controllerRef}. */
 export interface AddressPickerController {
@@ -56,6 +58,23 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     const detailsModalOpen = signal<boolean>(false);
     const modalSuggestions = signal<readonly string[]>([]);
     const modalSuggestionsActive = signal<boolean>(false);
+    /** Ошибки валидации формы деталей по именам полей. */
+    const detailsErrors = signal<Record<string, string>>({});
+
+    // Блокируем фоновый скролл, пока открыта любая модалка пикера (карта или
+    // детали). Эффект надёжнее ручных lock/unlock в каждом open/close: два
+    // независимых сигнала переключаются между собой без рассинхрона счётчика.
+    let pickerScrollLocked = false;
+    effect(() => {
+        const anyOpen = mapModalOpen() || detailsModalOpen();
+        if (anyOpen && !pickerScrollLocked) {
+            lockScroll();
+            pickerScrollLocked = true;
+        } else if (!anyOpen && pickerScrollLocked) {
+            unlockScroll();
+            pickerScrollLocked = false;
+        }
+    });
 
     /** Текущие выбранные координаты (центр карты или координаты подсказки). */
     let selectedCoords: Coordinates = DEFAULT_COORDS;
@@ -66,8 +85,18 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     let editingAddressId: string | null = null;
     /** Адрес, который надо передать в finalize после закрытия модалки деталей. */
     let pendingAddressText = '';
-    /** Следующий actionend карты не должен делать reverseGeocode (программное перемещение). */
-    let suppressNextActionEnd = false;
+    /**
+     * Координаты последнего ПРОГРАММНОГО перемещения карты. Используется, чтобы
+     * отличить наш сдвиг (setCenter/fitToViewport) от жеста пользователя.
+     *
+     * Раньше тут был булев флаг `suppressNextActionEnd`, но он рассинхронизировался
+     * на мобилке: программный сдвиг мог дать 0, 1 или 2 события `actionend`,
+     * из-за чего флаг гасил последующий драг пользователя и адрес не обновлялся.
+     * Сравнение по координатам самокорректирующееся: сколько бы событий ни
+     * пришло на программный сдвиг — все совпадут с этой точкой и будут
+     * пропущены, а реальный жест сместит центр и запустит геокодинг.
+     */
+    let lastProgrammaticCoords: Coordinates | null = null;
 
     let rootEl: HTMLElement | null = null;
     let mapContainerEl: HTMLElement | null = null;
@@ -90,11 +119,17 @@ export function AddressPicker(props: AddressPickerProps): VNode {
         if (modalInputEl !== null) modalInputEl.value = text;
     };
 
-    // Программное перемещение карты: следующий actionend не должен геокодить.
+    /** Близки ли координаты (~1 метр) — допускает погрешность округления карты. */
+    const coordsClose = (a: Coordinates, b: Coordinates): boolean => {
+        return Math.abs(a[0] - b[0]) < 1e-5 && Math.abs(a[1] - b[1]) < 1e-5;
+    };
+
+    // Программное перемещение карты: запоминаем целевую точку, чтобы её
+    // actionend(ы) не запускали reverseGeocode.
     const moveMapProgrammatically = (coords: Coordinates) => {
         selectedCoords = coords;
+        lastProgrammaticCoords = coords;
         if (map === null) return;
-        suppressNextActionEnd = true;
         map.setCenter(coords, 16);
     };
 
@@ -114,6 +149,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
     const openDetailsModal = (text: string, coords: Coordinates) => {
         if (detailsFormEl !== null) detailsFormEl.reset();
         if (detailsDisplayEl !== null) detailsDisplayEl.value = text;
+        detailsErrors.set({});
         pendingAddressText = text;
         selectedCoords = coords;
         detailsModalOpen.set(true);
@@ -146,14 +182,16 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             return;
         }
 
-        suppressNextActionEnd = true;
+        lastProgrammaticCoords = selectedCoords;
         map = yandexMaps.createMap(mapContainerEl, selectedCoords, 16);
         map.onActionEnd(async (center) => {
             selectedCoords = center;
-            if (suppressNextActionEnd) {
-                suppressNextActionEnd = false;
+            // Пропускаем события нашего же программного сдвига (совпадают с целью);
+            // жест пользователя смещает центр и проходит дальше — геокодим.
+            if (lastProgrammaticCoords !== null && coordsClose(center, lastProgrammaticCoords)) {
                 return;
             }
+            lastProgrammaticCoords = null;
             const address = await yandexMaps.reverseGeocode(center);
             if (address !== null) setModalInputValue(address);
         });
@@ -184,6 +222,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             setField('courier_comment', target.courier_comment);
         }
         if (detailsDisplayEl !== null) detailsDisplayEl.value = target.location.address_text;
+        detailsErrors.set({});
         detailsModalOpen.set(true);
     };
 
@@ -312,14 +351,12 @@ export function AddressPicker(props: AddressPickerProps): VNode {
             label: (formData.get('label') as string) || 'Адрес',
         };
 
+        const errors = validateAddressDetails(details);
+        detailsErrors.set(errors);
+        if (Object.keys(errors).length > 0) return;
+
         closeDetailsModal();
         await finalize(text, selectedCoords, details);
-    };
-
-    // Кнопка смены адреса в модалке деталей: закрывает детали, возвращает в модалку карты.
-    const handleChangeAddress = () => {
-        closeDetailsModal();
-        void openMapModal();
     };
 
     // Клик по документу: закрывает инлайн-выпадашку подсказок при клике вне корня виджета.
@@ -495,7 +532,7 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     <h2 class="address-modal__title">Детали адреса</h2>
                     <form
                         class="auth-form"
-                        style="max-width:100%"
+                        style="width:100%; max-width:100%"
                         onSubmit={(e: Event) => {
                             void handleDetailsSubmit(e);
                         }}
@@ -505,7 +542,16 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                     >
                         <div class="input-group">
                             <label>Название</label>
-                            <input name="label" class="input-field" value="Адрес" placeholder="Например: Дом, Работа" />
+                            <input
+                                name="label"
+                                class="input-field"
+                                value="Адрес"
+                                placeholder="Например: Дом, Работа"
+                                maxlength="60"
+                            />
+                            <Show when={() => detailsErrors().label !== undefined}>
+                                <span class="address-modal__field-error">{() => detailsErrors().label}</span>
+                            </Show>
                         </div>
                         <div class="input-group">
                             <label>Адрес</label>
@@ -519,37 +565,44 @@ export function AddressPicker(props: AddressPickerProps): VNode {
                                         detailsDisplayEl = el as HTMLInputElement | null;
                                     }}
                                 />
-                                <button
-                                    type="button"
-                                    class="button"
-                                    style="width: 48px; background: #eee; border-radius: 12px;"
-                                    onClick={handleChangeAddress}
-                                >
-                                    ✏️
-                                </button>
                             </div>
                         </div>
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                             <div class="input-group">
                                 <label>Квартира</label>
-                                <input name="apartment" class="input-field" />
+                                <input name="apartment" class="input-field" inputmode="numeric" maxlength="10" />
+                                <Show when={() => detailsErrors().apartment !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().apartment}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Подъезд</label>
-                                <input name="entrance" class="input-field" />
+                                <input name="entrance" class="input-field" inputmode="numeric" maxlength="3" />
+                                <Show when={() => detailsErrors().entrance !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().entrance}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Этаж</label>
-                                <input name="floor" class="input-field" />
+                                <input name="floor" class="input-field" inputmode="numeric" maxlength="4" />
+                                <Show when={() => detailsErrors().floor !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().floor}</span>
+                                </Show>
                             </div>
                             <div class="input-group">
                                 <label>Код</label>
-                                <input name="door_code" class="input-field" />
+                                <input name="door_code" class="input-field" maxlength="20" />
+                                <Show when={() => detailsErrors().door_code !== undefined}>
+                                    <span class="address-modal__field-error">{() => detailsErrors().door_code}</span>
+                                </Show>
                             </div>
                         </div>
                         <div class="input-group">
                             <label>Комментарий курьеру</label>
-                            <input name="courier_comment" class="input-field" />
+                            <input name="courier_comment" class="input-field" maxlength="300" />
+                            <Show when={() => detailsErrors().courier_comment !== undefined}>
+                                <span class="address-modal__field-error">{() => detailsErrors().courier_comment}</span>
+                            </Show>
                         </div>
                         <button type="submit" class="button button_primary">
                             Сохранить

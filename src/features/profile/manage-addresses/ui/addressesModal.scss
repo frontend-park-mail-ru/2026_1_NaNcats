@@ -163,6 +163,10 @@
     font-size: 14px;
     font-weight: 600;
     color: #0e1117;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   &__primary-tag {
@@ -181,7 +185,11 @@
     font-weight: 300;
     color: #7d7d7d;
     line-height: 1.35;
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    max-width: 100%;
   }
 
   &__row-meta {

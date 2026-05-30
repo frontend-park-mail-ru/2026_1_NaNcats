@@ -4,7 +4,7 @@ import './checkout.scss';
 
 import { router } from '@app/router';
 import { ROUTES } from '@shared/config/routes';
-import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { userStore } from '@entities/user';
 import { addressStore, type Address } from '@entities/address';
 import { cardStore, type Card } from '@entities/card';
@@ -126,6 +126,26 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
     // false - бэкенд делит счёт на доли по владельцам позиций.
     const isSharedCartSig = useStoreSignal(cartStore, (s) => s.mode === 'shared');
     const payForAllSig = signal<boolean>(true);
+    // Модалка «Настроить»: за кого организатор берётся доплатить, если выбран
+    // режим «каждый платит сам». public_id участников.
+    const sponsorOpenSig = signal<boolean>(false);
+    const sponsoredIdsSig = signal<string[]>([]);
+    const cartMembersSig = useStoreSignal(cartStore, (s) => s.members);
+    const cartAdminIdSig = useStoreSignal(cartStore, (s) => s.adminId);
+    const meSig = useStoreSignal(userStore, (s) => s.user);
+    const isOrganizerSig = () => {
+        const me = meSig();
+        const adminId = cartAdminIdSig();
+        return me !== null && adminId !== null && me.public_id === adminId;
+    };
+    const toggleSponsored = (publicId: string) => {
+        const list = sponsoredIdsSig.peek();
+        if (list.includes(publicId)) {
+            sponsoredIdsSig.set(list.filter((id) => id !== publicId));
+        } else {
+            sponsoredIdsSig.set([...list, publicId]);
+        }
+    };
 
     let pickerCtl: AddressPickerController | null = null;
     let orderStatusCtl: OrderStatusModalController | null = null;
@@ -306,6 +326,25 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
             // Для соло-корзины разделение счёта не имеет смысла: всегда pay_for_all.
             const payForAll = currentCart.mode === 'shared' ? payForAllSig.peek() : true;
 
+            // payer_mapping имеет смысл только в shared-режиме при выборе
+            // «каждый платит сам»: организатор берёт на себя доли отмеченных
+            // участников. Карта target_public_id -> organizer_public_id.
+            let payerMapping: Record<string, string> | undefined;
+            if (currentCart.mode === 'shared' && !payForAll && currentCart.adminId !== null) {
+                const sponsoredIds = sponsoredIdsSig.peek();
+                if (sponsoredIds.length > 0) {
+                    const mapping: Record<string, string> = {};
+                    for (const pid of sponsoredIds) {
+                        if (pid !== currentCart.adminId) {
+                            mapping[pid] = currentCart.adminId;
+                        }
+                    }
+                    if (Object.keys(mapping).length > 0) {
+                        payerMapping = mapping;
+                    }
+                }
+            }
+
             const result = await orderApi.create(
                 {
                     address_id: address.id,
@@ -317,6 +356,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                     total_cost: toMicros(grand),
                     pay_for_all: payForAll,
                     promocode: appliedCodeAccessor() || undefined,
+                    payer_mapping: payerMapping,
                 },
                 idempotencyKey,
             );
@@ -379,8 +419,7 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                 void router.replace(ROUTES.profile);
             }
         } catch (e) {
-            const msg = e instanceof ApiError ? e.message : 'Ошибка соединения с сервером';
-            errorSig.set(msg || 'Произошла ошибка при оформлении заказа');
+            errorSig.set(translateError(e, 'Произошла ошибка при оформлении заказа'));
             payProcessingSig.set(false);
         }
     };
@@ -508,7 +547,10 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                         class={() =>
                                             payForAllSig() ? 'selection-item selection-item_active' : 'selection-item'
                                         }
-                                        onClick={() => payForAllSig.set(true)}
+                                        onClick={() => {
+                                            payForAllSig.set(true);
+                                            sponsoredIdsSig.set([]);
+                                        }}
                                     >
                                         <div style="font-weight: 600;">💰 Я оплачу весь заказ</div>
                                         <div style="font-size: 12px; color: #777;">
@@ -525,6 +567,19 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                         <div style="font-size: 12px; color: #777;">
                                             Счёт разделится по участникам, каждый оплатит свою часть в истории заказов.
                                         </div>
+                                        <Show when={isOrganizerSig}>
+                                            <button
+                                                class="checkout-sponsor-btn"
+                                                disabled={() => payForAllSig()}
+                                                onClick={(e: Event) => {
+                                                    e.stopPropagation();
+                                                    if (payForAllSig.peek()) return;
+                                                    sponsorOpenSig.set(true);
+                                                }}
+                                            >
+                                                Настроить
+                                            </button>
+                                        </Show>
                                     </div>
                                 </div>
                             </div>
@@ -818,6 +873,78 @@ export function CheckoutPage(props: CheckoutPageProps): VNode {
                                 )}
                             </For>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class={overlayClass('modal-overlay', sponsorOpenSig)}>
+                <div class="checkout-modal" style="width: 480px;">
+                    <div class="checkout-modal__close" onClick={() => sponsorOpenSig.set(false)}>
+                        &times;
+                    </div>
+                    <h2 class="checkout-modal__title">За кого вы оплатите</h2>
+                    <p style="font-size: 13px; color: #777; margin: 0 0 12px 0;">
+                        Отметьте участников, за которых готовы заплатить. За себя оплата включена всегда.
+                    </p>
+                    <div class="checkout-modal__content">
+                        <div class="selection-list">
+                            <Show
+                                when={() => cartMembersSig().length > 0}
+                                fallback={<p class="empty-text">В корзине нет участников.</p>}
+                            >
+                                <For each={cartMembersSig} key={(m) => m.public_id}>
+                                    {(member) => {
+                                        const isSelf = () => member.public_id === cartAdminIdSig();
+                                        const checked = () => isSelf() || sponsoredIdsSig().includes(member.public_id);
+                                        return (
+                                            <label
+                                                class={() =>
+                                                    checked()
+                                                        ? 'selection-item selection-item_active'
+                                                        : 'selection-item'
+                                                }
+                                                style="display: flex; align-items: center; gap: 12px;"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={checked}
+                                                    disabled={isSelf}
+                                                    onChange={() => {
+                                                        if (isSelf()) return;
+                                                        toggleSponsored(member.public_id);
+                                                    }}
+                                                />
+                                                <img
+                                                    src={member.avatar_url}
+                                                    alt=""
+                                                    style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                                                    onError={imageFallback(
+                                                        'https://nancats-bucket.storage.yandexcloud.net/users/default-avatar.webp',
+                                                    )}
+                                                />
+                                                <div style="flex: 1; min-width: 0;">
+                                                    <div style="font-weight: 600;">
+                                                        {() => (isSelf() ? `${member.name} (вы)` : member.name)}
+                                                    </div>
+                                                    <Show when={isSelf}>
+                                                        <div style="font-size: 12px; color: #777;">
+                                                            Свою часть вы оплатите всегда
+                                                        </div>
+                                                    </Show>
+                                                </div>
+                                            </label>
+                                        );
+                                    }}
+                                </For>
+                            </Show>
+                        </div>
+                        <button
+                            class="button button_primary mt-20"
+                            style="height: 44px; width: 100%;"
+                            onClick={() => sponsorOpenSig.set(false)}
+                        >
+                            Готово
+                        </button>
                     </div>
                 </div>
             </div>

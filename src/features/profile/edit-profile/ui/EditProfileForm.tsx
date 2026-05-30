@@ -1,4 +1,5 @@
 import { ApiError } from '@shared/api/http';
+import { translateError } from '@shared/lib/errors';
 import { onCleanup, signal } from '@shared/lib/signals';
 import { validateEmail, validateName } from '@shared/lib/validation';
 import { Show } from '@shared/lib/vdom';
@@ -69,7 +70,7 @@ export function EditProfileForm(props: EditProfileFormProps): VNode {
             if (e instanceof ApiError && e.status === 409) {
                 generalError.set('Этот email уже используется');
             } else if (e instanceof ApiError) {
-                generalError.set(e.message || 'Ошибка обновления');
+                generalError.set(translateError(e, 'Не удалось обновить профиль'));
             } else {
                 generalError.set('Ошибка соединения');
             }

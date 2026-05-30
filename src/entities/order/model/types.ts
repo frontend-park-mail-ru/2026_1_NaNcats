@@ -20,6 +20,12 @@ export interface OrderCreatePayload {
     total_cost: number;
     /** Применённый промокод; бэкенд сам считает по нему скидку. */
     promocode?: string;
+    /**
+     * Маппинг public_id участника-цели -> public_id плательщика. Долг цели
+     * сливается в долг плательщика; используется только в shared-режиме при
+     * `pay_for_all=false`.
+     */
+    payer_mapping?: Record<string, string>;
 }
 
 /**
@@ -71,6 +77,12 @@ export interface OrderItem {
     price: number;
     /** Ссылка на изображение блюда. */
     image_url?: string;
+    /** Публичный идентификатор владельца позиции (в shared-корзине). */
+    owner_public_id?: string;
+    /** Имя владельца позиции (в shared-корзине). */
+    owner_name?: string;
+    /** Аватар владельца позиции (в shared-корзине). */
+    owner_avatar?: string;
 }
 
 /**
@@ -126,6 +138,8 @@ export interface OrderRestaurant {
 export interface Order {
     /** Идентификатор заказа. */
     order_id: string;
+    /** Публичный идентификатор организатора (создателя shared-заказа). */
+    admin_public_id?: string;
     /** Сырой статус заказа. */
     status: string;
     /** Итоговая стоимость в микрорублях. */
@@ -169,6 +183,8 @@ export interface Order {
 export interface NormalizedOrder {
     /** Идентификатор заказа. */
     order_id: string;
+    /** Публичный идентификатор организатора shared-заказа. */
+    admin_public_id?: string;
     /** UI-статус заказа. */
     status: OrderUiStatus;
     /** Сырой статус из бэкенда (для бейджа и трекинга). */

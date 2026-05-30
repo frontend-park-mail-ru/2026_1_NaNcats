@@ -9,6 +9,7 @@
 
 #root {
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
 }
@@ -142,12 +143,27 @@
   height: 100%;
 }
 
+/* «Голый» layout (юр-страницы): без шапки, сам является скролл-контейнером,
+   т.к. #root на десктопе overflow:hidden. */
+.bare-layout {
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.bare-main {
+  min-height: 100%;
+}
+
 /* На мобилке отдаём скролл документу, как и в base.scss: нужно для страниц без
    внутреннего скролл-контейнера (профиль, login, register). */
 @media (max-width: 900px) {
   #root {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
     overflow: visible;
   }
 
@@ -155,6 +171,13 @@
   .auth-layout {
     height: auto;
     min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .bare-layout {
+    height: auto;
+    min-height: 100dvh;
     overflow: visible;
   }
 

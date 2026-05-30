@@ -17,9 +17,6 @@ import type { VNode } from '@shared/lib/vdom';
 export function AuthLayout(): VNode {
     return (
         <div class="auth-layout">
-            <div class="auth-logo" view-transition-name="app-logo">
-                <Logo width={150} height={78} />
-            </div>
             <main class="auth-main">
                 <Outlet />
             </main>

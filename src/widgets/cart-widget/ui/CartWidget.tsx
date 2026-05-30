@@ -17,13 +17,28 @@ import {
 import { router } from '@app/router';
 import { httpClient } from '@shared/api/http';
 import { ROUTES } from '@shared/config/routes';
-import { computed, signal, useStoreSignal } from '@shared/lib/signals';
-import { For, Show } from '@shared/lib/vdom';
+import { computed, effect, signal, useStoreSignal } from '@shared/lib/signals';
+import { For, onCleanup, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { Popup } from '@shared/ui/popup';
+import { lockScroll, unlockScroll } from '@shared/lib/scrollLock';
+import qrcode from 'qrcode-generator';
+import jsQR from 'jsqr';
 
 /** Картинка-заглушка блюда при ошибке загрузки `image_url`. */
 const FALLBACK_DISH_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
+
+/** Один распознанный штрихкод (минимум, который нам нужен от BarcodeDetector). */
+interface DetectedBarcode {
+    rawValue?: string;
+}
+
+/** Конструктор нативного BarcodeDetector (есть в Chrome/Android, нет в iOS Safari). */
+interface BarcodeDetectorCtor {
+    new (options?: { formats?: string[] }): {
+        detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
+    };
+}
 
 export interface CartWidgetProps {
     /** Колбэк после перехода к оформлению (например, чтобы закрыть боковую панель). */
@@ -60,6 +75,65 @@ function ownerLabel(
     if (currentUserId !== null && ownerPublicId === currentUserId) return 'Ваше';
     if (ownerPublicId === adminId) return 'Организатор';
     return ownerName && ownerName.length > 0 ? ownerName : 'Участник';
+}
+
+/** Группа позиций корзины по владельцу (для совместной корзины). */
+interface CartItemGroup {
+    /** Ключ группы: public_id владельца или `__none` для ничейных. */
+    key: string;
+    /** Заголовок группы (имя участника). */
+    label: string;
+    /** Ничейные позиции (владелец удалён). */
+    isUnowned: boolean;
+    /** Это сам текущий пользователь. */
+    isYou: boolean;
+    items: CartItem[];
+}
+
+/**
+ * Группирует позиции совместной корзины по людям. Порядок: организатор → вы →
+ * остальные участники (по имени) → ничейные. В соло-корзине возвращает одну
+ * группу без заголовка.
+ */
+function buildItemGroups(
+    items: readonly CartItem[],
+    currentUserId: string | null,
+    adminId: string | null,
+    isShared: boolean,
+): CartItemGroup[] {
+    if (!isShared) {
+        return [{ key: '__solo', label: '', isUnowned: false, isYou: false, items: items.slice() }];
+    }
+
+    const map = new Map<string, CartItem[]>();
+    for (const it of items) {
+        const k = it.owner_public_id ?? '__none';
+        const bucket = map.get(k);
+        if (bucket) bucket.push(it);
+        else map.set(k, [it]);
+    }
+
+    const groups: CartItemGroup[] = [];
+    for (const [k, its] of map) {
+        const owner = its[0];
+        groups.push({
+            key: k,
+            label: ownerLabel(owner.owner_public_id, owner.owner_name, currentUserId, adminId),
+            isUnowned: k === '__none',
+            isYou: currentUserId !== null && owner.owner_public_id === currentUserId,
+            items: its,
+        });
+    }
+
+    const rank = (g: CartItemGroup): number => {
+        if (g.isUnowned) return 4;
+        const ownerId = g.items[0].owner_public_id;
+        if (adminId !== null && ownerId === adminId) return 0;
+        if (g.isYou) return 1;
+        return 2;
+    };
+    groups.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
+    return groups;
 }
 
 /**
@@ -100,6 +174,26 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const busy = signal<boolean>(false);
     // Поле ввода кода приглашения скрыто за ссылкой, пока не понадобится.
     const joinOpen = signal<boolean>(false);
+    // QR-модалка с инвайт-ссылкой: открывается по нажатию на QR-кнопку.
+    const qrOpen = signal<boolean>(false);
+    // Модалка сканера QR (только на мобилках): открывается по кнопке-камере.
+    const scanOpen = signal<boolean>(false);
+    const scanError = signal<string>('');
+    let scanStream: MediaStream | null = null;
+    let scanRaf: number | null = null;
+
+    // Блокируем фоновый скролл, пока открыта любая модалка корзины (QR-код или сканер).
+    let cartScrollLocked = false;
+    effect(() => {
+        const anyOpen = qrOpen() || scanOpen();
+        if (anyOpen && !cartScrollLocked) {
+            lockScroll();
+            cartScrollLocked = true;
+        } else if (!anyOpen && cartScrollLocked) {
+            unlockScroll();
+            cartScrollLocked = false;
+        }
+    });
 
     // Поле ввода кода неконтролируемое: значение читаем и чистим через ref,
     // потому что проп value у этого VDOM прокидывается через setAttribute.
@@ -114,6 +208,10 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const currentUserId = computed<string | null>(() => user()?.public_id ?? null);
     const hasItems = computed(() => items().length > 0);
     const isShared = computed(() => mode() === 'shared');
+    // Позиции, сгруппированные по людям (организатор → вы → остальные → ничьё).
+    const itemGroups = computed<CartItemGroup[]>(() =>
+        buildItemGroups(items(), currentUserId(), adminId(), isShared()),
+    );
     const isAdmin = computed(() => {
         const uid = currentUserId();
         return uid !== null && adminId() !== null && uid === adminId();
@@ -126,6 +224,19 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
     const inviteLink = computed(() => {
         const token = inviteToken();
         return token ? `${window.location.origin}/?cart_invite=${encodeURIComponent(token)}` : '';
+    });
+
+    /**
+     * Data-URL картинки QR-кода для инвайт-ссылки. type=0 включает автоподбор
+     * версии под длину строки; error correction 'M' даёт запас на повреждения.
+     */
+    const qrDataUrl = computed<string>(() => {
+        const link = inviteLink();
+        if (!link) return '';
+        const qr = qrcode(0, 'M');
+        qr.addData(link);
+        qr.make();
+        return qr.createDataURL(6, 4);
     });
 
     const handleCheckout = () => {
@@ -177,12 +288,8 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
         }
     };
 
-    // Присоединяет пользователя к совместной корзине по введённому коду.
-    // Принимает как «голый» токен, так и полную ссылку-приглашение.
-    const handleJoin = async () => {
-        const raw = joinCode().trim();
-        if (!raw) return;
-        const token = extractInviteToken(raw);
+    // Присоединяет пользователя к совместной корзине по уже распознанному токену.
+    const joinWithToken = async (token: string) => {
         if (!token) {
             await Popup.alert('Не удалось распознать код приглашения.');
             return;
@@ -199,6 +306,124 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
             busy.set(false);
         }
     };
+
+    // Присоединяется по введённому коду. Принимает как «голый» токен, так и
+    // полную ссылку-приглашение.
+    const handleJoin = async () => {
+        const raw = joinCode().trim();
+        if (!raw) return;
+        await joinWithToken(extractInviteToken(raw));
+    };
+
+    // Останавливает камеру и цикл распознавания сканера.
+    const stopScan = () => {
+        if (scanRaf !== null) {
+            cancelAnimationFrame(scanRaf);
+            scanRaf = null;
+        }
+        if (scanStream !== null) {
+            scanStream.getTracks().forEach((track) => track.stop());
+            scanStream = null;
+        }
+    };
+
+    const closeScanner = () => {
+        stopScan();
+        scanOpen.set(false);
+        scanError.set('');
+    };
+
+    const openScanner = () => {
+        scanError.set('');
+        scanOpen.set(true);
+    };
+
+    // Подсказка-фолбэк: когда сканер недоступен (нет доступа к камере или
+    // браузер не даёт), предлагаем навести на QR штатное приложение «Камера» —
+    // оно откроет ссылку-приглашение и сразу присоединит к корзине.
+    const SCAN_HINT_CAMERA_APP = 'Если не сканируется — наведите на QR-код приложение «Камера» на телефоне.';
+
+    // Распознаёт QR в текущем кадре <video>: сначала нативным BarcodeDetector
+    // (Android Chrome), иначе — jsQR по пикселям с canvas (работает в Safari на
+    // iOS, где BarcodeDetector нет). Возвращает прочитанную строку или ''.
+    const detectFromVideo = async (video: HTMLVideoElement, canvas: HTMLCanvasElement): Promise<string> => {
+        const DetectorCtor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
+        if (DetectorCtor !== undefined) {
+            try {
+                const detector = new DetectorCtor({ formats: ['qr_code'] });
+                const codes = await detector.detect(video);
+                if (codes.length > 0) return String(codes[0].rawValue ?? '');
+                return '';
+            } catch {
+                // Падаем на jsQR ниже.
+            }
+        }
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (w === 0 || h === 0) return '';
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx === null) return '';
+        ctx.drawImage(video, 0, 0, w, h);
+        const image = ctx.getImageData(0, 0, w, h);
+        const result = jsQR(image.data, w, h, { inversionAttempts: 'dontInvert' });
+        return result?.data ?? '';
+    };
+
+    // Запускает камеру и распознавание QR. Камеру запрашиваем сразу (это и
+    // вызывает запрос разрешения на iOS), декод — кроссбраузерный (jsQR).
+    const startScan = async (video: HTMLVideoElement) => {
+        if (typeof navigator.mediaDevices?.getUserMedia !== 'function') {
+            scanError.set(`Камера недоступна в этом браузере. ${SCAN_HINT_CAMERA_APP}`);
+            return;
+        }
+        try {
+            scanStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
+            video.srcObject = scanStream;
+            video.setAttribute('playsinline', 'true');
+            await video.play();
+        } catch (err) {
+            const name = err instanceof DOMException ? err.name : '';
+            if (name === 'NotAllowedError' || name === 'SecurityError') {
+                scanError.set(`Нет доступа к камере. Разрешите доступ в настройках браузера. ${SCAN_HINT_CAMERA_APP}`);
+            } else if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+                scanError.set(`Камера не найдена. ${SCAN_HINT_CAMERA_APP}`);
+            } else {
+                scanError.set(`Не удалось открыть камеру. ${SCAN_HINT_CAMERA_APP}`);
+            }
+            return;
+        }
+
+        const canvas = document.createElement('canvas');
+        const tick = async () => {
+            if (!scanOpen.peek()) return;
+            try {
+                const raw = await detectFromVideo(video, canvas);
+                if (raw !== '') {
+                    const token = extractInviteToken(raw);
+                    if (token) {
+                        closeScanner();
+                        await joinWithToken(token);
+                        return;
+                    }
+                }
+            } catch {
+                // Временные ошибки распознавания игнорируем — пробуем следующий кадр.
+            }
+            scanRaf = requestAnimationFrame(() => {
+                void tick();
+            });
+        };
+        scanRaf = requestAnimationFrame(() => {
+            void tick();
+        });
+    };
+
+    onCleanup(stopScan);
 
     const handleKick = async (member: CartMember) => {
         if (!(await Popup.confirm('Удалить участника из корзины? Его блюда останутся, но станут ничейными.'))) {
@@ -220,6 +445,19 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
         } catch (err) {
             console.error('[CartWidget] closeShared failed:', err);
             await Popup.alert('Не удалось закрыть совместную корзину.');
+        }
+    };
+
+    // Выход участника из совместной корзины (самоудаление).
+    const handleLeaveShared = async () => {
+        const uid = currentUserId();
+        if (uid === null) return;
+        if (!(await Popup.confirm('Выйти из совместной корзины? Ваши блюда станут ничейными.'))) return;
+        try {
+            await cartStore.leaveShared(uid);
+        } catch (err) {
+            console.error('[CartWidget] leaveShared failed:', err);
+            await Popup.alert('Не удалось выйти из корзины.');
         }
     };
 
@@ -286,9 +524,21 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                     <Show
                         when={isAdmin}
                         fallback={
-                            <p class="cart-shared__note">
-                                Вы участник корзины. Заказ оформит организатор, а вы можете добавлять свои блюда.
-                            </p>
+                            <div class="cart-shared__guest">
+                                <p class="cart-shared__note">
+                                    Вы участник корзины. Заказ оформит организатор, а вы можете добавлять свои блюда.
+                                </p>
+                                <button
+                                    type="button"
+                                    class="cart-shared__leave-btn"
+                                    disabled={actionsDisabled}
+                                    onClick={() => {
+                                        void handleLeaveShared();
+                                    }}
+                                >
+                                    Выйти из корзины
+                                </button>
+                            </div>
                         }
                     >
                         <Show
@@ -313,16 +563,63 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                                 <div class="cart-invite__actions">
                                     <button
                                         type="button"
-                                        class="button button_primary"
+                                        class="button button_primary cart-invite__icon-btn"
+                                        title="Копировать ссылку"
                                         onClick={() => {
                                             void handleCopyInvite();
                                         }}
                                     >
-                                        {() => (copied() ? '✓ Скопировано' : 'Копировать')}
+                                        <Show
+                                            when={copied}
+                                            fallback={
+                                                <svg
+                                                    width="18"
+                                                    height="18"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                >
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                                                </svg>
+                                            }
+                                        >
+                                            <svg
+                                                width="18"
+                                                height="18"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2.4"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                            >
+                                                <polyline points="20 6 9 17 4 12" />
+                                            </svg>
+                                        </Show>
                                     </button>
                                     <button
                                         type="button"
-                                        class="button button_secondary"
+                                        class="button button_secondary cart-invite__icon-btn"
+                                        title="Показать QR-код"
+                                        onClick={() => qrOpen.set(true)}
+                                    >
+                                        <svg
+                                            width="18"
+                                            height="18"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm0-4h2v2h-2v-2z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="button button_secondary cart-invite__refresh-btn"
                                         disabled={actionsDisabled}
                                         onClick={() => {
                                             void handleGenerateInvite();
@@ -365,104 +662,122 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                 }
             >
                 <div class="cart-items-list">
-                    <For each={items} key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}>
-                        {(item) => {
-                            const dishId = item.dish_id;
-                            // Позицию ищем по паре dish_id + владелец: у блюда в
-                            // совместной корзине бывает по строке на участника.
-                            const ownerKey = item.owner_public_id ?? '';
-                            // For не перевызывает children при изменении полей позиции,
-                            // поэтому актуальную позицию читаем из сигнала items на каждом
-                            // тике; если позиция исчезла, держим последний снимок до размонтирования.
-                            const currentItem = computed<CartItem>(
-                                () =>
-                                    items().find(
-                                        (it) => it.dish_id === dishId && (it.owner_public_id ?? '') === ownerKey,
-                                    ) ?? item,
+                    <For each={itemGroups} key={(g) => g.key}>
+                        {(group) => {
+                            const groupKey = group.key;
+                            // Реактивно перечитываем группу из itemGroups, чтобы список
+                            // позиций участника обновлялся при изменении корзины.
+                            const groupItems = computed<CartItem[]>(
+                                () => itemGroups().find((g) => g.key === groupKey)?.items ?? [],
                             );
-                            const quantity = computed(() => currentItem().quantity);
-                            const priceRub = computed(() => formatItemPriceRub(currentItem()));
-                            const ownerText = computed(() =>
-                                ownerLabel(
-                                    currentItem().owner_public_id,
-                                    currentItem().owner_name,
-                                    currentUserId(),
-                                    adminId(),
-                                ),
+                            const groupLabel = computed<string>(
+                                () => itemGroups().find((g) => g.key === groupKey)?.label ?? '',
                             );
-                            // Гость правит только свои позиции, в соло-корзине ограничений нет.
-                            const canModify = computed(() => {
-                                if (!isShared()) return true;
-                                return currentItem().owner_public_id === currentUserId();
-                            });
                             return (
-                                <div class="cart-item">
-                                    <img
-                                        src={item.image_url}
-                                        alt={item.name}
-                                        class="cart-item__img"
-                                        onError={handleImgError}
-                                    />
-                                    <div class="cart-item__info">
-                                        <div class="cart-item__name">{item.name}</div>
-                                        <div class="cart-item__price">{priceRub}</div>
-                                        <Show when={isShared}>
-                                            <div
-                                                class={() =>
-                                                    currentItem().owner_public_id == null
-                                                        ? 'cart-item__owner cart-item__owner_none'
-                                                        : 'cart-item__owner'
-                                                }
-                                            >
-                                                {ownerText}
-                                            </div>
-                                        </Show>
-                                    </div>
-                                    <div class="cart-item__counter">
-                                        <Show
-                                            when={() => isShared() && currentItem().owner_public_id == null}
-                                            fallback={
-                                                <>
-                                                    <button
-                                                        type="button"
-                                                        class="counter-btn"
-                                                        disabled={() => !canModify()}
-                                                        onClick={() => {
-                                                            void cartStore.changeQuantity(dishId, -1);
-                                                        }}
-                                                    >
-                                                        −
-                                                    </button>
-                                                    <span class="counter-value">{quantity}</span>
-                                                    <button
-                                                        type="button"
-                                                        class="counter-btn"
-                                                        disabled={() => !canModify()}
-                                                        onClick={() => {
-                                                            void cartStore.changeQuantity(dishId, 1);
-                                                        }}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </>
+                                <div class="cart-group">
+                                    <Show when={() => isShared() && groupKey !== '__solo'}>
+                                        <div
+                                            class={() =>
+                                                group.isUnowned
+                                                    ? 'cart-group__header cart-group__header_none'
+                                                    : 'cart-group__header'
                                             }
                                         >
-                                            {/* Позиция удалённого участника осталась без владельца.
+                                            <span class="cart-group__dot" aria-hidden="true" />
+                                            <span class="cart-group__name">{groupLabel}</span>
+                                            <span class="cart-group__count">{() => `${groupItems().length}`}</span>
+                                        </div>
+                                    </Show>
+                                    <For
+                                        each={groupItems}
+                                        key={(item) => `${item.dish_id}:${item.owner_public_id ?? ''}`}
+                                    >
+                                        {(item) => {
+                                            const dishId = item.dish_id;
+                                            // Позицию ищем по паре dish_id + владелец: у блюда в
+                                            // совместной корзине бывает по строке на участника.
+                                            const ownerKey = item.owner_public_id ?? '';
+                                            // For не перевызывает children при изменении полей позиции,
+                                            // поэтому актуальную позицию читаем из сигнала items на каждом
+                                            // тике; если позиция исчезла, держим последний снимок до размонтирования.
+                                            const currentItem = computed<CartItem>(
+                                                () =>
+                                                    items().find(
+                                                        (it) =>
+                                                            it.dish_id === dishId &&
+                                                            (it.owner_public_id ?? '') === ownerKey,
+                                                    ) ?? item,
+                                            );
+                                            const quantity = computed(() => currentItem().quantity);
+                                            const priceRub = computed(() => formatItemPriceRub(currentItem()));
+                                            // Гость правит только свои позиции, в соло-корзине ограничений нет.
+                                            const canModify = computed(() => {
+                                                if (!isShared()) return true;
+                                                return currentItem().owner_public_id === currentUserId();
+                                            });
+                                            return (
+                                                <div class="cart-item">
+                                                    <img
+                                                        src={item.image_url}
+                                                        alt={item.name}
+                                                        class="cart-item__img"
+                                                        onError={handleImgError}
+                                                    />
+                                                    <div class="cart-item__info">
+                                                        <div class="cart-item__name">{item.name}</div>
+                                                        <div class="cart-item__price">{priceRub}</div>
+                                                    </div>
+                                                    <div class="cart-item__counter">
+                                                        <Show
+                                                            when={() =>
+                                                                isShared() && currentItem().owner_public_id == null
+                                                            }
+                                                            fallback={
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="counter-btn"
+                                                                        disabled={() => !canModify()}
+                                                                        onClick={() => {
+                                                                            void cartStore.changeQuantity(dishId, -1);
+                                                                        }}
+                                                                    >
+                                                                        −
+                                                                    </button>
+                                                                    <span class="counter-value">{quantity}</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="counter-btn"
+                                                                        disabled={() => !canModify()}
+                                                                        onClick={() => {
+                                                                            void cartStore.changeQuantity(dishId, 1);
+                                                                        }}
+                                                                    >
+                                                                        +
+                                                                    </button>
+                                                                </>
+                                                            }
+                                                        >
+                                                            {/* Позиция удалённого участника осталась без владельца.
                                                 Организатор может забрать её себе, иначе оформить
                                                 заказ нельзя. */}
-                                            <Show when={isAdmin}>
-                                                <button
-                                                    type="button"
-                                                    class="cart-item__claim"
-                                                    onClick={() => {
-                                                        void cartStore.claimItem(dishId);
-                                                    }}
-                                                >
-                                                    Забрать себе
-                                                </button>
-                                            </Show>
-                                        </Show>
-                                    </div>
+                                                            <Show when={isAdmin}>
+                                                                <button
+                                                                    type="button"
+                                                                    class="cart-item__claim"
+                                                                    onClick={() => {
+                                                                        void cartStore.claimItem(dishId);
+                                                                    }}
+                                                                >
+                                                                    Забрать себе
+                                                                </button>
+                                                            </Show>
+                                                        </Show>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }}
+                                    </For>
                                 </div>
                             );
                         }}
@@ -594,9 +909,28 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                     <Show
                         when={joinOpen}
                         fallback={
-                            <button type="button" class="cart-join__toggle" onClick={() => joinOpen.set(true)}>
-                                🔗 Войти в корзину по коду
-                            </button>
+                            <div class="cart-join__entry">
+                                <button type="button" class="cart-join__toggle" onClick={() => joinOpen.set(true)}>
+                                    🔗 Войти в корзину по коду
+                                </button>
+                                <button
+                                    type="button"
+                                    class="cart-join__scan"
+                                    aria-label="Отсканировать QR-код"
+                                    title="Отсканировать QR-код"
+                                    onClick={openScanner}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path
+                                            d="M4 9V5.5C4 4.67 4.67 4 5.5 4H9M15 4h3.5c.83 0 1.5.67 1.5 1.5V9M20 15v3.5c0 .83-.67 1.5-1.5 1.5H15M9 20H5.5C4.67 20 4 19.33 4 18.5V15"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                        />
+                                        <rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor" />
+                                    </svg>
+                                </button>
+                            </div>
                         }
                     >
                         <div class="cart-join__row">
@@ -624,6 +958,67 @@ export function CartWidget(props: CartWidgetProps = {}): VNode {
                             </button>
                         </div>
                     </Show>
+                </div>
+            </Show>
+
+            <Show when={qrOpen}>
+                <div
+                    class="cart-qr-overlay"
+                    onClick={(e: Event) => {
+                        if (e.target === e.currentTarget) qrOpen.set(false);
+                    }}
+                >
+                    <div class="cart-qr-modal">
+                        <button
+                            type="button"
+                            class="cart-qr-modal__close"
+                            aria-label="Закрыть"
+                            onClick={() => qrOpen.set(false)}
+                        >
+                            ×
+                        </button>
+                        <div class="cart-qr-modal__title">QR-код приглашения</div>
+                        <img class="cart-qr-modal__image" src={() => qrDataUrl()} alt="QR-код" />
+                        <div class="cart-qr-modal__hint">Отсканируйте, чтобы присоединиться к совместной корзине</div>
+                    </div>
+                </div>
+            </Show>
+
+            <Show when={scanOpen}>
+                <div
+                    class="cart-scan-overlay"
+                    onClick={(e: Event) => {
+                        if (e.target === e.currentTarget) closeScanner();
+                    }}
+                >
+                    <div class="cart-scan-modal">
+                        <button
+                            type="button"
+                            class="cart-scan-modal__close"
+                            aria-label="Закрыть"
+                            onClick={closeScanner}
+                        >
+                            ×
+                        </button>
+                        <div class="cart-scan-modal__title">Сканируйте QR-код</div>
+                        <div class="cart-scan-modal__viewport">
+                            <video
+                                class="cart-scan-modal__video"
+                                muted
+                                playsinline
+                                ref={(el: Element | null) => {
+                                    if (el !== null) void startScan(el as HTMLVideoElement);
+                                }}
+                            />
+                            <div class="cart-scan-modal__frame" aria-hidden="true" />
+                        </div>
+                        <Show
+                            when={() => scanError() !== ''}
+                            fallback={<div class="cart-scan-modal__hint">Наведите камеру на QR-код приглашения</div>}
+                        >
+                            <div class="cart-scan-modal__error">{() => scanError()}</div>
+                        </Show>
+                    </div>
                 </div>
             </Show>
         </div>

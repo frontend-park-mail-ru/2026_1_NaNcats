@@ -13,7 +13,7 @@
   &__controls {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
     margin-left: auto;
     position: relative;
     z-index: 2;
@@ -65,6 +65,21 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    // Кнопка поиска: сброс стилей button + кликабельный вид.
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    transition: background 0.15s ease;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.06);
+    }
   }
 }
 
@@ -74,6 +89,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.wheel-launch-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  outline: 1px solid #fa9b9b;
+
+  &:hover {
+    background: rgba(255, 193, 193, 0.18);
+  }
 }
 
 .user-profile {
@@ -655,12 +687,22 @@
     font-size: 14px;
     font-weight: 400;
     color: var(--text-dark);
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__desc {
     font-size: 12px;
     font-weight: 300;
     color: var(--text-gray);
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -769,7 +811,9 @@
   border: none;
   border-radius: 999px;
   background: var(--white);
-  box-shadow: 0 10px 24px rgba(247, 149, 140, 0.22);
+  // Минимальная плотная тень вместо розового «свечения» по краям —
+  // на iPhone цветной глоу выглядел грязно.
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
   cursor: pointer;
   z-index: 1150;
   align-items: center;
@@ -782,7 +826,7 @@
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 12px 28px rgba(247, 149, 140, 0.28);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
   }
 }
 
@@ -1007,9 +1051,15 @@
     height: min(78vh, 680px);
     border-radius: 24px 24px 0 0;
     background: var(--white);
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
     padding: 0;
     overflow: hidden;
+  }
+
+  /* Тень-вверх рисуем только когда шторка открыта. Иначе скрытая
+     (translateY 100%) шторка-корзина оставляла тень у нижнего края экрана —
+     на iOS Safari она вылезала «полосой» при сворачивании нижнего тулбара. */
+  .home-page_sheet-cart .side-column_right .card_cart {
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
   }
 }
 
@@ -1019,7 +1069,10 @@
     height: auto;
     min-height: 64px;
     align-items: flex-start;
-    padding: 12px 16px 14px;
+    // На мобилке шапка во всю ширину, боковой отступ 12px — совпадает с
+    // боковыми отступами основного контента (.main-layout / .profile-content).
+    margin: 0;
+    padding: 12px 12px 14px;
     flex-wrap: wrap;
     row-gap: 12px;
   }
@@ -1114,7 +1167,8 @@
   .main-layout {
     grid-template-columns: 1fr;
     gap: 0;
-    padding: 8px 16px 16px;
+    // Без нижнего отступа: на мобилке контент доходит до края экрана.
+    padding: 8px 16px 0;
   }
 
   .side-column_left {
@@ -1158,7 +1212,9 @@
   .sheet {
     margin-bottom: 0;
     padding: 24px 16px 20px;
-    border-radius: 24px 24px 0 0;
+    // Скругляем все углы: иначе при коротком списке (выбрана категория) низ
+    // блока с ресторанами обрывался острыми углами.
+    border-radius: 24px;
 
     &__header {
       margin-bottom: 18px;
@@ -1211,7 +1267,7 @@
   }
 
   .main-layout {
-    padding: 8px 12px 12px;
+    padding: 8px 12px 0;
   }
 
   .sheet {

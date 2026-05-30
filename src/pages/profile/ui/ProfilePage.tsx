@@ -23,14 +23,22 @@ import { AddressesModal, removeAddress } from '@features/profile/manage-addresse
 import { CardList, bindNewCard } from '@features/profile/manage-cards';
 import { PromoModal, promosAccessor, ensureLoaded as ensurePromosLoaded } from '@features/profile/manage-promos';
 import { OrdersHistoryModal } from '@features/profile/orders-history';
-import { AchievementsModal, achievementsAccessor, ensureAchievementsLoaded } from '@features/profile/achievements';
+import {
+    AchievementsModal,
+    achievementsAccessor,
+    ensureAchievementsLoaded,
+    refreshAchievements,
+} from '@features/profile/achievements';
 import { addressPickerHandle } from '@widgets/address-picker';
 import { Wordle } from '@widgets/wordle';
+import { wordleApi } from '@entities/wordle';
 import { OrderStatusModal, type OrderStatusModalController } from '@widgets/order-status';
 import { For, onCleanup, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { signal, useStoreSignal } from '@shared/lib/signals';
 import { imageFallback } from '@shared/lib/img';
+import { pluralRu } from '@shared/lib/plural';
+import { startViewTransition } from '@shared/lib/transitions';
 
 /** Заказ с предвычисленным бейджем статуса. */
 interface OrderRowView extends Order {
@@ -131,11 +139,14 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     const ordersSig = signal<OrderRowView[]>(props.orders);
     const savedAddresses = useStoreSignal(addressStore, (s) => s.saved);
     const currentAddress = useStoreSignal(addressStore, (s) => s.current);
-    const wordleSolved = signal<boolean>(localStorage.getItem('wordle_solved') === 'true');
+    const wordleSolved = signal<boolean>(false);
     const wordleOpen = signal<boolean>(false);
+    // Поясняющий попап у значка «Стрик» (тогглится по клику, работает на тач).
+    const streakInfoOpen = signal<boolean>(false);
 
     let orderStatusCtl: OrderStatusModalController | null = null;
     let avatarFileInput: HTMLInputElement | null = null;
+    let streakInfoEl: HTMLElement | null = null;
 
     // Активные трекеры статуса заказа: закрываются на onCleanup.
     const orderTrackers: Map<string, OrderTracker> = new Map();
@@ -210,9 +221,22 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     const handleWordleWin = () => {
-        localStorage.setItem('wordle_solved', 'true');
         wordleSolved.set(true);
+        // Бэк только что мог выдать ачивку (first_win / winner_10 / streak_30) —
+        // подтягиваем свежий список, чтобы счётчик «N из M» обновился без F5.
+        void refreshAchievements();
     };
+
+    // При маунте профиля подгружаем актуальное состояние партии «5 букв»,
+    // чтобы карточка сразу отражала, отгадал ли пользователь сегодня (вне зависимости от localStorage).
+    void wordleApi
+        .getDailyState()
+        .then((state) => {
+            wordleSolved.set(state.status === 'WON');
+        })
+        .catch(() => {
+            /* молча: карточка покажет дефолтный текст */
+        });
 
     // Перечитывает заказы с сервера и обновляет список (с бейджами статусов).
     // Нужно после действий в модалке заказа (например, отмены): WS-событие
@@ -298,20 +322,35 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         if (!shouldOpen || !orderStatusCtl) return;
 
         const myId = props.user.public_id;
+        // Берём самый свежий нетерминальный заказ, в котором пользователь
+        // фигурирует как владелец позиции либо как плательщик доли. Старые
+        // заказы (например, отменённые с подвисшей pending-долей) отсекаются
+        // через TERMINAL_STATUSES, поэтому модалка не покажет стейл-данные.
         const target = ordersSig.peek().find((o) => {
+            if (TERMINAL_STATUSES.has(o.status)) return false;
             const splits = o.splits ?? [];
-            if (splits.length <= 1) return false;
-            const mine = splits.find((s) => s.user_public_id === myId);
-            return mine !== undefined && mine.status === 'pending';
+            const hasOwnSplit = splits.some((s) => s.user_public_id === myId);
+            const hasOwnItem = (o.items ?? []).some((it) => it.owner_public_id === myId);
+            return hasOwnSplit || hasOwnItem;
         });
         if (target) {
             orderStatusCtl.open(target, { subscribe: !TERMINAL_STATUSES.has(target.status) });
         }
     };
 
+    // Закрывает попап-подсказку стрика по клику вне его зоны.
+    const handleStreakInfoDocClick = (event: Event) => {
+        if (!streakInfoOpen.peek()) return;
+        const target = event.target as Node | null;
+        if (streakInfoEl !== null && target !== null && !streakInfoEl.contains(target)) {
+            streakInfoOpen.set(false);
+        }
+    };
+
     onMount(() => {
         subscribeActiveOrders();
         autoOpenPendingSplitOrder();
+        document.addEventListener('click', handleStreakInfoDocClick);
     });
 
     onCleanup(() => {
@@ -321,6 +360,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
         ordersModalInstance?.close();
         addressesModalInstance?.close();
         achievementsModalInstance?.close();
+        document.removeEventListener('click', handleStreakInfoDocClick);
     });
 
     // Адрес, считающийся «основным»: текущий выбранный, либо первый сохранённый.
@@ -349,10 +389,14 @@ export function ProfilePage(props: ProfilePageProps): VNode {
     };
 
     // Клик по адресу делает его текущим (основным) без открытия модалки.
+    // Меняем активный адрес внутри view-transition: только что выбранный пункт
+    // плавно «переезжает» на первое место — глаз сразу видит, что адрес сменился.
     const handlePickPrimary = (addr: Address) => {
-        addressStore.setCurrent({
-            text: addr.location.address_text,
-            coords: [addr.location.latitude, addr.location.longitude],
+        startViewTransition(() => {
+            addressStore.setCurrent({
+                text: addr.location.address_text,
+                coords: [addr.location.latitude, addr.location.longitude],
+            });
         });
     };
 
@@ -433,7 +477,36 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                     <div class="profile-card profile-card_row">
                         <div class="card-side-label">
                             <span>Стрик</span>
-                            <div class="orange-dot orange-dot_small" />
+                            <div
+                                class="streak-info"
+                                ref={(el: Element | null) => {
+                                    streakInfoEl = el as HTMLElement | null;
+                                }}
+                            >
+                                <button
+                                    type="button"
+                                    class="streak-info__btn"
+                                    aria-label="Что такое стрик?"
+                                    title="Что такое стрик?"
+                                    onClick={(e: Event) => {
+                                        e.stopPropagation();
+                                        streakInfoOpen.set((v) => !v);
+                                    }}
+                                >
+                                    i
+                                </button>
+                                <div
+                                    class={() =>
+                                        streakInfoOpen()
+                                            ? 'streak-info__bubble streak-info__bubble_open'
+                                            : 'streak-info__bubble'
+                                    }
+                                    role="tooltip"
+                                >
+                                    Стрик — это сколько недель подряд вы делаете заказы. Заказывайте хотя бы раз в
+                                    неделю, чтобы серия росла и не прерывалась 🔥
+                                </div>
+                            </div>
                         </div>
                         <div class="card-side-content card-value-text">
                             {() => `${userSig()?.streak_weeks ?? 0} нед. — так держать! 🔥`}
@@ -524,6 +597,7 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                                                     ? 'address-compact address-compact_primary'
                                                     : 'address-compact'
                                             }
+                                            style={`view-transition-name: addr-${String(addr.id)}`}
                                             role="button"
                                             tabindex="0"
                                             onClick={() => handlePickPrimary(addr)}
@@ -672,7 +746,12 @@ export function ProfilePage(props: ProfilePageProps): VNode {
                     <div class="profile-card profile-card_main profile-card_orders">
                         <div class="orders-section-head">
                             <h2 class="section-title">История заказов</h2>
-                            <span class="orders-section-head__count">{() => `${ordersSig().length} заказов`}</span>
+                            <span class="orders-section-head__count">
+                                {() => {
+                                    const n = ordersSig().length;
+                                    return `${n} ${pluralRu(n, ['заказ', 'заказа', 'заказов'])}`;
+                                }}
+                            </span>
                         </div>
                         <Show
                             when={() => ordersSig().length > 0}

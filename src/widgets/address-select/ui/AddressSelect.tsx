@@ -11,9 +11,11 @@ import { ROUTES } from '@shared/config/routes';
 import { addressStore, type Address } from '@entities/address';
 import { userStore } from '@entities/user';
 import { addressPickerHandle } from '@widgets/address-picker';
+import { removeAddress } from '@features/profile/manage-addresses';
 import { onCleanup, signal, useStoreSignal } from '@shared/lib/signals';
 import { For, onMount, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
+import { Popup } from '@shared/ui/popup';
 
 /** Подпись на плашке-кнопке (placeholder, когда адрес не выбран). */
 const PLACEHOLDER = 'Укажите адрес';
@@ -63,6 +65,19 @@ export function AddressSelect(): VNode {
             coords: [addr.location.latitude, addr.location.longitude],
         });
         open.set(false);
+    };
+
+    const handleEditAddress = (event: Event, addr: Address) => {
+        event.stopPropagation();
+        open.set(false);
+        void addressPickerHandle.openDetailsForEdit(addr.id);
+    };
+
+    const handleDeleteAddress = async (event: Event, addr: Address) => {
+        event.stopPropagation();
+        const ok = await Popup.confirm('Удалить этот адрес?');
+        if (!ok) return;
+        await removeAddress(addr.id);
     };
 
     const handleAddNew = () => {
@@ -132,33 +147,91 @@ export function AddressSelect(): VNode {
                         <div class="address-select__items">
                             <For each={savedAddresses} key={(a) => a.id}>
                                 {(addr) => (
-                                    <button
-                                        type="button"
+                                    <div
                                         class={() =>
                                             isActive(addr)
                                                 ? 'address-select__item address-select__item_active'
                                                 : 'address-select__item'
                                         }
-                                        onClick={() => pickSavedAddress(addr)}
                                     >
-                                        <span
-                                            class={() =>
-                                                isActive(addr)
-                                                    ? 'address-select__radio address-select__radio_active'
-                                                    : 'address-select__radio'
-                                            }
-                                            aria-hidden="true"
-                                        />
-                                        <span class="address-select__item-body">
-                                            <span class="address-select__item-head">
-                                                <span class="address-select__item-label">{addr.label ?? 'Адрес'}</span>
-                                                <Show when={() => isActive(addr)}>
-                                                    <span class="address-select__primary-tag">Основной</span>
-                                                </Show>
+                                        <button
+                                            type="button"
+                                            class="address-select__item-main"
+                                            onClick={() => pickSavedAddress(addr)}
+                                        >
+                                            <span
+                                                class={() =>
+                                                    isActive(addr)
+                                                        ? 'address-select__radio address-select__radio_active'
+                                                        : 'address-select__radio'
+                                                }
+                                                aria-hidden="true"
+                                            />
+                                            <span class="address-select__item-body">
+                                                <span class="address-select__item-head">
+                                                    <span class="address-select__item-label">
+                                                        {addr.label ?? 'Адрес'}
+                                                    </span>
+                                                    <Show when={() => isActive(addr)}>
+                                                        <span class="address-select__primary-tag">Основной</span>
+                                                    </Show>
+                                                </span>
+                                                <span class="address-select__item-text">
+                                                    {addr.location.address_text}
+                                                </span>
                                             </span>
-                                            <span class="address-select__item-text">{addr.location.address_text}</span>
-                                        </span>
-                                    </button>
+                                        </button>
+                                        <div class="address-select__item-actions">
+                                            <button
+                                                type="button"
+                                                class="address-select__item-action"
+                                                aria-label="Редактировать адрес"
+                                                title="Редактировать"
+                                                onClick={(e: Event) => handleEditAddress(e, addr)}
+                                            >
+                                                <svg
+                                                    width="15"
+                                                    height="15"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path
+                                                        d="M4 20h4l10-10-4-4L4 16v4zM14 6l4 4"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="address-select__item-action address-select__item-action_danger"
+                                                aria-label="Удалить адрес"
+                                                title="Удалить"
+                                                onClick={(e: Event) => {
+                                                    void handleDeleteAddress(e, addr);
+                                                }}
+                                            >
+                                                <svg
+                                                    width="15"
+                                                    height="15"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path
+                                                        d="M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"
+                                                        stroke="currentColor"
+                                                        stroke-width="2"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </For>
                         </div>

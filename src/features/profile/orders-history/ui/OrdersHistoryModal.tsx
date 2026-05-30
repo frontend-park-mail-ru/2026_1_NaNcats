@@ -11,6 +11,7 @@ import { computed, signal } from '@shared/lib/signals';
 import { For, Show } from '@shared/lib/vdom';
 import type { VNode } from '@shared/lib/vdom';
 import { imageFallback } from '@shared/lib/img';
+import { pluralRu } from '@shared/lib/plural';
 
 /** Запасная картинка ресторана, если в заказе нет логотипа. */
 const ORDER_FALLBACK_IMAGE = 'https://nancats-bucket.storage.yandexcloud.net/foods/default-food-logo.webp';
@@ -220,7 +221,12 @@ export function OrdersHistoryModal(props: OrdersHistoryModalProps): VNode {
 
             <div class="orders-history-modal__footer">
                 <span class="orders-history-modal__footer-muted">Найдено: </span>
-                <span class="orders-history-modal__footer-strong">{() => String(filteredOrders().length)}</span>
+                <span class="orders-history-modal__footer-strong">
+                    {() => {
+                        const n = filteredOrders().length;
+                        return `${n} ${pluralRu(n, ['заказ', 'заказа', 'заказов'])}`;
+                    }}
+                </span>
                 <span class="orders-history-modal__footer-muted"> · итого </span>
                 <span class="orders-history-modal__footer-strong">{() => formatRubles(total())}</span>
             </div>

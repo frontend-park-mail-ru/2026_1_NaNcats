@@ -1,0 +1,161 @@
+.legal-page {
+  width: 100%;
+  // Скролл-контейнер — родительский .bare-layout, поэтому здесь только
+  // заполняем высоту фоном; собственный overflow не нужен.
+  min-height: 100%;
+  background: var(--bg-main, #f2f2f7);
+  padding: 24px 16px 60px;
+  box-sizing: border-box;
+}
+
+.legal-doc {
+  max-width: 860px;
+  margin: 0 auto;
+  background: var(--white, #fff);
+  border-radius: 20px;
+  padding: 40px 44px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+  font-family: "Inter", sans-serif;
+  color: var(--text-dark, #0e1117);
+  line-height: 1.55;
+  font-size: 15px;
+  font-weight: 300;
+
+  &__title {
+    margin: 0 0 20px;
+    font-family: "Open Sans Condensed", "Inter", sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  &__meta {
+    margin: 0 0 28px;
+    padding: 16px 18px;
+    background: var(--bg-main, #f2f2f7);
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__meta-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 0;
+    font-size: 14px;
+  }
+
+  &__meta-label {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-gray, #7d7d7d);
+    min-width: 96px;
+  }
+
+  &__meta-value {
+    margin: 0;
+    word-break: break-word;
+  }
+
+  &__body {
+    h2 {
+      margin: 30px 0 12px;
+      font-family: "Open Sans Condensed", "Inter", sans-serif;
+      font-size: 21px;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    p {
+      margin: 0 0 10px;
+    }
+
+    ul {
+      margin: 0 0 12px;
+      padding-left: 22px;
+
+      li {
+        margin: 0 0 6px;
+      }
+    }
+
+    strong {
+      font-weight: 600;
+    }
+
+    a {
+      color: var(--accent-orange, #d78306);
+      text-decoration: underline;
+      word-break: break-word;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #ececf1;
+      margin: 24px 0;
+    }
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+    margin: 0 0 14px;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    min-width: 460px;
+
+    th,
+    td {
+      border: 1px solid #e6e6ec;
+      padding: 8px 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--bg-main, #f2f2f7);
+      font-weight: 600;
+    }
+  }
+
+  &__footer {
+    margin-top: 32px;
+    padding-top: 18px;
+    border-top: 1px solid #ececf1;
+  }
+
+  &__home-link {
+    color: var(--accent-orange, #d78306);
+    font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .legal-page {
+    padding: 12px 10px 40px;
+  }
+
+  .legal-doc {
+    padding: 24px 18px;
+    border-radius: 16px;
+    font-size: 14px;
+
+    &__title {
+      font-size: 24px;
+    }
+
+    &__body h2 {
+      font-size: 18px;
+    }
+  }
+}

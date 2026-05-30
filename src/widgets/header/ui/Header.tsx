@@ -3,6 +3,7 @@
 import '@pages/home/ui/home.scss';
 
 import { userStore, type User } from '@entities/user';
+import { ownerApi } from '@entities/owner';
 import { restaurantApi, type SearchAllResult } from '@entities/restaurant';
 import { logoutAction } from '@features/auth/logout';
 import { router } from '@app/router';
@@ -14,6 +15,7 @@ import type { VNode } from '@shared/lib/vdom';
 import { Logo } from '@shared/ui/logo';
 import { imageFallback } from '@shared/lib/img';
 import { AddressSelect } from '@widgets/address-select';
+import { LuckyWheelModal, type LuckyWheelModalController } from '@widgets/lucky-wheel';
 
 /** `default` - шапка с поиском и адресом, `back` - с кнопкой возврата. */
 export type HeaderMode = 'default' | 'back';
@@ -60,6 +62,8 @@ export function Header(props: HeaderProps): VNode {
     // До завершения первой проверки авторизации не показываем ни гостевые,
     // ни пользовательские контролы, иначе кнопки «Войти/Регистрация» мигают.
     const authResolved = useStoreSignal(userStore, (s) => s.authResolved);
+    // Флаг видимости кнопки "Панель владельца": проверяется один раз при логине.
+    const isOwner = signal(false);
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -68,6 +72,23 @@ export function Header(props: HeaderProps): VNode {
     let searchInputEl: HTMLInputElement | null = null;
     let suggestEl: HTMLElement | null = null;
     let userMenuEl: HTMLElement | null = null;
+    let luckyWheelCtl: LuckyWheelModalController | null = null;
+
+    // Проверяем роль owner при смене пользователя (вход/выход).
+    // Результат кешируется в сигнале isOwner — повторных запросов нет.
+    let lastCheckedUserId: string | null = null;
+    effect(() => {
+        const user = props.user();
+        if (!user) {
+            isOwner.set(false);
+            lastCheckedUserId = null;
+            return;
+        }
+        // Проверяем только при смене пользователя (не при каждом ре-рендере)
+        if (lastCheckedUserId === user.public_id) return;
+        lastCheckedUserId = user.public_id;
+        void ownerApi.checkOwnerAccess().then((ok) => isOwner.set(ok));
+    });
 
     // Header живёт в shell-е и переживает навигацию между страницами, поэтому
     // searchValue нужно синхронизировать с URL: иначе после поиска и возврата
@@ -286,14 +307,26 @@ export function Header(props: HeaderProps): VNode {
             <Show when={() => !(typeof props.hideSearch === 'function' ? props.hideSearch() : props.hideSearch)}>
                 <div class="search-bar">
                     <div class="search-bar__group search-bar__group_main">
-                        <div class="search-bar__icon">
+                        <button
+                            type="button"
+                            class="search-bar__icon"
+                            aria-label="Найти"
+                            onClick={() => {
+                                if (searchTimer !== null) {
+                                    clearTimeout(searchTimer);
+                                    searchTimer = null;
+                                }
+                                suggestOpen.set(false);
+                                submitSearch(searchValue().trim());
+                            }}
+                        >
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                                 <path
                                     d="M4.95838 9.90982C3.57524 9.90982 2.40291 9.42961 1.4414 8.46918C0.480467 7.50933 0 6.3379 0 4.95491C0 3.57192 0.480467 2.40021 1.4414 1.43978C2.40233 0.47935 3.57466 -0.000575969 4.95838 5.18735e-07C6.3421 0.000577006 7.51414 0.480791 8.4745 1.44064C9.43486 2.40049 9.91533 3.57192 9.9159 4.95491C9.9159 5.55561 9.80948 6.137 9.59665 6.69907C9.38381 7.26115 9.10407 7.74194 8.75742 8.14145L13.8698 13.2494C13.9506 13.3301 13.9938 13.4296 13.9996 13.5477C14.0048 13.6648 13.9615 13.7694 13.8698 13.8616C13.7775 13.9539 13.6754 14 13.5635 14C13.4516 14 13.3495 13.9539 13.2573 13.8616L8.14573 8.75281C7.71314 9.12119 7.21566 9.40626 6.65328 9.60803C6.09091 9.8098 5.52566 9.91069 4.95752 9.91069M4.95752 9.04595C6.10533 9.04595 7.07463 8.65106 7.86541 7.86127C8.65561 7.07149 9.05072 6.1027 9.05072 4.95491C9.05072 3.80712 8.6559 2.83863 7.86627 2.04941C7.07665 1.2602 6.10764 0.865308 4.95925 0.864732C3.81086 0.864732 2.84156 1.25963 2.05136 2.04941C1.26115 2.8392 0.865763 3.8077 0.865187 4.95491C0.86461 6.10212 1.25971 7.07062 2.05049 7.86041C2.84127 8.6502 3.81028 9.04509 4.95752 9.04509"
                                     fill="#7D7D7D"
                                 />
                             </svg>
-                        </div>
+                        </button>
                         <input
                             type="text"
                             class="search-bar__input"
@@ -442,16 +475,37 @@ export function Header(props: HeaderProps): VNode {
                             </>
                         }
                     >
-                        <div class="notif-btn">
-                            <div class="notif-btn__icon">
-                                <svg width="21" height="24" viewBox="0 0 21 24" fill="none">
-                                    <path
-                                        d="M10.5422 23.89C11.6667 23.89 12.5714 22.9852 12.5714 21.8608H8.513C8.513 22.9852 9.41776 23.89 10.5422 23.89ZM18.6589 16.7878V10.7003C18.6589 7.54519 16.9748 4.88725 14.0933 4.18721V3.59554C14.0933 1.63751 12.5002 0.0444336 10.5422 0.0444336C8.58414 0.0444336 6.99105 1.63751 6.99105 3.59554V4.18721C4.10955 4.88725 2.42546 7.53504 2.42546 10.7003V16.7878L0.396286 18.8169V19.8315H20.6881V18.8169L18.6589 16.7878ZM16.6297 17.8024H4.45463V10.7003C4.45463 8.01188 6.07792 5.62804 8.513 5.62804H12.5714C15.0065 5.62804 16.6297 8.01188 16.6297 10.7003V17.8024Z"
-                                        fill="#FFC1C1"
-                                    />
-                                </svg>
-                            </div>
-                        </div>
+                        <button
+                            type="button"
+                            class="wheel-launch-btn"
+                            aria-label="Колесо Пиццули"
+                            title="Колесо Пиццули"
+                            onClick={() => {
+                                luckyWheelCtl?.open();
+                            }}
+                        >
+                            {/* <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="10" stroke="#FFC1C1" stroke-width="2" />
+                                <path d="M12 2 V12 L19.5 7" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <path d="M12 12 L4.5 17" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <path d="M12 12 L20 17.5" stroke="#FFC1C1" stroke-width="2" stroke-linecap="round" />
+                                <circle cx="12" cy="12" r="1.5" fill="#FFC1C1" />
+                            </svg> */}
+                            <svg
+                                fill="#fa9b9b"
+                                width="26"
+                                height="26"
+                                viewBox="0 0 24 24"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <g id="Pizza">
+                                    <g>
+                                        <path d="M20.807,13.437l-.01-.04a19.05,19.05,0,0,0-10.23-10.21,1.574,1.574,0,0,0-2.08.93l-5.32,14.69a1.58,1.58,0,0,0,1.48,2.12,1.654,1.654,0,0,0,.54-.09l14.7-5.32a1.585,1.585,0,0,0,.91-.85A1.547,1.547,0,0,0,20.807,13.437Zm-6.98,2.98a1,1,0,0,0,.2.16L4.847,19.9a.582.582,0,0,1-.6-.14.556.556,0,0,1-.14-.61l2.39-6.6a1,1,0,0,0,.16.2,1.81,1.81,0,0,0,2.56-2.56,1.782,1.782,0,0,0-1.7-.47l1.09-2.98a17.346,17.346,0,0,1,6.82,5.57,2.447,2.447,0,0,0-1.6.71A2.4,2.4,0,0,0,13.827,16.417Zm6.05-2.15a.592.592,0,0,1-.33.31l-1.32.47c-.11-.23-.22-.45-.33-.67-.12-.24-.25-.48-.38-.71-.31-.55-.65-1.08-1-1.58a18.655,18.655,0,0,0-7.57-6.3l.48-1.33a.561.561,0,0,1,.31-.33.456.456,0,0,1,.23-.05.793.793,0,0,1,.25.05,18.013,18.013,0,0,1,9.67,9.68v.02A.561.561,0,0,1,19.877,14.267Z" />
+                                        <circle cx="7.835" cy="16.489" r="1.075" />
+                                    </g>
+                                </g>
+                            </svg>
+                        </button>
                         <div
                             class="user-menu-wrapper"
                             ref={(el: Element | null) => {
@@ -485,6 +539,18 @@ export function Header(props: HeaderProps): VNode {
                                 >
                                     Профиль
                                 </button>
+                                <Show when={isOwner}>
+                                    <button
+                                        class="user-dropdown__profile"
+                                        type="button"
+                                        onClick={() => {
+                                            profileMenuOpen.set(false);
+                                            void router.go(ROUTES.owner);
+                                        }}
+                                    >
+                                        🏪 Панель владельца
+                                    </button>
+                                </Show>
                                 <button
                                     class="user-dropdown__logout"
                                     type="button"
@@ -499,6 +565,11 @@ export function Header(props: HeaderProps): VNode {
                     </Show>
                 </Show>
             </div>
+            <LuckyWheelModal
+                controllerRef={(ctl: LuckyWheelModalController | null) => {
+                    luckyWheelCtl = ctl;
+                }}
+            />
         </header>
     );
 }
